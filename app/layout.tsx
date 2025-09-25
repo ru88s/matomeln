@@ -27,17 +27,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className="bg-gradient-to-br from-pink-50 via-white to-pink-50 min-h-screen">
+      <body className="bg-white min-h-screen">
         <Toaster position="top-center" />
-        <nav className="bg-white shadow-sm border-b border-gray-200">
+        <nav className="bg-pink-50 border-b border-pink-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-2">
                 <a href="/" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                     ま
                   </div>
-                  <span className="font-bold text-xl text-gray-900">シクマト</span>
+                  <span className="font-bold text-xl text-gray-800">シクマト</span>
                 </a>
                 <span className="text-xs text-gray-500 ml-2">Beta</span>
               </div>
@@ -45,7 +45,7 @@ export default function RootLayout({
               <div className="flex items-center gap-4">
                 <a
                   href="/about"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-gray-600 hover:text-gray-800 transition-colors"
                 >
                   使い方
                 </a>
@@ -53,7 +53,7 @@ export default function RootLayout({
                   href="https://shikutoku.me"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-pink-600 hover:text-pink-700 transition-colors font-medium"
+                  className="text-sm text-pink-500 hover:text-pink-600 transition-colors font-medium"
                 >
                   シクトク →
                 </a>
@@ -66,11 +66,11 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="mt-16 py-8 border-t border-gray-200">
+        <footer className="mt-16 py-8 bg-pink-50 border-t border-pink-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-sm text-gray-600">
               © 2024 シクマト -
-              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:text-pink-700 ml-1">
+              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600 ml-1">
                 Shikutoku
               </a>
               の関連サービス
