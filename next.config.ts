@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',  // 静的エクスポート設定
+  // output: 'export' を削除してAPIルートを有効化
   images: {
-    unoptimized: true,  // 画像最適化を無効化（静的サイトのため）
+    unoptimized: true,
   },
 };
 
