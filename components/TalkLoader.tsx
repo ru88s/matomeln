@@ -28,7 +28,7 @@ export default function TalkLoader({ onLoad, currentTalk }: TalkLoaderProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg border border-sky-100 p-6 hover:shadow-xl transition-shadow">
       <h2 className="text-lg font-bold text-gray-900 mb-4">
         ステップ1: トークを読み込む
       </h2>
@@ -54,14 +54,14 @@ export default function TalkLoader({ onLoad, currentTalk }: TalkLoaderProps) {
 
         <button
           type="submit"
-          className="w-full bg-pink-500 text-white font-medium py-2 px-4 rounded-xl hover:bg-pink-600 transition-colors"
+          className="w-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold py-3 px-4 rounded-2xl hover:from-sky-600 hover:to-cyan-600 transition-all shadow-md"
         >
           トークを読み込む
         </button>
       </form>
 
       {currentTalk && (
-        <div className="mt-4 p-4 bg-pink-50 rounded-xl">
+        <div className="mt-4 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-2xl border border-sky-100">
           <div className="text-sm text-gray-600">読み込み済み:</div>
           <div className="font-medium text-gray-900">{currentTalk.title}</div>
           <div className="text-xs text-gray-500 mt-1">

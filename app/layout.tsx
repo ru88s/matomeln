@@ -27,14 +27,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className="bg-white min-h-screen">
+      <body className="bg-gradient-to-br from-sky-50 via-white to-cyan-50 min-h-screen">
         <Toaster position="top-center" />
-        <nav className="bg-pink-50 border-b border-pink-100">
+        <nav className="bg-white/80 backdrop-blur-sm border-b border-sky-100 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-2">
                 <a href="/" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-8 h-8 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
                     ま
                   </div>
                   <span className="font-bold text-xl text-gray-800">シクマト</span>
@@ -53,7 +53,7 @@ export default function RootLayout({
                   href="https://shikutoku.me"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-pink-500 hover:text-pink-600 transition-colors font-medium"
+                  className="text-sm text-sky-600 hover:text-sky-700 transition-colors font-medium"
                 >
                   シクトク →
                 </a>
@@ -66,11 +66,11 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="mt-16 py-8 bg-pink-50 border-t border-pink-100">
+        <footer className="mt-16 py-8 bg-white/60 backdrop-blur-sm border-t border-sky-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-sm text-gray-600">
               © 2024 シクマト -
-              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600 ml-1">
+              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 ml-1">
                 Shikutoku
               </a>
               の関連サービス

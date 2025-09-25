@@ -50,8 +50,8 @@ function SortableComment({ comment, isSelected, onToggle }: {
     <div
       ref={setNodeRef}
       style={style}
-      className={`border rounded-xl p-4 mb-2 cursor-move ${
-        isSelected ? 'bg-pink-50 border-pink-300' : 'bg-white border-gray-200'
+      className={`border-2 rounded-2xl p-4 mb-3 cursor-move transition-all ${
+        isSelected ? 'bg-gradient-to-r from-sky-50 to-cyan-50 border-sky-300 shadow-md' : 'bg-white/80 border-sky-100 hover:border-sky-200'
       }`}
       {...attributes}
       {...listeners}
@@ -61,7 +61,7 @@ function SortableComment({ comment, isSelected, onToggle }: {
           type="checkbox"
           checked={isSelected}
           onChange={onToggle}
-          className="mt-1 h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+          className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
           onClick={(e) => e.stopPropagation()}
         />
         <div className="flex-1">
@@ -75,7 +75,7 @@ function SortableComment({ comment, isSelected, onToggle }: {
               comment.body}
           </div>
           {comment.images && comment.images.length > 0 && (
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-sky-600 font-medium">
               📷 画像 {comment.images.length}枚
             </div>
           )}
@@ -142,7 +142,7 @@ export default function CommentPicker({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg border border-sky-100 p-6 hover:shadow-xl transition-shadow">
       <h2 className="text-lg font-bold text-gray-900 mb-4">
         ステップ2: コメントを選択・並び替え
       </h2>
@@ -162,7 +162,7 @@ export default function CommentPicker({
               type="checkbox"
               checked={showSelectedOnly}
               onChange={(e) => setShowSelectedOnly(e.target.checked)}
-              className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+              className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
             />
             <span className="text-sm text-gray-700">選択中のみ表示</span>
           </label>
@@ -170,14 +170,14 @@ export default function CommentPicker({
           <div className="flex gap-2">
             <button
               onClick={selectAll}
-              className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+              className="text-sm text-sky-600 hover:text-sky-700 font-bold"
             >
               全て選択
             </button>
             <span className="text-gray-400">|</span>
             <button
               onClick={deselectAll}
-              className="text-sm text-gray-600 hover:text-gray-700 font-medium"
+              className="text-sm text-gray-500 hover:text-gray-600 font-medium"
             >
               選択解除
             </button>

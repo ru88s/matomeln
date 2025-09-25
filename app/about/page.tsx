@@ -11,14 +11,14 @@ export default function AboutPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
+      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-3">
             基本的な使い方
           </h2>
           <ol className="space-y-4">
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
+              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 1
               </span>
               <div>
@@ -34,7 +34,7 @@ export default function AboutPage() {
             </li>
 
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
+              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 2
               </span>
               <div>
@@ -49,7 +49,7 @@ export default function AboutPage() {
             </li>
 
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
+              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 3
               </span>
               <div>
@@ -65,7 +65,7 @@ export default function AboutPage() {
             </li>
 
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
+              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 4
               </span>
               <div>
@@ -80,7 +80,7 @@ export default function AboutPage() {
             </li>
 
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold">
+              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 5
               </span>
               <div>
@@ -94,7 +94,7 @@ export default function AboutPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100">
         <h2 className="text-xl font-bold text-gray-900 mb-3">
           よくある質問
         </h2>
@@ -136,7 +136,7 @@ export default function AboutPage() {
         </div>
       </div>
 
-      <div className="bg-pink-50 rounded-2xl p-6 border border-pink-200">
+      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 rounded-3xl p-6 border-2 border-sky-200 shadow-md">
         <h2 className="text-lg font-bold text-gray-900 mb-2">
           💡 ヒント
         </h2>

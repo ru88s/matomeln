@@ -51,9 +51,9 @@ export default function CreatePage() {
       </div>
 
       {loading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 shadow-xl">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-3 border-sky-500 mx-auto"></div>
             <p className="mt-4 text-gray-600">読み込み中...</p>
           </div>
         </div>
