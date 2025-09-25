@@ -1,103 +1,134 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="space-y-12">
+      <div className="text-center py-12">
+        <div className="flex justify-center mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg">
+            ま
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          シクマト
+        </h1>
+        <p className="text-xl text-gray-600 mb-2">
+          Shikutokuまとめ作成ツール
+        </p>
+        <p className="text-sm text-gray-500">
+          話題のトークを簡単にまとめてブログ記事に
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="font-bold text-gray-900 mb-2">1. トークを選ぶ</h3>
+          <p className="text-sm text-gray-600">
+            ShikutokuのURLまたはトークIDを入力して読み込み
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 className="font-bold text-gray-900 mb-2">2. コメントを選択</h3>
+          <p className="text-sm text-gray-600">
+            まとめたいコメントを選んで並び替え
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+          </div>
+          <h3 className="font-bold text-gray-900 mb-2">3. HTMLを生成</h3>
+          <p className="text-sm text-gray-600">
+            ブログに貼り付けられるHTMLを自動生成
+          </p>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <Link
+          href="/create"
+          className="inline-flex items-center gap-2 bg-pink-500 text-white font-medium px-8 py-3 rounded-xl hover:bg-pink-600 transition-colors shadow-lg"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          まとめ記事を作成する
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </Link>
+      </div>
+
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 max-w-2xl mx-auto">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">特徴</h2>
+        <ul className="space-y-3">
+          <li className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <span className="font-medium text-gray-900">完全無料</span>
+              <p className="text-sm text-gray-600 mt-1">
+                登録不要、すべての機能が無料で利用可能
+              </p>
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <span className="font-medium text-gray-900">自動リンク生成</span>
+              <p className="text-sm text-gray-600 mt-1">
+                元のShikutokuトークへのリンクを自動で付与
+              </p>
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <span className="font-medium text-gray-900">ドラッグ＆ドロップで並び替え</span>
+              <p className="text-sm text-gray-600 mt-1">
+                直感的な操作でコメントの順番を自由に変更
+              </p>
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <span className="font-medium text-gray-900">2つのスタイル</span>
+              <p className="text-sm text-gray-600 mt-1">
+                シンプル版とCSS付きリッチ版から選択可能
+              </p>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div className="text-center text-sm text-gray-600">
+        <p>
+          このツールは
+          <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:text-pink-700 font-medium mx-1">
+            Shikutoku（シクトク）
+          </a>
+          の関連サービスです
+        </p>
+      </div>
     </div>
   );
 }
