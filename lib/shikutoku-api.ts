@@ -1,10 +1,11 @@
 import { Talk, Comment } from './types';
 
-const SHIKUTOKU_API_BASE = 'https://shikutoku.me/api';
+// プロキシAPIを使用してCORS問題を回避
+const API_BASE = '/api/proxy';
 
 export async function fetchTalk(talkId: string): Promise<Talk | null> {
   try {
-    const response = await fetch(`${SHIKUTOKU_API_BASE}/getTalk?id=${talkId}`);
+    const response = await fetch(`${API_BASE}/getTalk?id=${talkId}`);
     if (!response.ok) throw new Error('Failed to fetch talk');
     const data = await response.json();
     return data.data;
@@ -16,7 +17,7 @@ export async function fetchTalk(talkId: string): Promise<Talk | null> {
 
 export async function fetchComments(talkId: string, page: number = 1): Promise<Comment[]> {
   try {
-    const response = await fetch(`${SHIKUTOKU_API_BASE}/getComments?talk_id=${talkId}&page=${page}`);
+    const response = await fetch(`${API_BASE}/getComments?talk_id=${talkId}&page=${page}`);
     if (!response.ok) throw new Error('Failed to fetch comments');
     const data = await response.json();
     return data.data || [];
