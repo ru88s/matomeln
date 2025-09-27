@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "シクマト - Shikutokuまとめ作成ツール",
   description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール",
   keywords: "シクトク,まとめ,ブログ,Shikutoku,掲示板",
+  manifest: '/manifest.json',
   openGraph: {
     title: "シクマト - Shikutokuまとめ作成ツール",
     description: "Shikutokuのトークを簡単にまとめてブログ記事に",
