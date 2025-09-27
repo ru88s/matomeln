@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ローカル開発ではAPIルートを有効化、本番ビルドではCloudflare Functions使用
-  // output: 'export', // ローカル開発時はコメントアウト
+  // Cloudflare Pagesビルド時は静的エクスポート、ローカルでは動的
+  ...(process.env.CF_PAGES ? { output: 'export' } : {}),
   images: {
     unoptimized: true,
   },

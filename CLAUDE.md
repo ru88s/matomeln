@@ -112,20 +112,39 @@ npm run lint  # リンティング
 
 ## デプロイメント設定
 
-### ローカル開発環境
-- `next.config.ts`の`output: 'export'`をコメントアウト
-- Next.jsのAPIルート（`app/api/proxy/`）を使用
-- 開発サーバーで動的APIルートが動作
+### ビルド構成
+- **ローカル開発**: `app-api`ディレクトリをシンボリックリンクとして`app/api`に接続
+- **本番ビルド**: APIルートを除外して静的エクスポート
+- **環境変数**: `CF_PAGES`フラグで本番ビルドを識別
 
-### Cloudflare Pages本番環境
-- `next.config.ts`の`output: 'export'`を有効化（ビルド時）
-- Cloudflare Functions（`functions/api/proxy/`）を使用
-- 静的サイトとして動作
+### ディレクトリ構造
+```
+/app-api/        # 開発用APIルート（ローカル環境のみ）
+  /proxy/
+    /getTalk/
+    /getComments/
+    /postBlog/
+/functions/      # Cloudflare Functions（本番環境）
+  /api/proxy/
+/scripts/
+  dev-setup.sh   # 開発環境セットアップ
+  build-clean.sh # 本番ビルドクリーンアップ
+```
+
+### npmスクリプト
+- `npm run dev`: 開発サーバー起動（APIルート有効）
+- `npm run build`: Cloudflare Pages用ビルド（静的エクスポート）
+- `npm run build:local`: ローカル用ビルド
 
 ### 依存関係のバージョン管理
 - Next.js: 15.5.2（@cloudflare/next-on-pagesとの互換性のため）
 - @cloudflare/next-on-pages: ^1.13.16
 - Vercelパッケージは不要（Cloudflareデプロイのため削除）
+
+### 注意事項
+- 動的ルート（icon.tsx、apple-icon.tsx）は静的エクスポートと非互換
+- ローカルと本番で異なるAPIエンドポイント構成
+- ビルド時は必ず`scripts/build-clean.sh`を実行
 
 ## 今後の方針
 - UIのシンプルさを最優先
