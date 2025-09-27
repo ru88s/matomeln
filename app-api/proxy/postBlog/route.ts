@@ -1,4 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+// WSSE認証ヘッダーを生成
+function generateWSSEHeader(username: string, password: string): string {
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const created = new Date().toISOString();
+
+  // パスワードダイジェストの生成
+  const digest = crypto
+    .createHash('sha1')
+    .update(nonce + created + password)
+    .digest('base64');
+
+  // nonceをBase64エンコード
+  const nonceBase64 = Buffer.from(nonce).toString('base64');
+
+  return `UsernameToken Username="${username}", PasswordDigest="${digest}", Nonce="${nonceBase64}", Created="${created}"`;
+}
+
+// AtomPub用XMLペイロードを生成
+function buildAtomXml(title: string, body: string): string {
+  const escapedTitle = title
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  // <!--more-->タグで本文と続きを分割
+  const parts = body.split('<!--more-->');
+  const mainBody = parts[0] || '';
+  const moreBody = parts[1] || '';
+
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:app="http://www.w3.org/2007/app" xmlns:blogcms="http://blogcms.jp/-/spec/atompub/1.0/">' +
+    '<title>' + escapedTitle + '</title>' +
+    '<content type="text/html" xml:lang="ja">' + body + '</content>' +
+    '<blogcms:source><blogcms:body><![CDATA[' + mainBody + ']]></blogcms:body>' +
+    '<blogcms:more><![CDATA[' + moreBody + ']]></blogcms:more></blogcms:source>' +
+    '</entry>'
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,49 +54,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // はてなブログAPIのエンドポイント
-    const endpoint = `https://blog.hatena.ne.jp/${blogId}/${blogId}.hatenablog.com/atom/entry`;
+    // ライブドアブログのAtomPub APIエンドポイント
+    const endpoint = `https://livedoor.blogcms.jp/atom/blog/${blogId}/article`;
 
-    // XMLペイロードの作成
-    const xmlPayload = `<?xml version="1.0" encoding="utf-8"?>
-<entry xmlns="http://www.w3.org/2005/Atom"
-       xmlns:app="http://www.w3.org/2007/app">
-  <title>${title}</title>
-  <author><name>${blogId}</name></author>
-  <content type="text/x-markdown">${body}</content>
-  ${draft ? '<app:control><app:draft>yes</app:draft></app:control>' : ''}
-</entry>`;
+    // WSSE認証ヘッダーを生成
+    const wsseHeader = generateWSSEHeader(blogId, apiKey);
 
-    // はてなブログAPIへPOST
+    // AtomPub用XMLペイロードを生成
+    const xmlPayload = buildAtomXml(title, body);
+
+    console.log('API endpoint:', endpoint);
+    console.log('Blog ID:', blogId);
+    console.log('WSSE Header:', wsseHeader);
+    console.log('XML Payload (first 500 chars):', xmlPayload.substring(0, 500));
+
+    // ライブドアブログAPIへPOST
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
+        'Authorization': 'WSSE profile="UsernameToken"',
+        'X-WSSE': wsseHeader,
         'Content-Type': 'application/xml',
-        'X-HATENA-PUBLISH-KEY': apiKey,
       },
       body: xmlPayload,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Hatena API error: ${response.status} - ${errorText}`);
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+    // 成功の場合、Locationヘッダーから記事URLを取得
+    const location = response.headers.get('location');
+
+    if (response.status === 201 && location) {
+      console.log('投稿成功:', location);
+
+      return NextResponse.json({
+        success: true,
+        message: 'ブログ記事を投稿しました',
+        url: location,
+      });
     }
 
+    // エラーレスポンスの処理
     const responseText = await response.text();
+    console.error('Livedoor API error response:', responseText);
 
-    // XMLレスポンスからURLを抽出
-    const urlMatch = responseText.match(/<link rel="alternate" type="text\/html" href="([^"]+)"/);
-    const publishedUrl = urlMatch ? urlMatch[1] : null;
+    // 401の場合は認証エラー
+    if (response.status === 401) {
+      throw new Error('認証エラー: ブログIDまたはAPIキーが正しくありません');
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: draft ? 'ブログ記事を下書きとして保存しました' : 'ブログ記事を公開しました',
-      url: publishedUrl
-    });
+    throw new Error(`ライブドアブログAPIエラー: ${response.status} - ${responseText}`);
   } catch (error) {
     console.error('Error posting to blog:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
     return NextResponse.json(
-      { error: 'ブログ投稿に失敗しました', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: errorMessage.includes('認証エラー')
+          ? errorMessage
+          : 'ライブドアブログへの投稿に失敗しました',
+        details: errorMessage
+      },
       { status: 500 }
     );
   }

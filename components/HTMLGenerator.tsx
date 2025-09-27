@@ -263,9 +263,12 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
                     type="text"
                     value={apiSettings.blogUrl}
                     onChange={(e) => setApiSettings({...apiSettings, blogUrl: e.target.value})}
-                    placeholder="yourblog"
+                    placeholder="例: myblog (https://myblog.blog.jp のmyblog部分)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ※ブログURLの https://●●●.blog.jp の●●●部分を入力
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

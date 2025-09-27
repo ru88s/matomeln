@@ -86,7 +86,8 @@ ${comment.res_id}: ${nameDisplay}${timestamp}
 ${formatCommentBodyForMatome(comment.body)}
 </div>${imageHTML ? `
 ${imageHTML}` : ''}
-</div>`;
+</div>
+<br /><br />`;
   };
 
   // 本文（最初のコメントのみ）
@@ -178,7 +179,8 @@ function generateRichHTML(
 ${formatRichCommentBody(comment.body)}
 ${imageHTML ? `<div>${imageHTML}</div>` : ''}
 </div>
-</div>`;
+</div>
+<br /><br />`;
   };
 
   // 本文（最初のコメントのみ + スタイル）
