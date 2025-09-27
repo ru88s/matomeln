@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import { extractTalkIdFromUrl } from '@/lib/shikutoku-api';
 import { Talk } from '@/lib/types';
+import { StepHeader } from '@/components/ui/StepHeader';
+import { componentStyles } from '@/lib/design-system';
 
 interface TalkLoaderProps {
   onLoad: (talkId: string) => void;
   currentTalk: Talk | null;
+  commentsCount?: number;
 }
 
-export default function TalkLoader({ onLoad, currentTalk }: TalkLoaderProps) {
+export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkLoaderProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
 
@@ -28,10 +31,13 @@ export default function TalkLoader({ onLoad, currentTalk }: TalkLoaderProps) {
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg border border-sky-100 p-6 hover:shadow-xl transition-shadow">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">
-        ステップ1: トークを読み込む
-      </h2>
+    <div className={componentStyles.card.base}>
+      <StepHeader
+        number={1}
+        title="トークを読み込む"
+        badge={{ text: '必須', variant: 'required' }}
+        variant="pink"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -62,10 +68,9 @@ export default function TalkLoader({ onLoad, currentTalk }: TalkLoaderProps) {
 
       {currentTalk && (
         <div className="mt-4 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-2xl border border-sky-100">
-          <div className="text-sm text-gray-600">読み込み済み:</div>
           <div className="font-medium text-gray-900">{currentTalk.title}</div>
           <div className="text-xs text-gray-500 mt-1">
-            コメント数: {currentTalk.comment_count || 0}
+            コメント数: {commentsCount !== undefined ? commentsCount : 0}
           </div>
         </div>
       )}

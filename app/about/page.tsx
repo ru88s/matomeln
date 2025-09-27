@@ -1,151 +1,363 @@
+'use client';
+
+import { useState } from 'react';
+
 export default function AboutPage() {
+  const [activeTab, setActiveTab] = useState<'basic' | 'features' | 'faq'>('basic');
+
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          使い方
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* ヘッダー */}
+      <div className="text-center">
+        <h1 className="text-4xl font-black bg-gradient-to-r from-sky-500 to-cyan-500 bg-clip-text text-transparent mb-4">
+          シクマトの使い方
         </h1>
-        <p className="text-gray-600">
-          シクマトは、Shikutokuのトークから気になるコメントを選んで、
-          ブログ記事用のHTMLを生成できる無料ツールです。
+        <p className="text-gray-600 text-lg">
+          Shikutokuのトークから簡単にまとめ記事を作成できます
         </p>
       </div>
 
-      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100 space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            基本的な使い方
-          </h2>
-          <ol className="space-y-4">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
-                1
-              </span>
-              <div>
-                <p className="font-medium text-gray-900">トークを読み込む</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  ShikutokuのトークURLをコピーして入力欄に貼り付けます。
-                  URLの例: https://shikutoku.me/talks/123
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ※トークIDのみ（例: 123）を入力することも可能です
-                </p>
-              </div>
-            </li>
-
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
-                2
-              </span>
-              <div>
-                <p className="font-medium text-gray-900">コメントを選択</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  読み込んだトークのコメント一覧から、まとめに含めたいコメントをチェックボックスで選択します。
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ※ドラッグ＆ドロップで順番を自由に変更できます
-                </p>
-              </div>
-            </li>
-
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
-                3
-              </span>
-              <div>
-                <p className="font-medium text-gray-900">オプションを設定</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  生成するHTMLのスタイルや、画像・投稿時刻・名前の表示有無を選択します。
-                </p>
-                <ul className="text-sm text-gray-500 mt-2 space-y-1">
-                  <li>・シンプル: 基本的なHTML</li>
-                  <li>・リッチ: CSS付きの見栄えの良いHTML</li>
-                </ul>
-              </div>
-            </li>
-
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
-                4
-              </span>
-              <div>
-                <p className="font-medium text-gray-900">HTMLを生成してコピー</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  「HTMLを生成」ボタンをクリックして、生成されたHTMLをコピーします。
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ※プレビューボタンで実際の表示を確認できます
-                </p>
-              </div>
-            </li>
-
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold shadow-md">
-                5
-              </span>
-              <div>
-                <p className="font-medium text-gray-900">ブログに貼り付け</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  コピーしたHTMLをライブドアブログなどのブログサービスのHTML編集画面に貼り付けて公開します。
-                </p>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </div>
-
-      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100">
-        <h2 className="text-xl font-bold text-gray-900 mb-3">
+      {/* タブナビゲーション */}
+      <div className="flex justify-center gap-2">
+        <button
+          onClick={() => setActiveTab('basic')}
+          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+            activeTab === 'basic'
+              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          基本の使い方
+        </button>
+        <button
+          onClick={() => setActiveTab('features')}
+          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+            activeTab === 'features'
+              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          便利な機能
+        </button>
+        <button
+          onClick={() => setActiveTab('faq')}
+          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+            activeTab === 'faq'
+              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
           よくある質問
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <p className="font-medium text-gray-900">Q: 利用料金はかかりますか？</p>
-            <p className="text-sm text-gray-600 mt-1">
-              A: 完全無料です。登録も不要で、すぐにご利用いただけます。
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium text-gray-900">Q: 生成したHTMLはどこで使えますか？</p>
-            <p className="text-sm text-gray-600 mt-1">
-              A: ライブドアブログ、FC2ブログ、Amebaブログなど、HTML編集に対応したブログサービスで利用できます。
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium text-gray-900">Q: 画像は含められますか？</p>
-            <p className="text-sm text-gray-600 mt-1">
-              A: はい、オプションで「画像を含める」にチェックを入れると、コメントに添付された画像も含めることができます。
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium text-gray-900">Q: 元のトークへのリンクは自動で付きますか？</p>
-            <p className="text-sm text-gray-600 mt-1">
-              A: はい、各コメントと記事の最後に元のShikutokuトークへのリンクが自動的に付与されます。
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium text-gray-900">Q: コメントは何件まで選択できますか？</p>
-            <p className="text-sm text-gray-600 mt-1">
-              A: 最大500件（10ページ分）まで読み込み、その中から自由に選択できます。
-            </p>
-          </div>
-        </div>
+        </button>
       </div>
 
-      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 rounded-3xl p-6 border-2 border-sky-200 shadow-md">
-        <h2 className="text-lg font-bold text-gray-900 mb-2">
-          💡 ヒント
+      {/* 基本の使い方 */}
+      {activeTab === 'basic' && (
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100 space-y-8">
+          <div className="grid gap-6">
+            {/* ステップ1 */}
+            <div className="relative">
+              <div className="flex gap-4 bg-white rounded-2xl p-5 shadow-sm border-2 border-pink-100 hover:border-pink-200 transition-all">
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="font-black text-2xl">1</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-black text-xl text-gray-900">トークを読み込む</h3>
+                    <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full font-bold">必須</span>
+                  </div>
+                  <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 space-y-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      ShikutokuのトークページURLまたはトークIDを入力してください。
+                    </p>
+                    <div className="bg-white rounded-lg p-3 border border-pink-200 shadow-sm">
+                      <p className="text-xs font-bold text-gray-600 mb-2">📝 入力例</p>
+                      <div className="space-y-1">
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-sky-600">https://shikutoku.me/talks/6454</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-sky-600">6454（IDのみでもOK）</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* 接続線 */}
+              <div className="absolute left-7 top-full h-8 w-0.5 bg-gradient-to-b from-pink-300 to-purple-300"></div>
+            </div>
+
+            {/* ステップ2 */}
+            <div className="relative">
+              <div className="flex gap-4 bg-white rounded-2xl p-5 shadow-sm border-2 border-purple-100 hover:border-purple-200 transition-all">
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="font-black text-2xl">2</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-black text-xl text-gray-900">コメントを選択</h3>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">必須</span>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 space-y-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      まとめに含めたいコメントのチェックボックスをクリックして選択します。
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white rounded-lg p-3 border border-purple-200 shadow-sm">
+                        <p className="text-xs font-bold text-purple-700 mb-1">💡 ポイント</p>
+                        <p className="text-xs text-gray-600">番号の小さいコメントが自動で「本文」に</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-purple-200 shadow-sm">
+                        <p className="text-xs font-bold text-purple-700 mb-1">🎨 カスタマイズ</p>
+                        <p className="text-xs text-gray-600">色・サイズを個別調整可能</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* 接続線 */}
+              <div className="absolute left-7 top-full h-8 w-0.5 bg-gradient-to-b from-purple-300 to-sky-300"></div>
+            </div>
+
+            {/* ステップ3 */}
+            <div className="relative">
+              <div className="flex gap-4 bg-white rounded-2xl p-5 shadow-sm border-2 border-sky-100 hover:border-sky-200 transition-all">
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-sky-500 to-cyan-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="font-black text-2xl">3</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-black text-xl text-gray-900">タグを発行</h3>
+                    <span className="text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded-full font-bold">簡単</span>
+                  </div>
+                  <div className="bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl p-4 space-y-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      画面右下の「タグを発行」ボタンをクリックしてHTMLタグを生成します。
+                    </p>
+                    <div className="bg-white rounded-lg p-3 border border-sky-200 shadow-sm">
+                      <p className="text-xs font-bold text-sky-700 mb-1">✏️ 編集可能</p>
+                      <p className="text-xs text-gray-600">生成後もタイトル・本文・続きを自由に編集OK</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* 接続線 */}
+              <div className="absolute left-7 top-full h-8 w-0.5 bg-gradient-to-b from-sky-300 to-green-300"></div>
+            </div>
+
+            {/* ステップ4 */}
+            <div className="relative">
+              <div className="flex gap-4 bg-white rounded-2xl p-5 shadow-sm border-2 border-green-100 hover:border-green-200 transition-all">
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="font-black text-2xl">4</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-black text-xl text-gray-900">ブログに投稿</h3>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">簡単</span>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 space-y-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      ライブドアブログのAPIキーを設定すれば、ワンクリックで自動投稿できます。
+                    </p>
+                    <div className="bg-white rounded-lg p-3 border border-green-200 shadow-sm">
+                      <p className="text-xs font-bold text-green-700 mb-1">✨ または手動でコピー</p>
+                      <p className="text-xs text-green-600">各項目の「コピー」ボタンでHTMLをコピーして、お好きなブログに貼り付けることもできます</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 便利な機能 */}
+      {activeTab === 'features' && (
+        <div className="space-y-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+            <h3 className="font-bold text-lg text-gray-900 mb-4">
+              <span className="text-2xl mr-2">⌨️</span>
+              キーボードショートカット
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Q</kbd>
+                <span className="ml-2 text-sm text-gray-700">文字サイズ：大</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">W</kbd>
+                <span className="ml-2 text-sm text-gray-700">文字サイズ：中</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">E</kbd>
+                <span className="ml-2 text-sm text-gray-700">文字サイズ：小</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Ctrl</kbd>
+                +
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">E</kbd>
+                <span className="ml-2 text-sm text-gray-700">コメント編集</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+            <h3 className="font-bold text-lg text-gray-900 mb-4">
+              <span className="text-2xl mr-2">🎨</span>
+              カスタマイズ機能
+            </h3>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">コメントの個別編集</p>
+                  <p className="text-xs text-gray-600">ダブルクリックまたはCtrl+Eでコメント本文を編集できます</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">色のカスタマイズ</p>
+                  <p className="text-xs text-gray-600">12色のカラーパレットから各コメントの色を選択</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">文字サイズの調整</p>
+                  <p className="text-xs text-gray-600">大・中・小の3段階でサイズを変更可能</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">自動リンク化</p>
+                  <p className="text-xs text-gray-600">コメント内のURLは自動的にクリック可能なリンクに変換</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+            <h3 className="font-bold text-lg text-gray-900 mb-4">
+              <span className="text-2xl mr-2">🚀</span>
+              ライブドアブログ自動投稿
+            </h3>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                ライブドアブログのAPIキーを設定することで、生成したまとめ記事をワンクリックで投稿できます。
+              </p>
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                <p className="text-xs font-bold text-gray-700 mb-2">設定方法：</p>
+                <ol className="space-y-1 text-xs text-gray-600">
+                  <li>1. ライブドアブログの管理画面にログイン</li>
+                  <li>2. 「設定」→「API Key」でAPIキーを取得</li>
+                  <li>3. シクマトの「ライブドアブログAPI設定」に入力</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* よくある質問 */}
+      {activeTab === 'faq' && (
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100">
+          <div className="space-y-6">
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 利用料金はかかりますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: 完全無料です。登録も不要で、すぐにご利用いただけます。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: どのブログサービスで使えますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: HTML編集に対応したブログサービス（ライブドアブログ、FC2ブログ、はてなブログ、Amebaブログなど）でご利用いただけます。
+                特にライブドアブログは自動投稿にも対応しています。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: コメントの順番は変更できますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: はい、選択した順番で表示されます。番号が一番小さいコメントが自動的に「本文」となり、
+                2つ目以降は「続きを読む」部分に配置されます。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 画像も含められますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: はい、コメントに添付された画像は自動的に含まれます（最大200pxにリサイズ）。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 生成後に編集はできますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: はい、生成されたタイトル・本文・続きを読むのテキストエリアは全て編集可能です。
+                自由にカスタマイズしてからコピー・投稿してください。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 引用元のリンクは含まれますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: はい、生成されたHTMLの最後に自動的にShikutokuの元トークへのリンクが含まれます。
+              </p>
+            </div>
+
+            <div>
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 他の掲示板にも対応予定はありますか？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: はい、対応希望の掲示板様を募集中です。お問い合わせフォームからご連絡ください。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* お問い合わせ */}
+      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 rounded-3xl p-6 border-2 border-sky-200 shadow-md text-center">
+        <h2 className="text-lg font-bold text-gray-900 mb-3">
+          お困りの際は
         </h2>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li>• 長いトークの場合、検索機能を使って特定のコメントを素早く見つけられます</li>
-          <li>• 「選択中のみ表示」にチェックを入れると、選んだコメントだけを確認できます</li>
-          <li>• プレビュー機能で、実際のブログでの表示を確認してから公開することをおすすめします</li>
-          <li>• リッチスタイルは見栄えが良いですが、ブログによってはCSSが反映されない場合があります</li>
-        </ul>
+        <p className="text-sm text-gray-700 mb-4">
+          使い方でご不明な点がございましたら、お気軽にお問い合わせください。
+        </p>
+        <a
+          href="https://shikutoku.me/contact"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-500 to-cyan-500 text-white rounded-xl hover:from-sky-600 hover:to-cyan-600 transition-all font-bold shadow-lg"
+        >
+          お問い合わせはこちら
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
       </div>
     </div>
   );

@@ -11,12 +11,14 @@ export interface Talk {
   user_id?: string;
   hash_id: string;
   comment_count?: number;
+  show_id?: boolean;
 }
 
 export interface Comment {
   id: string;
   res_id: string;
   name: string;
+  name_id?: string;
   body: string;
   talk_id: string;
   created_at: string;
@@ -26,9 +28,18 @@ export interface Comment {
   is_user_muted?: boolean;
 }
 
+export interface CommentWithStyle extends Comment {
+  color?: string;
+}
+
 export interface MatomeOptions {
   includeImages: boolean;
   style: 'simple' | 'rich';
   includeTimestamp: boolean;
   includeName: boolean;
+  commentStyle: {
+    bold: boolean;
+    fontSize: 'small' | 'medium' | 'large';
+    color: string;
+  };
 }
