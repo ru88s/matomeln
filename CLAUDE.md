@@ -108,6 +108,24 @@ npm run lint  # リンティング
 - プロキシAPIを使用してCORSを回避
 - /api/proxy/getTalk
 - /api/proxy/getComments
+- /api/proxy/postBlog
+
+## デプロイメント設定
+
+### ローカル開発環境
+- `next.config.ts`の`output: 'export'`をコメントアウト
+- Next.jsのAPIルート（`app/api/proxy/`）を使用
+- 開発サーバーで動的APIルートが動作
+
+### Cloudflare Pages本番環境
+- `next.config.ts`の`output: 'export'`を有効化（ビルド時）
+- Cloudflare Functions（`functions/api/proxy/`）を使用
+- 静的サイトとして動作
+
+### 依存関係のバージョン管理
+- Next.js: 15.5.2（@cloudflare/next-on-pagesとの互換性のため）
+- @cloudflare/next-on-pages: ^1.13.16
+- Vercelパッケージは不要（Cloudflareデプロイのため削除）
 
 ## 今後の方針
 - UIのシンプルさを最優先

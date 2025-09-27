@@ -1,12 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cloudflare Pages用の静的エクスポート設定
-  output: 'export',
+  // ローカル開発ではAPIルートを有効化、本番ビルドではCloudflare Functions使用
+  // output: 'export', // ローカル開発時はコメントアウト
   images: {
     unoptimized: true,
   },
-  // 静的エクスポート用の設定
   trailingSlash: false,
 };
 
