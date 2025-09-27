@@ -1,15 +1,58 @@
 export async function onRequest(context) {
+  // CORS headers - more comprehensive
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
+    'Access-Control-Max-Age': '86400',
+  };
+
+  // Handle OPTIONS request for CORS preflight
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
+  }
+
   if (context.request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: corsHeaders
+    });
   }
 
   try {
-    const { blogId, apiKey, title, body, draft } = await context.request.json();
+    console.log('PostBlog request received:', context.request.method);
+    const requestData = await context.request.json();
+    console.log('Request data keys:', Object.keys(requestData));
+
+    const { blogId, apiKey, title, body, draft } = requestData;
 
     if (!blogId || !apiKey || !title || !body) {
+      console.error('Missing required parameters:', {
+        blogId: !!blogId,
+        apiKey: !!apiKey,
+        title: !!title,
+        body: !!body
+      });
       return new Response(
-        JSON.stringify({ error: '必須パラメータが不足しています' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: '必須パラメータが不足しています',
+          missing: {
+            blogId: !blogId,
+            apiKey: !apiKey,
+            title: !title,
+            body: !body
+          }
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        }
       );
     }
 
@@ -26,6 +69,7 @@ export async function onRequest(context) {
   ${draft ? '<app:control><app:draft>yes</app:draft></app:control>' : ''}
 </entry>`;
 
+    console.log('Calling Hatena API with endpoint:', endpoint);
     // はてなブログAPIへPOST
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -36,8 +80,15 @@ export async function onRequest(context) {
       body: xmlPayload,
     });
 
+    console.log('Hatena API response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Hatena API error:', {
+        status: response.status,
+        error: errorText,
+        endpoint: endpoint
+      });
       throw new Error(`Hatena API error: ${response.status} - ${errorText}`);
     }
 
@@ -52,13 +103,22 @@ export async function onRequest(context) {
       message: draft ? 'ブログ記事を下書きとして保存しました' : 'ブログ記事を公開しました',
       url: publishedUrl
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
     });
   } catch (error) {
     console.error('Error posting to blog:', error);
     return new Response(
       JSON.stringify({ error: 'ブログ投稿に失敗しました', details: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
     );
   }
 }

@@ -147,6 +147,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
         ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
         : generatedHTML.body;
 
+
       const response = await fetch('/api/proxy/postBlog', {
         method: 'POST',
         headers: {
@@ -164,8 +165,19 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || 'ブログ投稿に失敗しました');
-        console.error('Blog post error:', data);
+        const errorMessage = data.error || 'ブログ投稿に失敗しました';
+        const missingInfo = data.missing ?
+          '\n不足: ' + Object.entries(data.missing)
+            .filter(([_, missing]) => missing)
+            .map(([key]) => key)
+            .join(', ')
+          : '';
+        toast.error(errorMessage + missingInfo);
+        console.error('Blog post error:', {
+          status: response.status,
+          data: data,
+          url: '/api/proxy/postBlog'
+        });
         return;
       }
 
