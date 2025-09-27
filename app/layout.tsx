@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   title: "シクマト - Shikutokuまとめ作成ツール",
   description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール",
   keywords: "シクトク,まとめ,ブログ,Shikutoku,掲示板",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', type: 'image/x-icon' }
+    ],
+    apple: '/apple-touch-icon.svg',
+  },
   manifest: '/manifest.json',
   openGraph: {
     title: "シクマト - Shikutokuまとめ作成ツール",
