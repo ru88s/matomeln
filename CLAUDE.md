@@ -46,12 +46,12 @@ const colorPalette = [
 - **並び替えモード無効時**:
   - アンカー（>>番号）に基づいた自動並び替え
   - 返信コメントはインデントして表示（ml-8 border-l-2 border-sky-200 pl-4）
-  - 選択済みコメントは並べ替えた順番を保持して上部に表示
-  - 未選択コメントはその後にアンカー順で表示
-- **重要**: 並べ替えた順番は以下に反映される
-  - コメント表示順
-  - HTMLタグ生成時の順番
-  - ブログ投稿時の順番
+  - **重要**: 選択状態に関係なく全コメントを元の位置で表示
+  - **重要**: 選択済み・未選択の分離表示は行わない
+- **並べ替えた順番の反映**:
+  - HTMLタグ生成時の順番に反映
+  - ブログ投稿時の順番に反映
+  - 並べ替えモードOFF時は反映しない（元の順序を保持）
 - **重要**: すべてのコメントを必ず表示する（アンカーの有無に関わらず）
 
 ### 5. 編集ボタンの配置
@@ -95,6 +95,12 @@ const colorPalette = [
 - 本文コメント（isFirstSelected）はドラッグ不可
 - ドラッグ中は要素を半透明表示（opacity-50）
 - ドロップ位置をborder-t-2で視覚化
+
+### 13. ボタンのUXデザイン
+- すべてのボタンにcursor-pointerを追加
+- クリック可能であることを視覚的に明確化
+- ホバー時の色変化で操作フィードバック提供
+- 対象ボタン: トークを読み込む、大中小サイズ、全て選択、選択解除、↓最後へ
 
 ## HTML生成ルール
 
@@ -177,15 +183,8 @@ npm run build  # ビルド
 
 ### 通常モード（並び替えモードOFF）
 ```typescript
-if (selectedComments.length > 0) {
-  // 選択済みを並べ替えた順番で表示、その後未選択をアンカー順で表示
-  const selectedInOrder = selectedComments.map(...);
-  const unselected = arrangeCommentsByAnchor(comments.filter(...));
-  return [...selectedInOrder, ...unselected];
-} else {
-  // 未選択時はアンカー順で表示
-  return arrangeCommentsByAnchor(comments);
-}
+// すべてのコメントをアンカー順で表示（選択状態に関係なく）
+arrangeCommentsByAnchor(comments)
 ```
 
 ### 並び替えモード（並び替えモードON）
