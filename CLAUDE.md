@@ -81,6 +81,7 @@ const colorPalette = [
 ### 12. レスの並び替えモード
 - チェックボックスでモード切り替え
 - 有効時は選択したコメントのみ表示
+- **重要**: 選択したコメントはres_id（コメント番号）順でソート
 - ドラッグ&ドロップで順番変更可能
 - ラベル表記：「レスの並び替え (選択済みのレスが表示)」
 
@@ -156,8 +157,28 @@ npm run dev  # 開発サーバー起動
 npm run build  # ビルド
 ```
 
+## コメント表示ロジック
+
+### 通常モード
+```typescript
+// アンカーに基づいた階層表示
+arrangeCommentsByAnchor(comments)
+```
+
+### 並び替えモード
+```typescript
+// 選択したコメントをres_id順でソート
+selectedComments
+  .map(sc => ({
+    ...comments.find(c => c.id === sc.id)!,
+    body: editedComments[sc.id] || sc.body
+  }))
+  .sort((a, b) => Number(a.res_id) - Number(b.res_id))
+```
+
 ## 今後の方針
 - UIのシンプルさを最優先
 - ユーザーの明示的な要求のみ実装
 - 不要な機能は積極的に削除
 - キーボード操作の改善を継続
+- コメント番号順の保持を徹底
