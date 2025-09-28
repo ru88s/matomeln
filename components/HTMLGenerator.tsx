@@ -5,60 +5,8 @@ import { Talk, CommentWithStyle, MatomeOptions } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import toast from 'react-hot-toast';
 
-// アンカーを抽出する関数
-function extractAnchor(body: string): number | null {
-  const match = body.match(/>>(\d+)/);
-  if (match) {
-    return parseInt(match[1]);
-  }
-  return null;
-}
-
-// コメントをアンカーに基づいて並び替える関数
-function arrangeCommentsByAnchor(comments: CommentWithStyle[]): CommentWithStyle[] {
-  const result: CommentWithStyle[] = [];
-  const processed = new Set<string>();
-
-  // res_idでソートされたコメントマップを作成
-  const commentMap = new Map<number, CommentWithStyle[]>();
-
-  // 各コメントを親res_idでグループ化
-  comments.forEach(comment => {
-    const anchorId = extractAnchor(comment.body);
-    if (anchorId !== null) {
-      // アンカーがある場合、該当番号の下に配置
-      if (!commentMap.has(anchorId)) {
-        commentMap.set(anchorId, []);
-      }
-      commentMap.get(anchorId)!.push(comment);
-    }
-  });
-
-  // 元のコメントを順番に処理
-  comments.forEach(comment => {
-    if (processed.has(comment.id)) return;
-
-    // アンカーがないコメント、または親が存在しないアンカーを持つコメントを追加
-    const anchorId = extractAnchor(comment.body);
-    if (anchorId === null || !comments.some(c => Number(c.res_id) === anchorId)) {
-      result.push(comment);
-      processed.add(comment.id);
-
-      // このコメントへの返信（アンカー）があれば追加
-      const replies = commentMap.get(Number(comment.res_id));
-      if (replies) {
-        replies.forEach(reply => {
-          if (!processed.has(reply.id)) {
-            result.push(reply);
-            processed.add(reply.id);
-          }
-        });
-      }
-    }
-  });
-
-  return result;
-}
+// 注: アンカーベースの並び替えは削除しました。
+// ユーザーが手動で並べ替えた順番をそのまま使用します。
 
 interface HTMLGeneratorProps {
   talk: Talk | null;
@@ -94,11 +42,8 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
 
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
-      // まずres_idでソートして番号順にする
-      const sortedComments = [...selectedComments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
-      // コメントをアンカーに基づいて並び替え
-      const arrangedComments = arrangeCommentsByAnchor(sortedComments);
-      const html = generateMatomeHTML(talk, arrangedComments, options);
+      // 並べ替えた順番をそのまま使用（ソートしない）
+      const html = generateMatomeHTML(talk, selectedComments, options);
       setGeneratedHTML(html);
     }
   }, [talk, selectedComments, options]);
@@ -115,11 +60,8 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
       return;
     }
 
-    // まずres_idでソートして番号順にする
-    const sortedComments = [...selectedComments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
-    // コメントをアンカーに基づいて並び替え
-    const arrangedComments = arrangeCommentsByAnchor(sortedComments);
-    const html = generateMatomeHTML(talk, arrangedComments, options);
+    // 並べ替えた順番をそのまま使用（ソートしない）
+    const html = generateMatomeHTML(talk, selectedComments, options);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };

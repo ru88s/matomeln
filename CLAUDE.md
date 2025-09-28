@@ -5,7 +5,6 @@
 ### 1. シンプルさを保つ
 - コメント検索機能は不要
 - すべてのコメントを一つのリストで表示する
-- 選択中のみ表示機能はトグルボタンで提供
 
 ### 2. キーボードショートカット
 - Space: 最後にホバーしたコメントを選択/解除
@@ -35,13 +34,25 @@ const colorPalette = [
 ```
 
 ### 4. 並べ替え機能
-- アンカー（>>番号）に基づいた自動並び替えを実装
-- 返信コメントはインデントして表示（ml-8 border-l-2 border-sky-200 pl-4）
-- 返信コメントは該当番号の下に自動配置
+- 「レスの並び替え」チェックボックスでモード切り替え
+- **並び替えモード有効時**:
+  - 選択済みコメントのみ表示
+  - ドラッグ&ドロップで自由に順番変更可能
+  - 本文（最初のコメント）は固定で移動不可
+  - 「固定」ラベルと鍵アイコンで視覚的に表現
+  - グレー背景（bg-gray-50）とcursor-not-allowedで操作不可を明示
+  - 選択解除（チェックボックス）を無効化
+  - 「↓最後へ」ボタンで簡単に最後尾へ移動
+- **並び替えモード無効時**:
+  - アンカー（>>番号）に基づいた自動並び替え
+  - 返信コメントはインデントして表示（ml-8 border-l-2 border-sky-200 pl-4）
+  - 選択済みコメントは並べ替えた順番を保持して上部に表示
+  - 未選択コメントはその後にアンカー順で表示
+- **重要**: 並べ替えた順番は以下に反映される
+  - コメント表示順
+  - HTMLタグ生成時の順番
+  - ブログ投稿時の順番
 - **重要**: すべてのコメントを必ず表示する（アンカーの有無に関わらず）
-- 再帰的な処理で階層構造を正しく構築
-- 孤立したコメントも救済して表示
-- 選択中のみ表示時はドラッグ&ドロップで手動並び替え可能
 
 ### 5. 編集ボタンの配置
 - テキストエリアの右側に配置（-right-8）
@@ -78,14 +89,19 @@ const colorPalette = [
 - アンカー（>>番号）は青色表示（#3b82f6）、下線なし
 - リンクはtarget="_blank"で新規タブで開く
 
-### 12. レスの並び替えモード
-- チェックボックスでモード切り替え
-- 有効時は選択したコメントのみ表示
-- **重要**: 選択したコメントはres_id（コメント番号）順でソート
-- ドラッグ&ドロップで順番変更可能
-- ラベル表記：「レスの並び替え (選択済みのレスが表示)」
+### 12. ドラッグ&ドロップ操作
+- draggable属性で要素をドラッグ可能に設定
+- onDragStart/onDragEnd/onDragOver/onDropイベントで処理
+- 本文コメント（isFirstSelected）はドラッグ不可
+- ドラッグ中は要素を半透明表示（opacity-50）
+- ドロップ位置をborder-t-2で視覚化
 
 ## HTML生成ルール
+
+### 並べ替え反映
+- HTMLGenerator内でのソート処理を削除
+- selectedCommentsの順番をそのまま使用
+- arrangeCommentsByAnchor関数は削除済み
 
 ### ブログ投稿フォーマット
 - 各コメントは`<div class="res_div">`で囲む
@@ -159,21 +175,27 @@ npm run build  # ビルド
 
 ## コメント表示ロジック
 
-### 通常モード
+### 通常モード（並び替えモードOFF）
 ```typescript
-// アンカーに基づいた階層表示
-arrangeCommentsByAnchor(comments)
+if (selectedComments.length > 0) {
+  // 選択済みを並べ替えた順番で表示、その後未選択をアンカー順で表示
+  const selectedInOrder = selectedComments.map(...);
+  const unselected = arrangeCommentsByAnchor(comments.filter(...));
+  return [...selectedInOrder, ...unselected];
+} else {
+  // 未選択時はアンカー順で表示
+  return arrangeCommentsByAnchor(comments);
+}
 ```
 
-### 並び替えモード
+### 並び替えモード（並び替えモードON）
 ```typescript
-// 選択したコメントをres_id順でソート
-selectedComments
-  .map(sc => ({
-    ...comments.find(c => c.id === sc.id)!,
-    body: editedComments[sc.id] || sc.body
-  }))
-  .sort((a, b) => Number(a.res_id) - Number(b.res_id))
+// 選択したコメントのみをユーザーが並べ替えた順番で表示
+selectedComments.map(sc => ({
+  ...comments.find(c => c.id === sc.id)!,
+  body: editedComments[sc.id] || sc.body
+}))
+// 注: res_idでのソートは行わない（ユーザーの並び順を保持）
 ```
 
 ## 今後の方針
@@ -181,4 +203,4 @@ selectedComments
 - ユーザーの明示的な要求のみ実装
 - 不要な機能は積極的に削除
 - キーボード操作の改善を継続
-- コメント番号順の保持を徹底
+- ユーザーが手動で並べ替えた順番の保持を徹底

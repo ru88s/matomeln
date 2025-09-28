@@ -13,7 +13,7 @@ interface CommentPickerProps {
   showId?: boolean;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -29,6 +29,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   onEditingChange?: (editing: boolean) => void;
   onExpandImage?: (imageUrl: string) => void;
   isFirstSelected?: boolean;
+  isInSortMode?: boolean;
+  onMoveToEnd?: () => void;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -150,8 +152,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
         isSelected ? 'bg-gradient-to-r from-sky-50 to-cyan-50 border-sky-300 shadow-md' : 'bg-white/80 border-sky-100 hover:border-sky-200'
       }`}
       onClick={(e) => {
-        // 編集中はクリックで選択状態を変更しない
-        if (!isEditing) {
+        // 編集中または並び替えモード中はクリックで選択状態を変更しない
+        if (!isEditing && (!isInSortMode || !isSelected)) {
           onToggle();
         }
       }}
@@ -176,7 +178,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           type="checkbox"
           checked={isSelected}
           onChange={onToggle}
-          className="mt-1 h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 rounded cursor-pointer"
+          disabled={isInSortMode}
+          className={`mt-1 h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 rounded ${isInSortMode ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           onClick={(e) => e.stopPropagation()}
         />
 
@@ -191,9 +194,32 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               )}
               {/* 本文バッジを右上に表示 */}
               {isFirstSelected && (
-                <span className="absolute top-0 right-0 bg-pink-500 text-white text-xs font-bold px-2 py-1 rounded">
-                  本文
-                </span>
+                <div className="absolute top-0 right-0 flex items-center gap-2">
+                  <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">
+                    本文
+                  </span>
+                  {isInSortMode && (
+                    <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      固定
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* 最後に移動ボタン */}
+              {isInSortMode && !isFirstSelected && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveToEnd?.();
+                  }}
+                  className="absolute top-0 right-0 bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                  title="最後に移動"
+                >
+                  ↓最後へ
+                </button>
               )}
             </div>
           </div>
@@ -549,6 +575,12 @@ export default function CommentPicker({
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
     const isSelected = selectedComments.some(sc => sc.id === comment.id);
+
+    // 並び替えモード中は選択解除を無効化
+    if (isSelected && showOnlySelected) {
+      return;
+    }
+
     if (isSelected) {
       onSelectionChange(selectedComments.filter(sc => sc.id !== comment.id));
     } else {
@@ -557,7 +589,7 @@ export default function CommentPicker({
       const newComment: CommentWithStyle = { ...comment, body, color };
       onSelectionChange([...selectedComments, newComment]);
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, showOnlySelected]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
@@ -684,6 +716,11 @@ export default function CommentPicker({
             />
             <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
           </label>
+          {showOnlySelected && (
+            <span className="text-xs text-gray-500 ml-2">
+              ※ドラッグ&ドロップで自由に並び替え可能
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <button
@@ -707,15 +744,28 @@ export default function CommentPicker({
       </div>
 
       <div className="space-y-2">
-        {(showOnlySelected
-          ? selectedComments
-              .map(sc => ({
-                ...comments.find(c => c.id === sc.id)!,
-                body: editedComments[sc.id] || sc.body
-              }))
-              .sort((a, b) => Number(a.res_id) - Number(b.res_id))
-          : arrangeCommentsByAnchor(comments)
-        ).map(comment => {
+        {(() => {
+          // 並べ替えモードまたは選択済みコメントがある場合
+          if (showOnlySelected) {
+            // 並べ替えモード: 選択済みのみ表示（ユーザーが並べ替えた順番）
+            return selectedComments.map(sc => ({
+              ...comments.find(c => c.id === sc.id)!,
+              body: editedComments[sc.id] || sc.body
+            }));
+          } else if (selectedComments.length > 0) {
+            // 通常モード＆選択済みあり: 選択済みを先に（並べ替えた順番で）、その後未選択
+            const selectedIds = new Set(selectedComments.map(sc => sc.id));
+            const selectedInOrder = selectedComments.map(sc => ({
+              ...comments.find(c => c.id === sc.id)!,
+              body: editedComments[sc.id] || sc.body
+            }));
+            const unselected = arrangeCommentsByAnchor(comments.filter(c => !selectedIds.has(c.id)));
+            return [...selectedInOrder, ...unselected];
+          } else {
+            // 通常モード＆未選択: アンカーベースの並び
+            return arrangeCommentsByAnchor(comments);
+          }
+        })().map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body
@@ -724,11 +774,11 @@ export default function CommentPicker({
           const anchorId = extractAnchor(displayComment.body);
           const isReply = anchorId !== null && comments.some(c => Number(c.res_id) === anchorId);
 
-          // 選択されたコメントの中でres_idが最小のものを本文とする
-          const minResId = selectedComments.length > 0
-            ? Math.min(...selectedComments.map(c => Number(c.res_id)))
-            : null;
-          const isFirstSelected = selectedComments.length > 0 && Number(comment.res_id) === minResId;
+          // 本文バッジの表示判定
+          // 並び替えモードでは最初の要素が本文、通常モードではres_idが最小が本文
+          const isFirstSelected = showOnlySelected
+            ? selectedComments.length > 0 && selectedComments[0].id === comment.id
+            : selectedComments.length > 0 && Number(comment.res_id) === Math.min(...selectedComments.map(c => Number(c.res_id)));
 
           return (
             <div
@@ -736,11 +786,17 @@ export default function CommentPicker({
               className={`${
                 isReply && !showOnlySelected ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''
               } ${
-                dragOverCommentId === comment.id ? 'opacity-50' : ''
-              } transition-opacity`}
-              draggable={showOnlySelected}
+                dragOverCommentId === comment.id ? 'border-t-2 border-sky-500 pt-2' : ''
+              } ${
+                draggedCommentId === comment.id ? 'opacity-50' : ''
+              } ${
+                showOnlySelected && !isFirstSelected ? 'cursor-move' : ''
+              } ${
+                showOnlySelected && isFirstSelected ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : ''
+              } transition-all`}
+              draggable={showOnlySelected && !isFirstSelected}
               onDragStart={(e) => {
-                if (showOnlySelected) {
+                if (showOnlySelected && !isFirstSelected) {
                   setDraggedCommentId(comment.id);
                   e.dataTransfer.effectAllowed = 'move';
                 }
@@ -750,7 +806,8 @@ export default function CommentPicker({
                 setDragOverCommentId(null);
               }}
               onDragOver={(e) => {
-                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id) {
+                // 本文のコメントにはドロップできない
+                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
                   e.preventDefault();
                   setDragOverCommentId(comment.id);
                 }
@@ -760,11 +817,12 @@ export default function CommentPicker({
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id) {
+                // 本文のコメントにはドロップできない
+                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
                   const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
                   const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
 
-                  if (draggedIndex !== -1 && dropIndex !== -1) {
+                  if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
                     const newSelectedComments = [...selectedComments];
                     const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
                     newSelectedComments.splice(dropIndex, 0, draggedComment);
@@ -791,6 +849,16 @@ export default function CommentPicker({
                 isEditing={editingCommentId === comment.id}
                 onEditingChange={(editing) => setEditingCommentId(editing ? comment.id : null)}
                 onExpandImage={setExpandedImage}
+                isInSortMode={showOnlySelected}
+                onMoveToEnd={() => {
+                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  if (currentIndex !== -1 && currentIndex < selectedComments.length - 1) {
+                    const newSelectedComments = [...selectedComments];
+                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                    newSelectedComments.push(movedComment);
+                    onSelectionChange(newSelectedComments);
+                  }
+                }}
               />
             </div>
           );
