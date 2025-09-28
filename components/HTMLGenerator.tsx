@@ -166,24 +166,12 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
 
       if (!response.ok) {
         const errorMessage = data.error || 'ブログ投稿に失敗しました';
-        const missingInfo = data.missing ?
-          '\n不足: ' + Object.entries(data.missing)
-            .filter(([_, missing]) => missing)
-            .map(([key]) => key)
-            .join(', ')
-          : '';
-        toast.error(errorMessage + missingInfo);
-        console.error('Blog post error:', {
-          status: response.status,
-          data: data,
-          url: '/api/proxy/postBlog'
-        });
+        toast.error(errorMessage);
         return;
       }
 
       toast.success('ブログに投稿しました！');
     } catch (error) {
-      console.error('Error posting to blog:', error);
       toast.error('ブログ投稿中にエラーが発生しました');
     } finally {
       setIsPosting(false);

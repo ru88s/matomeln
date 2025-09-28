@@ -3,9 +3,9 @@
 ## UI/UXデザイン原則
 
 ### 1. シンプルさを保つ
-- 選択中のみ表示機能は不要
 - コメント検索機能は不要
 - すべてのコメントを一つのリストで表示する
+- 選択中のみ表示機能はトグルボタンで提供
 
 ### 2. キーボードショートカット
 - Space: 最後にホバーしたコメントを選択/解除
@@ -35,13 +35,13 @@ const colorPalette = [
 ```
 
 ### 4. 並べ替え機能
-- 手動の並べ替え機能は削除（ドラッグ&ドロップ不要）
 - アンカー（>>番号）に基づいた自動並び替えを実装
 - 返信コメントはインデントして表示（ml-8 border-l-2 border-sky-200 pl-4）
 - 返信コメントは該当番号の下に自動配置
 - **重要**: すべてのコメントを必ず表示する（アンカーの有無に関わらず）
 - 再帰的な処理で階層構造を正しく構築
 - 孤立したコメントも救済して表示
+- 選択中のみ表示時はドラッグ&ドロップで手動並び替え可能
 
 ### 5. 編集ボタンの配置
 - テキストエリアの右側に配置（-right-8）
@@ -78,6 +78,48 @@ const colorPalette = [
 - アンカー（>>番号）は青色表示（#3b82f6）、下線なし
 - リンクはtarget="_blank"で新規タブで開く
 
+### 12. レスの並び替えモード
+- チェックボックスでモード切り替え
+- 有効時は選択したコメントのみ表示
+- ドラッグ&ドロップで順番変更可能
+- ラベル表記：「レスの並び替え (選択済みのレスが表示)」
+
+## HTML生成ルール
+
+### ブログ投稿フォーマット
+- 各コメントは`<div class="res_div">`で囲む
+- コメント間に`<br /><br />`を追加して改行
+- 本文と「続きを読む」は`<!--more-->`タグで分割
+- 1つ目のコメントが本文、2つ目以降が「続きを読む」部分
+
+### 画像処理
+- 最大幅・高さ200pxに制限
+- ShikutokuのCDN URLを使用
+
+## ライブドアブログAPI仕様
+
+### 認証方式
+- **プロトコル**: AtomPub API（WSSE認証）
+- **エンドポイント**: `https://livedoor.blogcms.jp/atom/blog/{blogId}/article`
+- **認証ヘッダー**: WSSEトークン（UsernameToken形式）
+
+### レスポンス処理
+- 成功: HTTPステータス201とLocationヘッダー
+- エラー: 401は認証エラー
+- XML形式でペイロード送信
+
+### XML構造
+```xml
+<entry xmlns="http://www.w3.org/2005/Atom">
+  <title>{タイトル}</title>
+  <content type="text/html">{全文}</content>
+  <blogcms:source>
+    <blogcms:body><![CDATA[{本文}]]></blogcms:body>
+    <blogcms:more><![CDATA[{続き}]]></blogcms:more>
+  </blogcms:source>
+</entry>
+```
+
 ## コーディング規約
 
 ### TypeScript/React
@@ -95,56 +137,24 @@ const colorPalette = [
 ### パフォーマンス
 - 不要な機能は削除
 - フィルタリング機能は実装しない
-- 選択/未選択の分離表示は避ける
+
+## API設計
+
+### エンドポイント
+- `/api/proxy/getTalk` - トーク情報取得
+- `/api/proxy/getComments` - コメント取得
+- `/api/proxy/postBlog` - ブログ投稿
+
+### 開発環境設定
+- `app-api`ディレクトリを`app/api`にコピー（開発時のみ）
+- `scripts/dev-setup.sh`で自動セットアップ
+- Cloudflare Functionsは`functions`ディレクトリで管理
 
 ## テストコマンド
 ```bash
 npm run dev  # 開発サーバー起動
 npm run build  # ビルド
-npm run lint  # リンティング
 ```
-
-## API設計
-- プロキシAPIを使用してCORSを回避
-- /api/proxy/getTalk
-- /api/proxy/getComments
-- /api/proxy/postBlog
-
-## デプロイメント設定
-
-### ビルド構成
-- **ローカル開発**: `app-api`ディレクトリをシンボリックリンクとして`app/api`に接続
-- **本番ビルド**: APIルートを除外して静的エクスポート
-- **環境変数**: `CF_PAGES`フラグで本番ビルドを識別
-
-### ディレクトリ構造
-```
-/app-api/        # 開発用APIルート（ローカル環境のみ）
-  /proxy/
-    /getTalk/
-    /getComments/
-    /postBlog/
-/functions/      # Cloudflare Functions（本番環境）
-  /api/proxy/
-/scripts/
-  dev-setup.sh   # 開発環境セットアップ
-  build-clean.sh # 本番ビルドクリーンアップ
-```
-
-### npmスクリプト
-- `npm run dev`: 開発サーバー起動（APIルート有効）
-- `npm run build`: Cloudflare Pages用ビルド（静的エクスポート）
-- `npm run build:local`: ローカル用ビルド
-
-### 依存関係のバージョン管理
-- Next.js: 15.5.2（@cloudflare/next-on-pagesとの互換性のため）
-- @cloudflare/next-on-pages: ^1.13.16
-- Vercelパッケージは不要（Cloudflareデプロイのため削除）
-
-### 注意事項
-- 動的ルート（icon.tsx、apple-icon.tsx）は静的エクスポートと非互換
-- ローカルと本番で異なるAPIエンドポイント構成
-- ビルド時は必ず`scripts/build-clean.sh`を実行
 
 ## 今後の方針
 - UIのシンプルさを最優先

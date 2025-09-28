@@ -67,19 +67,11 @@ export async function onRequest(context) {
   }
 
   try {
-    console.log('PostBlog request received:', context.request.method);
     const requestData = await context.request.json();
-    console.log('Request data keys:', Object.keys(requestData));
 
     const { blogId, apiKey, title, body, draft } = requestData;
 
     if (!blogId || !apiKey || !title || !body) {
-      console.error('Missing required parameters:', {
-        blogId: !!blogId,
-        apiKey: !!apiKey,
-        title: !!title,
-        body: !!body
-      });
       return new Response(
         JSON.stringify({
           error: '必須パラメータが不足しています',
@@ -109,9 +101,6 @@ export async function onRequest(context) {
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);
 
-    console.log('Calling Livedoor API with endpoint:', endpoint);
-    console.log('WSSE Header:', wsseHeader);
-
     // ライブドアブログAPIへPOST
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -123,14 +112,10 @@ export async function onRequest(context) {
       body: xmlPayload,
     });
 
-    console.log('Livedoor API response status:', response.status);
-
     // 成功の場合、Locationヘッダーから記事URLを取得
     const location = response.headers.get('location');
 
     if (response.status === 201 && location) {
-      console.log('投稿成功:', location);
-
       return new Response(JSON.stringify({
         success: true,
         message: 'ブログ記事を投稿しました',
@@ -145,11 +130,6 @@ export async function onRequest(context) {
 
     // エラーレスポンスの処理
     const responseText = await response.text();
-    console.error('Livedoor API error:', {
-      status: response.status,
-      error: responseText,
-      endpoint: endpoint
-    });
 
     // 401の場合は認証エラー
     if (response.status === 401) {
@@ -158,7 +138,6 @@ export async function onRequest(context) {
 
     throw new Error(`ライブドアブログAPIエラー: ${response.status} - ${responseText}`);
   } catch (error) {
-    console.error('Error posting to blog:', error);
     return new Response(
       JSON.stringify({
         error: error.message.includes('認証エラー')

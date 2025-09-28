@@ -187,6 +187,14 @@ export default function AboutPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Space</kbd>
+                <span className="ml-2 text-sm text-gray-700">ホバー中のコメントを選択/解除</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">1-9, 0</kbd>
+                <span className="ml-2 text-sm text-gray-700">色選択（カラーパレット）</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
                 <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Q</kbd>
                 <span className="ml-2 text-sm text-gray-700">文字サイズ：大</span>
               </div>
@@ -224,7 +232,7 @@ export default function AboutPage() {
                 <span className="text-sky-500 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">色のカスタマイズ</p>
-                  <p className="text-xs text-gray-600">12色のカラーパレットから各コメントの色を選択</p>
+                  <p className="text-xs text-gray-600">10色のカラーパレットから各コメントの色を選択</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
@@ -239,6 +247,13 @@ export default function AboutPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-900">自動リンク化</p>
                   <p className="text-xs text-gray-600">コメント内のURLは自動的にクリック可能なリンクに変換</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">レスの並び替え</p>
+                  <p className="text-xs text-gray-600">「レスの並び替え」モードでドラッグ&ドロップで順番変更可能</p>
                 </div>
               </li>
             </ul>
@@ -294,7 +309,8 @@ export default function AboutPage() {
                 Q: コメントの順番は変更できますか？
               </p>
               <p className="text-sm text-gray-600">
-                A: はい、選択した順番で表示されます。番号が一番小さいコメントが自動的に「本文」となり、
+                A: はい、「レスの並び替え」モードを有効にすると、選択したコメントのみが表示され、
+                ドラッグ&ドロップで順番を変更できます。番号が一番小さいコメントが自動的に「本文」となり、
                 2つ目以降は「続きを読む」部分に配置されます。
               </p>
             </div>

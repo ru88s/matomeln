@@ -537,6 +537,9 @@ export default function CommentPicker({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [draggedCommentId, setDraggedCommentId] = useState<string | null>(null);
+  const [dragOverCommentId, setDragOverCommentId] = useState<string | null>(null);
 
   // クライアントサイドでのみ実行
   useEffect(() => {
@@ -670,7 +673,18 @@ export default function CommentPicker({
       </div>
 
       {/* 操作ボタン */}
-      <div className="mb-4 flex items-center justify-end">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showOnlySelected}
+              onChange={(e) => setShowOnlySelected(e.target.checked)}
+              className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
+          </label>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={selectAll}
@@ -693,7 +707,13 @@ export default function CommentPicker({
       </div>
 
       <div className="space-y-2">
-        {arrangeCommentsByAnchor(comments).map(comment => {
+        {(showOnlySelected
+          ? selectedComments.map(sc => ({
+              ...comments.find(c => c.id === sc.id)!,
+              body: editedComments[sc.id] || sc.body
+            }))
+          : arrangeCommentsByAnchor(comments)
+        ).map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body
@@ -709,7 +729,50 @@ export default function CommentPicker({
           const isFirstSelected = selectedComments.length > 0 && Number(comment.res_id) === minResId;
 
           return (
-            <div key={comment.id} className={`${isReply ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''}`}>
+            <div
+              key={comment.id}
+              className={`${
+                isReply && !showOnlySelected ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''
+              } ${
+                dragOverCommentId === comment.id ? 'opacity-50' : ''
+              } transition-opacity`}
+              draggable={showOnlySelected}
+              onDragStart={(e) => {
+                if (showOnlySelected) {
+                  setDraggedCommentId(comment.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedCommentId(null);
+                setDragOverCommentId(null);
+              }}
+              onDragOver={(e) => {
+                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id) {
+                  e.preventDefault();
+                  setDragOverCommentId(comment.id);
+                }
+              }}
+              onDragLeave={() => {
+                setDragOverCommentId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id) {
+                  const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
+                  const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+
+                  if (draggedIndex !== -1 && dropIndex !== -1) {
+                    const newSelectedComments = [...selectedComments];
+                    const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
+                    newSelectedComments.splice(dropIndex, 0, draggedComment);
+                    onSelectionChange(newSelectedComments);
+                  }
+                }
+                setDraggedCommentId(null);
+                setDragOverCommentId(null);
+              }}
+            >
               <CommentItem
                 comment={displayComment}
                 isSelected={isSelected}
