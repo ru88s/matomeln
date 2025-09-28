@@ -744,28 +744,15 @@ export default function CommentPicker({
       </div>
 
       <div className="space-y-2">
-        {(() => {
-          // 並べ替えモードまたは選択済みコメントがある場合
-          if (showOnlySelected) {
-            // 並べ替えモード: 選択済みのみ表示（ユーザーが並べ替えた順番）
-            return selectedComments.map(sc => ({
+        {(showOnlySelected
+          ? // 並べ替えモード: 選択済みのみ表示（ユーザーが並べ替えた順番）
+            selectedComments.map(sc => ({
               ...comments.find(c => c.id === sc.id)!,
               body: editedComments[sc.id] || sc.body
-            }));
-          } else if (selectedComments.length > 0) {
-            // 通常モード＆選択済みあり: 選択済みを先に（並べ替えた順番で）、その後未選択
-            const selectedIds = new Set(selectedComments.map(sc => sc.id));
-            const selectedInOrder = selectedComments.map(sc => ({
-              ...comments.find(c => c.id === sc.id)!,
-              body: editedComments[sc.id] || sc.body
-            }));
-            const unselected = arrangeCommentsByAnchor(comments.filter(c => !selectedIds.has(c.id)));
-            return [...selectedInOrder, ...unselected];
-          } else {
-            // 通常モード＆未選択: アンカーベースの並び
-            return arrangeCommentsByAnchor(comments);
-          }
-        })().map(comment => {
+            }))
+          : // 通常モード: すべてのコメントをアンカー順で表示
+            arrangeCommentsByAnchor(comments)
+        ).map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body
