@@ -13,7 +13,7 @@ interface CommentPickerProps {
   showId?: boolean;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -31,6 +31,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   isFirstSelected?: boolean;
   isInSortMode?: boolean;
   onMoveToEnd?: () => void;
+  onMoveToTop?: () => void;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -208,18 +209,30 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   )}
                 </div>
               )}
-              {/* 最後に移動ボタン */}
+              {/* 移動ボタン */}
               {isInSortMode && !isFirstSelected && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMoveToEnd?.();
-                  }}
-                  className="absolute top-0 right-0 bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
-                  title="最後に移動"
-                >
-                  ↓最後へ
-                </button>
+                <div className="absolute top-0 right-0 flex gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveToTop?.();
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+                    title="最初に移動"
+                  >
+                    ↑最初へ
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveToEnd?.();
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+                    title="最後に移動"
+                  >
+                    ↓最後へ
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -843,6 +856,15 @@ export default function CommentPicker({
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.push(movedComment);
+                    onSelectionChange(newSelectedComments);
+                  }
+                }}
+                onMoveToTop={() => {
+                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  if (currentIndex !== -1 && currentIndex > 0) { // 本文（index 0）に移動
+                    const newSelectedComments = [...selectedComments];
+                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                    newSelectedComments.unshift(movedComment); // 最初に挿入
                     onSelectionChange(newSelectedComments);
                   }
                 }}
