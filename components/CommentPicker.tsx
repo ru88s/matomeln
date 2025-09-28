@@ -708,10 +708,12 @@ export default function CommentPicker({
 
       <div className="space-y-2">
         {(showOnlySelected
-          ? selectedComments.map(sc => ({
-              ...comments.find(c => c.id === sc.id)!,
-              body: editedComments[sc.id] || sc.body
-            }))
+          ? selectedComments
+              .map(sc => ({
+                ...comments.find(c => c.id === sc.id)!,
+                body: editedComments[sc.id] || sc.body
+              }))
+              .sort((a, b) => Number(a.res_id) - Number(b.res_id))
           : arrangeCommentsByAnchor(comments)
         ).map(comment => {
           const displayComment = {
