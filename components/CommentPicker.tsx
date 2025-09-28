@@ -215,7 +215,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     e.stopPropagation();
                     onMoveToEnd?.();
                   }}
-                  className="absolute top-0 right-0 bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                  className="absolute top-0 right-0 bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
                   title="最後に移動"
                 >
                   ↓最後へ
@@ -265,7 +265,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all ${
+              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 22 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="大 (キー: Q)"
@@ -285,7 +285,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all ${
+              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 18 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="中 (キー: W)"
@@ -305,7 +305,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all ${
+              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 14 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="小 (キー: E)"
@@ -725,14 +725,14 @@ export default function CommentPicker({
         <div className="flex gap-2">
           <button
             onClick={selectAll}
-            className="text-sm text-sky-600 hover:text-sky-700 font-bold"
+            className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
           >
             全て選択
           </button>
           <span className="text-gray-400">|</span>
           <button
             onClick={deselectAll}
-            className="text-sm text-gray-500 hover:text-gray-600 font-medium"
+            className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
           >
             選択解除
           </button>

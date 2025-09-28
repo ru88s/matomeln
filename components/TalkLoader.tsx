@@ -60,7 +60,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold py-3 px-4 rounded-2xl hover:from-sky-600 hover:to-cyan-600 transition-all shadow-md"
+          className="w-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold py-3 px-4 rounded-2xl hover:from-sky-600 hover:to-cyan-600 transition-all shadow-md cursor-pointer"
         >
           トークを読み込む
         </button>
