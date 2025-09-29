@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
 import { StepHeader } from '@/components/ui/StepHeader';
 import { componentStyles } from '@/lib/design-system';
+import toast from 'react-hot-toast';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -122,7 +123,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           onToggle();
         }
       }
-      if (e.key.toLowerCase() === 'e') {
+      if (e.key.toLowerCase() === 'e' && !e.ctrlKey) {
         e.preventDefault();
         onSizeChange('small');
         if (!isSelected) {
@@ -683,7 +684,7 @@ export default function CommentPicker({
 
     window.addEventListener('keydown', handleGlobalKeyPress);
     return () => window.removeEventListener('keydown', handleGlobalKeyPress);
-  }, [lastHoveredCommentId, comments, toggleComment, setEditingCommentId]);
+  }, [lastHoveredCommentId, comments, toggleComment]);
 
   // カラーパレットの定義
   const colorPalette = [
@@ -763,42 +764,40 @@ export default function CommentPicker({
         variant="purple"
       />
 
-      {/* キーボードショートカットのヒント */}
-      <div className="mb-4 p-3 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl border border-sky-200">
-        <div className="flex justify-between items-start">
+      {/* スティッキーヘッダー - キーボードショートカット */}
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-gradient-to-r from-sky-50/95 to-cyan-50/95 backdrop-blur-sm border-b border-sky-200 shadow-sm">
+        <div className="flex justify-between items-center">
           <div className="flex-1">
-            <div className="text-xs font-bold text-gray-700 mb-1">キーボードショートカット:</div>
-            <div className="text-xs text-gray-600 space-x-4">
-              <span className="inline-flex items-center">
-                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Space</span>
-                選択/解除
+            <div className="flex items-center gap-4 text-xs">
+              <span className="font-bold text-gray-700">ショートカット:</span>
+              <span className="inline-flex items-center text-gray-600">
+                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">Space</kbd>
+                選択
               </span>
-              <span className="inline-flex items-center">
-                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Ctrl+E</span>
+              <span className="inline-flex items-center text-gray-600">
+                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">Ctrl+E</kbd>
                 編集
               </span>
-              <span className="inline-flex items-center">
-                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">⌘Z</span>
+              <span className="inline-flex items-center text-gray-600">
+                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">⌘Z</kbd>
                 元に戻す
               </span>
-              <span className="inline-flex items-center">
-                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">⌘⇧Z</span>
+              <span className="inline-flex items-center text-gray-600">
+                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">⌘⇧Z</kbd>
                 やり直す
               </span>
-              <div className="text-xs text-gray-600 mt-1">
-                <span>1-9,0: 色選択</span>
-                <span className="ml-3">Q,W,E: サイズ（大/中/小）</span>
-              </div>
+              <span className="text-gray-600">1-9,0: 色</span>
+              <span className="text-gray-600">Q,W,E: サイズ</span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
                 canUndo
-                  ? 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:shadow-md cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
               }`}
               title="元に戻す (⌘Z)"
             >
@@ -810,10 +809,10 @@ export default function CommentPicker({
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
                 canRedo
-                  ? 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:shadow-md cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
               }`}
               title="やり直す (⌘⇧Z)"
             >
@@ -824,48 +823,46 @@ export default function CommentPicker({
             </button>
           </div>
         </div>
-      </div>
-
-      {/* 操作ボタン */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showOnlySelected}
-              onChange={(e) => setShowOnlySelected(e.target.checked)}
-              className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
-          </label>
-          {showOnlySelected && (
-            <span className="text-xs text-gray-500 ml-2">
-              ※ドラッグ&ドロップで自由に並び替え可能
+        {/* 操作ボタン */}
+        <div className="flex items-center justify-between pt-2 border-t border-sky-100">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlySelected}
+                onChange={(e) => setShowOnlySelected(e.target.checked)}
+                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
+            </label>
+            {showOnlySelected && (
+              <span className="text-xs text-gray-500 ml-2">
+                ※ドラッグ&ドロップで自由に並び替え可能
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-sky-600">
+              {selectedComments.length}件選択 / 全{comments.length}件
             </span>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={selectAll}
-            className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
-          >
-            全て選択
-          </button>
-          <span className="text-gray-400">|</span>
-          <button
-            onClick={deselectAll}
-            className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
-          >
-            選択解除
-          </button>
+            <span className="text-gray-400">|</span>
+            <button
+              onClick={selectAll}
+              className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
+            >
+              全て選択
+            </button>
+            <button
+              onClick={deselectAll}
+              className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
+            >
+              選択解除
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mb-3 text-sm text-gray-600">
-        {selectedComments.length}件選択中 / 全{comments.length}件
-      </div>
-
-      <div className="space-y-2">
+      <div className="space-y-2 mt-4">
         {(showOnlySelected
           ? // 並べ替えモード: 選択済みのみ表示（ユーザーが並べ替えた順番）
             selectedComments.map(sc => ({
@@ -966,6 +963,7 @@ export default function CommentPicker({
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.push(movedComment);
                     onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを最後に移動しました`);
                   }
                 }}
                 onMoveToTop={() => {
@@ -975,13 +973,20 @@ export default function CommentPicker({
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.unshift(movedComment); // 最初に挿入
                     onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを最初に移動しました`);
                   }
                 }}
                 onMoveToPosition={(targetResId) => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  const targetIndex = selectedComments.findIndex(sc => sc.res_id === targetResId);
+                  // res_idを文字列として比較
+                  const targetIndex = selectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
 
-                  if (currentIndex !== -1 && targetIndex !== -1 && currentIndex !== targetIndex) {
+                  if (targetIndex === -1) {
+                    toast.error(`${targetResId}番のコメントが見つかりません`);
+                    return;
+                  }
+
+                  if (currentIndex !== -1 && currentIndex !== targetIndex) {
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
 
@@ -990,6 +995,7 @@ export default function CommentPicker({
                     const insertIndex = currentIndex < targetIndex ? targetIndex : targetIndex + 1;
                     newSelectedComments.splice(insertIndex, 0, movedComment);
                     onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを${targetResId}番の下に移動しました`);
                   }
                 }}
               />

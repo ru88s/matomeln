@@ -256,6 +256,13 @@ export default function AboutPage() {
                   <p className="text-xs text-gray-600">「レスの並び替え」モードでドラッグ&ドロップで順番変更可能</p>
                 </div>
               </li>
+              <li className="flex items-start gap-2">
+                <span className="text-sky-500 mt-1">•</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">ピンポイント移動</p>
+                  <p className="text-xs text-gray-600">番号を指定して特定のコメントの下に移動可能</p>
+                </div>
+              </li>
             </ul>
           </div>
 
@@ -310,7 +317,8 @@ export default function AboutPage() {
               </p>
               <p className="text-sm text-gray-600">
                 A: はい、「レスの並び替え」モードを有効にすると、選択したコメントのみが表示され、
-                ドラッグ&ドロップで順番を変更できます。番号が一番小さいコメントが自動的に「本文」となり、
+                ドラッグ&ドロップで順番を変更できます。また、番号を指定して特定のコメントの下に
+                ピンポイントで移動することも可能です。番号が一番小さいコメントが自動的に「本文」となり、
                 2つ目以降は「続きを読む」部分に配置されます。
               </p>
             </div>
