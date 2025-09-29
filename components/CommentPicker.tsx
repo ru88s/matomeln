@@ -36,7 +36,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   isInSortMode?: boolean;
   onMoveToEnd?: () => void;
   onMoveToTop?: () => void;
-  onMoveToPosition?: (targetResId: number) => void;
+  onMoveToPosition?: (targetResId: string) => void;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -251,7 +251,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         if (e.key === 'Enter') {
                           const targetResId = parseInt(targetPosition);
                           if (!isNaN(targetResId) && targetResId > 0) {
-                            onMoveToPosition?.(targetResId);
+                            onMoveToPosition?.(targetPosition);
                             setTargetPosition('');
                           }
                         }
@@ -266,7 +266,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         e.stopPropagation();
                         const targetResId = parseInt(targetPosition);
                         if (!isNaN(targetResId) && targetResId > 0) {
-                          onMoveToPosition?.(targetResId);
+                          onMoveToPosition?.(targetPosition);
                           setTargetPosition('');
                         }
                       }}
