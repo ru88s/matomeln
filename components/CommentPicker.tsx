@@ -11,6 +11,10 @@ interface CommentPickerProps {
   selectedComments: CommentWithStyle[];
   onSelectionChange: (comments: CommentWithStyle[]) => void;
   showId?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop }: {
@@ -568,6 +572,10 @@ export default function CommentPicker({
   selectedComments,
   onSelectionChange,
   showId = false,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
@@ -599,10 +607,13 @@ export default function CommentPicker({
     } else {
       const color = commentColors[comment.id] || '#000000';
       const body = editedComments[comment.id] || comment.body;
-      const newComment: CommentWithStyle = { ...comment, body, color };
+      // サイズマップ変換
+      const sizeValue = commentSizes[comment.id];
+      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+      const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
       onSelectionChange([...selectedComments, newComment]);
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, showOnlySelected]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, showOnlySelected, commentSizes]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
@@ -661,10 +672,16 @@ export default function CommentPicker({
 
   const updateCommentSize = (commentId: string, size: 'small' | 'medium' | 'large') => {
     const sizeMap = { small: 14, medium: 18, large: 22 };
-    const fontSize = sizeMap[size];
+    const fontSizeValue = sizeMap[size];
 
     // サイズ情報を保存
-    setCommentSizes(prev => ({ ...prev, [commentId]: fontSize }));
+    setCommentSizes(prev => ({ ...prev, [commentId]: fontSizeValue }));
+
+    // 選択済みコメントのサイズを更新
+    const updated = selectedComments.map(c =>
+      c.id === commentId ? { ...c, fontSize: size } : c
+    );
+    onSelectionChange(updated);
   };
 
   const updateCommentBody = (commentId: string, newBody: string) => {
@@ -679,11 +696,16 @@ export default function CommentPicker({
   };
 
   const selectAll = () => {
-    const allComments = comments.map(c => ({
-      ...c,
-      body: editedComments[c.id] || c.body,
-      color: commentColors[c.id] || '#000000'
-    }));
+    const allComments = comments.map(c => {
+      const sizeValue = commentSizes[c.id];
+      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+      return {
+        ...c,
+        body: editedComments[c.id] || c.body,
+        color: commentColors[c.id] || '#000000',
+        fontSize
+      };
+    });
     onSelectionChange(allComments);
   };
 
@@ -702,18 +724,64 @@ export default function CommentPicker({
 
       {/* キーボードショートカットのヒント */}
       <div className="mb-4 p-3 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl border border-sky-200">
-        <div className="text-xs font-bold text-gray-700 mb-1">キーボードショートカット:</div>
-        <div className="text-xs text-gray-600 space-x-4">
-          <span className="inline-flex items-center">
-            <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Space</span>
-            選択/解除
-          </span>
-          <span className="inline-flex items-center">
-            <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Ctrl+E</span>
-            編集
-          </span>
-          <span className="ml-3">1-9,0: 色選択</span>
-          <span className="ml-3">Q,W,E: サイズ（大/中/小）</span>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-gray-700 mb-1">キーボードショートカット:</div>
+            <div className="text-xs text-gray-600 space-x-4">
+              <span className="inline-flex items-center">
+                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Space</span>
+                選択/解除
+              </span>
+              <span className="inline-flex items-center">
+                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">Ctrl+E</span>
+                編集
+              </span>
+              <span className="inline-flex items-center">
+                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">⌘Z</span>
+                元に戻す
+              </span>
+              <span className="inline-flex items-center">
+                <span className="bg-white px-1.5 py-0.5 rounded font-bold mr-1">⌘⇧Z</span>
+                やり直す
+              </span>
+              <div className="text-xs text-gray-600 mt-1">
+                <span>1-9,0: 色選択</span>
+                <span className="ml-3">Q,W,E: サイズ（大/中/小）</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                canUndo
+                  ? 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              title="元に戻す (⌘Z)"
+            >
+              <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              元に戻す
+            </button>
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                canRedo
+                  ? 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm cursor-pointer'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              title="やり直す (⌘⇧Z)"
+            >
+              <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+              </svg>
+              やり直す
+            </button>
+          </div>
         </div>
       </div>
 

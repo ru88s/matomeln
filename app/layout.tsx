@@ -148,6 +148,19 @@ export default function RootLayout({
 
         <footer className="py-4 bg-white/60 backdrop-blur-sm border-t border-sky-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="flex items-center justify-center gap-3 text-xs mb-2">
+              <a href="/sitemap" className="text-gray-600 hover:text-gray-800">
+                サイトマップ
+              </a>
+              <span className="text-gray-400">|</span>
+              <a href="/privacy" className="text-gray-600 hover:text-gray-800">
+                プライバシーポリシー
+              </a>
+              <span className="text-gray-400">|</span>
+              <a href="/terms" className="text-gray-600 hover:text-gray-800">
+                利用規約
+              </a>
+            </div>
             <p className="text-xs text-gray-500">
               © 2025 シクマト
             </p>

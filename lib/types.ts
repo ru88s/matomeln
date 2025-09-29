@@ -30,6 +30,7 @@ export interface Comment {
 
 export interface CommentWithStyle extends Comment {
   color?: string;
+  fontSize?: 'small' | 'medium' | 'large';
 }
 
 export interface MatomeOptions {

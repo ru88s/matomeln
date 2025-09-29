@@ -59,7 +59,9 @@ function generateSimpleHTML(
   // コメントをHTML化する関数
   const formatComment = (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
-    const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${options.commentStyle.fontSize === 'small' ? '14px' : options.commentStyle.fontSize === 'large' ? '18px' : '16px'};`;
+    // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
+    const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
+    const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${individualFontSize};`;
     // 名前の表示 - 元のコメントの名前をそのまま使用
     const nameDisplay = comment.name && comment.name !== ''
       ? `<span style="color: #ff69b4; font-weight: bold;">${escapeHtml(comment.name)}</span>`
@@ -151,7 +153,9 @@ function generateRichHTML(
   // コメントをHTML化する関数
   const formatComment = (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
-    const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${options.commentStyle.fontSize === 'small' ? '14px' : options.commentStyle.fontSize === 'large' ? '18px' : '16px'};`;
+    // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
+    const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
+    const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${individualFontSize};`;
 
     // 名前の表示 - 元のコメントの名前をそのまま使用
     const nameDisplay = comment.name && comment.name !== ''

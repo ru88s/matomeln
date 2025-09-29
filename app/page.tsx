@@ -6,13 +6,25 @@ import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
 import { fetchTalk, fetchAllComments } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle } from '@/lib/types';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
 import toast from 'react-hot-toast';
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [currentTalk, setCurrentTalk] = useState<Talk | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [selectedComments, setSelectedComments] = useState<CommentWithStyle[]>([]);
+  const {
+    value: selectedComments,
+    setValue: setSelectedComments,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    reset: resetHistory
+  } = useUndoRedo<CommentWithStyle[]>({
+    initialState: [],
+    maxHistorySize: 30
+  });
   const [showHTMLModal, setShowHTMLModal] = useState(false);
 
   // HTMLモーダルを開く際に自動生成
@@ -27,7 +39,7 @@ export default function Home() {
   const handleLoadTalk = async (talkId: string) => {
     setLoading(true);
     setComments([]); // 既存のコメントをクリア
-    setSelectedComments([]);
+    resetHistory(); // 履歴もリセット
 
     try {
       const talk = await fetchTalk(talkId);
@@ -87,6 +99,10 @@ export default function Home() {
               selectedComments={selectedComments}
               onSelectionChange={setSelectedComments}
               showId={currentTalk?.show_id}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
             />
 
             {/* HTML生成ボタン */}
@@ -168,7 +184,7 @@ export default function Home() {
               お問い合わせ
             </a>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 mt-3">
             対応希望の掲示板様も募集中です。
           </p>
         </div>
