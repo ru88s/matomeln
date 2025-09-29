@@ -17,7 +17,7 @@ interface CommentPickerProps {
   onRedo?: () => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -36,10 +36,12 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   isInSortMode?: boolean;
   onMoveToEnd?: () => void;
   onMoveToTop?: () => void;
+  onMoveToPosition?: (targetResId: number) => void;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
   const [editingBody, setEditingBody] = useState(comment.body);
+  const [targetPosition, setTargetPosition] = useState<string>('');  // 移動先番号入力用
 
   // 編集開始時に現在のbodyを設定
   useEffect(() => {
@@ -236,6 +238,45 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   >
                     ↓最後へ
                   </button>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={targetPosition}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setTargetPosition(e.target.value);
+                      }}
+                      onKeyPress={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') {
+                          const targetResId = parseInt(targetPosition);
+                          if (!isNaN(targetResId) && targetResId > 0) {
+                            onMoveToPosition?.(targetResId);
+                            setTargetPosition('');
+                          }
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-12 px-1 py-0.5 text-xs border border-gray-400 rounded"
+                      placeholder="番号"
+                      min="1"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const targetResId = parseInt(targetPosition);
+                        if (!isNaN(targetResId) && targetResId > 0) {
+                          onMoveToPosition?.(targetResId);
+                          setTargetPosition('');
+                        }
+                      }}
+                      disabled={!targetPosition || isNaN(parseInt(targetPosition))}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
+                      title="指定番号の下に移動"
+                    >
+                      移動
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -933,6 +974,21 @@ export default function CommentPicker({
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.unshift(movedComment); // 最初に挿入
+                    onSelectionChange(newSelectedComments);
+                  }
+                }}
+                onMoveToPosition={(targetResId) => {
+                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  const targetIndex = selectedComments.findIndex(sc => sc.res_id === targetResId);
+
+                  if (currentIndex !== -1 && targetIndex !== -1 && currentIndex !== targetIndex) {
+                    const newSelectedComments = [...selectedComments];
+                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+
+                    // ターゲットの下に配置（targetIndex + 1）
+                    // ただし、currentIndexがtargetIndexより前の場合は調整が必要
+                    const insertIndex = currentIndex < targetIndex ? targetIndex : targetIndex + 1;
+                    newSelectedComments.splice(insertIndex, 0, movedComment);
                     onSelectionChange(newSelectedComments);
                   }
                 }}
