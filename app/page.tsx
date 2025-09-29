@@ -135,32 +135,40 @@ export default function Home() {
 
       {/* フッター */}
       <div className="mt-16 pt-8 border-t border-gray-200">
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-4">
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center gap-2">
             <a
               href="https://shikutoku.me"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-cyan-500 text-white rounded-lg hover:from-sky-600 hover:to-cyan-600 transition-all font-bold text-sm shadow-md"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-sky-500 to-cyan-500 text-white rounded-lg hover:from-sky-600 hover:to-cyan-600 transition-all font-bold text-xs shadow-md"
             >
               Shikutoku（シクトク）へ
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
+            </a>
+            <a
+              href="https://shikutoku.me/talks/6501"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-pink-600 hover:text-pink-700 font-medium text-xs"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              ご意見ご要望
             </a>
             <a
               href="https://shikutoku.me/contact"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-sky-500 text-sky-600 rounded-lg hover:bg-sky-50 transition-all font-bold text-sm"
+              className="text-sky-600 hover:text-sky-700 font-medium text-xs"
             >
               お問い合わせ
             </a>
           </div>
-          <p className="text-xs text-gray-500">
-            © 2025 シクマト
-          </p>
-          <p className="text-xs text-gray-600 font-medium">
+          <p className="text-xs text-gray-500 mt-2">
             対応希望の掲示板様も募集中です。
           </p>
         </div>

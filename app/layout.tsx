@@ -5,9 +5,9 @@ import { Logo } from '@/components/ui/Logo';
 import { gradients, borderRadius, shadows, typography } from '@/lib/design-system';
 
 export const metadata: Metadata = {
-  title: "シクマト - Shikutokuまとめ作成ツール",
-  description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール",
-  keywords: "シクトク,まとめ,ブログ,Shikutoku,掲示板",
+  title: "シクマト - Shikutokuまとめ作成ツール | 無料でかんたんブログ記事作成",
+  description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
+  keywords: "シクトク,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,シクマト,まとめ作成,ブログ記事,自動生成",
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -17,16 +17,41 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "シクマト - Shikutokuまとめ作成ツール",
-    description: "Shikutokuのトークを簡単にまとめてブログ記事に",
-    url: "https://matome.shikutoku.me",
+    title: "シクマト - Shikutokuまとめ作成ツール | 無料でかんたんブログ記事作成",
+    description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事に。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。",
+    url: "https://shikumato.vercel.app",
     siteName: "シクマト",
     type: "website",
+    locale: "ja_JP",
+    images: [
+      {
+        url: "https://shikumato.vercel.app/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "シクマト - Shikutokuまとめ作成ツール",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "シクマト - Shikutokuまとめ作成ツール",
-    description: "Shikutokuのトークを簡単にまとめてブログ記事に",
+    description: "Shikutokuのトークを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
+    images: ["https://shikumato.vercel.app/og-image.svg"],
+  },
+  metadataBase: new URL('https://shikumato.vercel.app'),
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   }
 };
 
@@ -35,8 +60,43 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'シクマト',
+    alternateName: 'Shikumato',
+    url: 'https://shikumato.vercel.app',
+    description: 'Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。',
+    applicationCategory: 'UtilityApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'JPY',
+    },
+    featureList: [
+      'Shikutokuトークのまとめ作成',
+      'ドラッグ&ドロップによるコメント並べ替え',
+      'コメントの色・サイズカスタマイズ',
+      'HTMLタグ自動生成',
+      'ライブドアブログ直接投稿',
+    ],
+    screenshot: 'https://shikumato.vercel.app/og-image.svg',
+    author: {
+      '@type': 'Organization',
+      name: 'シクマト',
+      url: 'https://shikumato.vercel.app',
+    },
+  };
+
   return (
     <html lang="ja">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="bg-gradient-to-br from-sky-50 via-white to-cyan-50 min-h-screen">
         <Toaster position="top-center" />
         <nav className={`${gradients.primary} ${shadows.lg}`}>
@@ -86,14 +146,10 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="mt-16 py-8 bg-white/60 backdrop-blur-sm border-t border-sky-100">
+        <footer className="py-4 bg-white/60 backdrop-blur-sm border-t border-sky-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm text-gray-600">
-              © 2025 シクマト -
-              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 ml-1">
-                Shikutoku
-              </a>
-              のまとめ作成ツール
+            <p className="text-xs text-gray-500">
+              © 2025 シクマト
             </p>
           </div>
         </footer>

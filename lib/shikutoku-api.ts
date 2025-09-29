@@ -17,11 +17,11 @@ export async function fetchTalk(talkId: string): Promise<Talk | null> {
 
 export async function fetchComments(talkId: string, page: number = 1): Promise<Comment[]> {
   try {
-    // APIは1-50, 51-100の2ページのみ対応
-    if (page > 2) {
-      return []; // 3ページ目以降は空配列を返す
+    // 最大20ページ（1000件）まで対応
+    if (page > 20) {
+      return []; // 21ページ目以降は空配列を返す
     }
-    
+
     // ページ番号から範囲を計算（1ページ50件）
     const from = (page - 1) * 50 + 1;
     const to = page * 50;
@@ -56,8 +56,8 @@ export async function fetchAllComments(talkId: string): Promise<Comment[]> {
   let page = 1;
   let hasMore = true;
 
-  // APIは最大100件までしか返さないので、2ページ（1-50, 51-100）まで取得
-  while (hasMore && page <= 2) {
+  // 最大20ページ（1000件）まで取得可能にする
+  while (hasMore && page <= 20) {
     const comments = await fetchComments(talkId, page);
     if (comments.length === 0) {
       hasMore = false;
