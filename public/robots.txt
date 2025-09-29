@@ -1,5 +1,5 @@
 # Robots.txt for シクマト (Shikumato)
-# https://shikumato.vercel.app
+# https://matome.shikutoku.me
 
 # Allow all crawlers
 User-agent: *
@@ -7,7 +7,7 @@ Allow: /
 Disallow: /api/
 
 # Sitemap location
-Sitemap: https://shikumato.vercel.app/sitemap.xml
+Sitemap: https://matome.shikutoku.me/sitemap.xml
 
 # Crawl-delay (in seconds) for polite crawling
 Crawl-delay: 1

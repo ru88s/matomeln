@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "シクマト - Shikutokuまとめ作成ツール | 無料でかんたんブログ記事作成",
     description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事に。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。",
-    url: "https://shikumato.vercel.app",
+    url: "https://matome.shikutoku.me",
     siteName: "シクマト",
     type: "website",
     locale: "ja_JP",
     images: [
       {
-        url: "https://shikumato.vercel.app/og-image.svg",
+        url: "https://matome.shikutoku.me/og-image.svg",
         width: 1200,
         height: 630,
         alt: "シクマト - Shikutokuまとめ作成ツール",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "シクマト - Shikutokuまとめ作成ツール",
     description: "Shikutokuのトークを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
-    images: ["https://shikumato.vercel.app/og-image.svg"],
+    images: ["https://matome.shikutoku.me/og-image.svg"],
   },
-  metadataBase: new URL('https://shikumato.vercel.app'),
+  metadataBase: new URL('https://matome.shikutoku.me'),
   alternates: {
     canonical: '/',
   },
@@ -65,7 +65,7 @@ export default function RootLayout({
     '@type': 'WebApplication',
     name: 'シクマト',
     alternateName: 'Shikumato',
-    url: 'https://shikumato.vercel.app',
+    url: 'https://matome.shikutoku.me',
     description: 'Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。',
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'Web',
@@ -81,11 +81,11 @@ export default function RootLayout({
       'HTMLタグ自動生成',
       'ライブドアブログ直接投稿',
     ],
-    screenshot: 'https://shikumato.vercel.app/og-image.svg',
+    screenshot: 'https://matome.shikutoku.me/og-image.svg',
     author: {
       '@type': 'Organization',
       name: 'シクマト',
-      url: 'https://shikumato.vercel.app',
+      url: 'https://matome.shikutoku.me',
     },
   };
 
