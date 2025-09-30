@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
 import { StepHeader } from '@/components/ui/StepHeader';
