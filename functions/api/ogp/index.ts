@@ -1,0 +1,76 @@
+export async function onRequest(context: any) {
+  const { request } = context;
+  const url = new URL(request.url);
+  const targetUrl = url.searchParams.get('url');
+
+  if (!targetUrl) {
+    return new Response(
+      JSON.stringify({ error: 'URL parameter is required' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  try {
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; ShikumatoBot/1.0)',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    // OGPタグを抽出
+    const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1] || '';
+    const ogDescription = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i)?.[1] || '';
+    const ogImage = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1] || '';
+    const ogSiteName = html.match(/<meta\s+property="og:site_name"\s+content="([^"]+)"/i)?.[1] || '';
+
+    // フォールバック: titleタグ
+    const title = ogTitle || html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+
+    // フォールバック: descriptionメタタグ
+    const description = ogDescription || html.match(/<meta\s+name="description"\s+content="([^"]+)"/i)?.[1] || '';
+
+    return new Response(
+      JSON.stringify({
+        title: decodeHTMLEntities(title),
+        description: decodeHTMLEntities(description),
+        image: ogImage,
+        siteName: ogSiteName,
+        url: targetUrl,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('OGP fetch error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch OGP data' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+function decodeHTMLEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&nbsp;': ' ',
+  };
+  return text.replace(/&[a-z]+;|&#\d+;/gi, (match) => entities[match] || match);
+}
