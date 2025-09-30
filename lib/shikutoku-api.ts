@@ -1,4 +1,5 @@
 import { Talk, Comment } from './types';
+import { logger } from './logger';
 
 // プロキシAPIを使用してCORS問題を回避
 const API_BASE = '/api/proxy';
@@ -10,7 +11,7 @@ export async function fetchTalk(talkId: string): Promise<Talk | null> {
     const data = await response.json();
     return data.data;
   } catch (error) {
-    console.error('Error fetching talk:', error);
+    logger.error('Error fetching talk:', error);
     return null;
   }
 }
@@ -33,7 +34,7 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
     // エラーレスポンスの処理
     if (!response.ok) {
       if (response.status === 404) {
-        console.error('Talk not found:', talkId);
+        logger.error('Talk not found:', talkId);
         throw new Error('指定されたトークが見つかりません');
       }
       throw new Error(data.error || 'Failed to fetch comments');
@@ -45,7 +46,7 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
     }
     return [];
   } catch (error) {
-    console.error('Error fetching comments:', error);
+    logger.error('Error fetching comments:', error);
     // エラーを再スローして呼び出し元で処理できるようにする
     throw error;
   }

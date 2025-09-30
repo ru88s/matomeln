@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 
 // WSSE認証ヘッダーを生成
 function generateWSSEHeader(username: string, password: string): string {
@@ -63,10 +64,10 @@ export async function POST(request: NextRequest) {
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);
 
-    console.log('API endpoint:', endpoint);
-    console.log('Blog ID:', blogId);
-    console.log('WSSE Header:', wsseHeader);
-    console.log('XML Payload (first 500 chars):', xmlPayload.substring(0, 500));
+    logger.log('API endpoint:', endpoint);
+    logger.log('Blog ID:', blogId);
+    logger.log('WSSE Header:', wsseHeader);
+    logger.log('XML Payload (first 500 chars):', xmlPayload.substring(0, 500));
 
     // ライブドアブログAPIへPOST
     const response = await fetch(endpoint, {
@@ -79,14 +80,14 @@ export async function POST(request: NextRequest) {
       body: xmlPayload,
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    logger.log('Response status:', response.status);
+    logger.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     // 成功の場合、Locationヘッダーから記事URLを取得
     const location = response.headers.get('location');
 
     if (response.status === 201 && location) {
-      console.log('投稿成功:', location);
+      logger.log('投稿成功:', location);
 
       return NextResponse.json({
         success: true,
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     // エラーレスポンスの処理
     const responseText = await response.text();
-    console.error('Livedoor API error response:', responseText);
+    logger.error('Livedoor API error response:', responseText);
 
     // 401の場合は認証エラー
     if (response.status === 401) {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     throw new Error(`ライブドアブログAPIエラー: ${response.status} - ${responseText}`);
   } catch (error) {
-    console.error('Error posting to blog:', error);
+    logger.error('Error posting to blog:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 

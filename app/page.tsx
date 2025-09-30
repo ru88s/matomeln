@@ -55,8 +55,11 @@ export default function Home() {
       const allComments = await fetchAllComments(talkId);
       setComments(allComments);
     } catch (error) {
-      console.error('Error loading talk:', error);
-      
+      // 開発環境のみエラーログを出力
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading talk:', error);
+      }
+
       // エラーメッセージをより具体的に表示
       if (error instanceof Error) {
         if (error.message.includes('見つかりません')) {

@@ -23,7 +23,10 @@ export function LinkCard({ url }: { url: string }) {
         const data = await response.json();
         setOgp(data);
       } catch (err) {
-        console.error('OGP fetch error:', err);
+        // 開発環境のみエラーログを出力
+        if (process.env.NODE_ENV === 'development') {
+          console.error('OGP fetch error:', err);
+        }
         setError(true);
       } finally {
         setLoading(false);

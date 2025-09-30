@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       url,
     });
   } catch (error) {
-    console.error('OGP fetch error:', error);
+    logger.error('OGP fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch OGP data' },
       { status: 500 }

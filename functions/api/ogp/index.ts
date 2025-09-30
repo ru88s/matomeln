@@ -52,7 +52,10 @@ export async function onRequest(context: any) {
       }
     );
   } catch (error) {
-    console.error('OGP fetch error:', error);
+    // 本番環境ではログを出力しない（Cloudflare Logsで確認可能）
+    if (process.env.NODE_ENV === 'development') {
+      console.error('OGP fetch error:', error);
+    }
     return new Response(
       JSON.stringify({ error: 'Failed to fetch OGP data' }),
       {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching talk:', error);
+    logger.error('Error fetching talk:', error);
     return NextResponse.json(
       { error: 'Failed to fetch talk', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
