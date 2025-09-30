@@ -55,14 +55,14 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
     toast.success('API設定を保存しました');
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {
       toast.error('トークとコメントを選択してください');
       return;
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = generateMatomeHTML(talk, selectedComments, options);
+    const html = await generateMatomeHTML(talk, selectedComments, options);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };

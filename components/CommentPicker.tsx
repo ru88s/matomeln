@@ -505,7 +505,7 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
   // URLとアンカーのパターンを結合（URLは括弧、句読点、改行で終了）
   const pattern = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+|>>\d+)/g;
   const parts = body.split(pattern);
-  const elements: JSX.Element[] = [];
+  const elements: React.ReactElement[] = [];
   const urls: string[] = [];
 
   // テキストとアンカーを処理（URLはカードのみ表示）
