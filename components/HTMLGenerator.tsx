@@ -43,8 +43,9 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      const html = generateMatomeHTML(talk, selectedComments, options);
-      setGeneratedHTML(html);
+      generateMatomeHTML(talk, selectedComments, options).then(html => {
+        setGeneratedHTML(html);
+      });
     }
   }, [talk, selectedComments, options]);
 

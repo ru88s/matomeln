@@ -6,18 +6,18 @@ export interface GeneratedHTML {
   footer: string;
 }
 
-export function generateMatomeHTML(
+export async function generateMatomeHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions
-): GeneratedHTML {
+): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
   if (style === 'rich') {
-    return generateRichHTML(talk, selectedComments, options);
+    return await generateRichHTML(talk, selectedComments, options);
   }
 
-  return generateSimpleHTML(talk, selectedComments, options);
+  return await generateSimpleHTML(talk, selectedComments, options);
 }
 
 // コメントスタイルを適用する関数
@@ -46,18 +46,18 @@ function getCommentStyle(options: MatomeOptions): string {
 }
 
 // まとめくす風のシンプルなHTML
-function generateSimpleHTML(
+async function generateSimpleHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions
-): GeneratedHTML {
+): Promise<GeneratedHTML> {
   const { includeTimestamp, includeName, includeImages } = options;
 
   // タイトル部分
   const titleHTML = `【まとめ】${escapeHtml(talk.title)}`;
 
   // コメントをHTML化する関数
-  const formatComment = (comment: CommentWithStyle) => {
+  const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
@@ -80,12 +80,13 @@ function generateSimpleHTML(
       }).join('');
     }
 
+    const formattedBody = await formatCommentBodyForMatome(comment.body);
     return `<div class="res_div">
 <div class="t_h">
 ${comment.res_id}: ${nameDisplay}${timestamp}
 </div>
 <div class="t_b" style="margin-top:10px; ${commentStyle}">
-${formatCommentBodyForMatome(comment.body)}
+${formattedBody}
 </div>${imageHTML ? `
 ${imageHTML}` : ''}
 </div>
@@ -93,12 +94,13 @@ ${imageHTML}` : ''}
   };
 
   // 本文（最初のコメントのみ）
-  const bodyHTML = selectedComments.length > 0 ? formatComment(selectedComments[0]) : '';
+  const bodyHTML = selectedComments.length > 0 ? await formatComment(selectedComments[0]) : '';
 
   // フッター（2つめ以降のコメント + 引用元リンク）
   let footerHTML = '';
   if (selectedComments.length > 1) {
-    footerHTML = selectedComments.slice(1).map(comment => formatComment(comment)).join('\n\n');
+    const footerComments = await Promise.all(selectedComments.slice(1).map(comment => formatComment(comment)));
+    footerHTML = footerComments.join('\n\n');
   }
   if (footerHTML) {
     footerHTML += '\n\n';
@@ -113,11 +115,11 @@ ${imageHTML}` : ''}
 }
 
 // リッチHTML（CSS付き）
-function generateRichHTML(
+async function generateRichHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions
-): GeneratedHTML {
+): Promise<GeneratedHTML> {
   const { includeImages, includeTimestamp, includeName } = options;
 
   const styleHTML = `<style>
@@ -151,7 +153,7 @@ function generateRichHTML(
   const titleHTML = `【まとめ】${escapeHtml(talk.title)}`;
 
   // コメントをHTML化する関数
-  const formatComment = (comment: CommentWithStyle) => {
+  const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
@@ -174,13 +176,14 @@ function generateRichHTML(
       }).join('');
     }
 
+    const formattedBody = await formatRichCommentBody(comment.body);
     return `<div class="res_div">
 <div class="t_h">
   ${comment.res_id}: <span style="color: #ff69b4; font-weight: bold;">${nameDisplay}</span>
   ${timestamp ? `<span style="color: #999; font-size: 12px; margin-left: 10px;">${timestamp}</span>` : ''}
 </div>
 <div class="t_b" style="${commentStyle}">
-${formatRichCommentBody(comment.body)}
+${formattedBody}
 ${imageHTML ? `<div>${imageHTML}</div>` : ''}
 </div>
 </div>
@@ -188,12 +191,13 @@ ${imageHTML ? `<div>${imageHTML}</div>` : ''}
   };
 
   // 本文（最初のコメントのみ + スタイル）
-  const bodyHTML = styleHTML + '\n' + (selectedComments.length > 0 ? formatComment(selectedComments[0]) : '');
+  const bodyHTML = styleHTML + '\n' + (selectedComments.length > 0 ? await formatComment(selectedComments[0]) : '');
 
   // フッター（2つめ以降のコメント + 引用元リンク）
   let footerHTML = '';
   if (selectedComments.length > 1) {
-    footerHTML = selectedComments.slice(1).map(comment => formatComment(comment)).join('\n\n');
+    const footerComments = await Promise.all(selectedComments.slice(1).map(comment => formatComment(comment)));
+    footerHTML = footerComments.join('\n\n');
   }
   if (footerHTML) {
     footerHTML += '\n\n';
@@ -218,7 +222,50 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// URLをリンクに変換する関数
+// OGP情報を取得する関数
+async function fetchOGP(url: string): Promise<{title: string, description: string, image: string, siteName: string} | null> {
+  try {
+    const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+// URLをリンクカードに変換する関数（OGP情報付き）
+async function linkifyUrlsToCards(text: string): Promise<string> {
+  // URLパターンにマッチする正規表現（日本語括弧や句読点で終了）
+  const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
+  const urls: string[] = [];
+  const matches = text.matchAll(urlRegex);
+
+  for (const match of matches) {
+    urls.push(match[0]);
+  }
+
+  let result = text;
+
+  // 各URLのOGP情報を取得してカードHTMLに変換
+  for (const url of urls) {
+    const ogp = await fetchOGP(url);
+
+    if (ogp && ogp.title) {
+      // OGP情報がある場合はカード表示
+      const cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${ogp.image ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${ogp.image}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ogp.siteName || new URL(url).hostname}</div></div></div></a>`;
+      result = result.replace(url, cardHTML);
+    } else {
+      // OGP情報がない場合はシンプルなカード
+      const hostname = new URL(url).hostname;
+      const cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:10px 0;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${escapeHtml(url)}</div><div style="font-size:11px;color:#666;">${hostname}</div></a>`;
+      result = result.replace(url, cardHTML);
+    }
+  }
+
+  return result;
+}
+
+// URLをリンクに変換する関数（フォールバック用）
 function linkifyUrls(text: string): string {
   // URLパターンにマッチする正規表現
   const urlRegex = /(https?:\/\/[^\s<>]+)/g;
@@ -226,7 +273,7 @@ function linkifyUrls(text: string): string {
 }
 
 // まとめくす風の本文フォーマット
-function formatCommentBodyForMatome(body: string): string {
+async function formatCommentBodyForMatome(body: string): Promise<string> {
   // 改行を<br />に変換
   let formatted = escapeHtml(body).replace(/\n/g, '<br />\n');
 
@@ -235,13 +282,13 @@ function formatCommentBodyForMatome(body: string): string {
     return `<a href="#${num}" style="color: #ff69b4; text-decoration: none; font-weight: bold;">&gt;&gt;${num}</a>`;
   });
 
-  // URLをリンクに変換
-  formatted = linkifyUrls(formatted);
+  // URLをリンクカードに変換
+  formatted = await linkifyUrlsToCards(formatted);
 
   return formatted;
 }
 
-function formatRichCommentBody(body: string): string {
+async function formatRichCommentBody(body: string): Promise<string> {
   let lines = body.split('\n');
   let formatted: string[] = [];
 
@@ -249,8 +296,8 @@ function formatRichCommentBody(body: string): string {
     // 引用行の処理（>で始まる）
     if (line.startsWith('>')) {
       let escapedLine = escapeHtml(line);
-      // URLをリンクに変換（引用行でも）
-      escapedLine = linkifyUrls(escapedLine);
+      // URLをリンクカードに変換（引用行でも）
+      escapedLine = await linkifyUrlsToCards(escapedLine);
       formatted.push(`<div class="quote_line">${escapedLine}</div>`);
     } else {
       // 通常の行
@@ -259,8 +306,8 @@ function formatRichCommentBody(body: string): string {
       escapedLine = escapedLine.replace(/&gt;&gt;(\d+)/g, (match, num) => {
         return `<a href="#${num}" class="anchor_link">&gt;&gt;${num}</a>`;
       });
-      // URLをリンクに変換
-      escapedLine = linkifyUrls(escapedLine);
+      // URLをリンクカードに変換
+      escapedLine = await linkifyUrlsToCards(escapedLine);
       formatted.push(escapedLine);
     }
   }

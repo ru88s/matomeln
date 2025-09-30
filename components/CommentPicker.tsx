@@ -6,6 +6,7 @@ import { Comment, CommentWithStyle } from '@/lib/types';
 import { StepHeader } from '@/components/ui/StepHeader';
 import { componentStyles } from '@/lib/design-system';
 import toast from 'react-hot-toast';
+import { LinkCard } from '@/components/LinkCard';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -433,9 +434,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   }}
                 >
                   <span style={{ fontSize: `${fontSize || 18}px` }}>
-                    {comment.body.length > 150 && !isEditing ?
-                      renderBodyWithAnchorsAndLinks(comment.body.substring(0, 150) + '...', color, fontSize) :
-                      renderBodyWithAnchorsAndLinks(comment.body, color, fontSize)}
+                    {renderBodyWithAnchorsAndLinks(comment.body, color, fontSize)}
                   </span>
                 </div>
                 {/* 編集ボタン - テキストの右側に配置 */}
@@ -503,39 +502,39 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
 // アンカー（>>番号）とURLを含むテキストを処理する関数
 function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, fontSize: number | undefined) {
-  // URLとアンカーのパターンを結合
-  const pattern = /(https?:\/\/[^\s]+|>>\d+)/g;
+  // URLとアンカーのパターンを結合（URLは括弧、句読点、改行で終了）
+  const pattern = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+|>>\d+)/g;
   const parts = body.split(pattern);
+  const elements: JSX.Element[] = [];
+  const urls: string[] = [];
 
-  return parts.map((part, index) => {
+  // テキストとアンカーを処理（URLはカードのみ表示）
+  parts.forEach((part, index) => {
     // URLの場合
     if (/^https?:\/\//.test(part)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: '#3b82f6', cursor: 'pointer' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {part}
-        </a>
-      );
+      urls.push(part);
+      // URLカードのみ表示するため、テキストリンクは表示しない
     }
     // アンカーの場合
     else if (/^>>\d+$/.test(part)) {
-      return (
-        <span key={index} style={{ color: '#3b82f6', cursor: 'pointer' }}>
+      elements.push(
+        <span key={`anchor-${index}`} style={{ color: '#3b82f6', cursor: 'pointer' }}>
           {part}
         </span>
       );
     }
     // 通常のテキスト
     else {
-      return <span key={index} style={{ color: color || '#000000' }}>{part}</span>;
+      elements.push(<span key={`text-${index}`} style={{ color: color || '#000000' }}>{part}</span>);
     }
   });
+
+  // URLカードを最後に追加
+  urls.forEach((url, index) => {
+    elements.push(<LinkCard key={`card-${url}-${index}`} url={url} />);
+  });
+
+  return elements;
 }
 
 // コメントからアンカー（>>番号）を抽出する関数
