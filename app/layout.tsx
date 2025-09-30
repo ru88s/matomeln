@@ -96,6 +96,8 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Cloudflare Web Analytics */}
+        <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
       </head>
       <body className="bg-gradient-to-br from-sky-50 via-white to-cyan-50 min-h-screen">
         <Toaster position="top-center" />
