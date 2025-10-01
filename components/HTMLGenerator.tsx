@@ -18,7 +18,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
-    includeTimestamp: false,
+    includeTimestamp: true,
     includeName: false,
     commentStyle: {
       bold: true,
