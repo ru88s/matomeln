@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     images: [
       {
-        url: "https://matome.shikutoku.me/og-image.svg",
+        url: "https://matome.shikutoku.me/og-image.png",
         width: 1200,
         height: 630,
         alt: "シクマト - Shikutokuまとめ作成ツール",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "シクマト - Shikutokuまとめ作成ツール",
     description: "Shikutokuのトークを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
-    images: ["https://matome.shikutoku.me/og-image.svg"],
+    images: ["https://matome.shikutoku.me/og-image.png"],
   },
   metadataBase: new URL('https://matome.shikutoku.me'),
   alternates: {
