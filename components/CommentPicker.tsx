@@ -7,7 +7,6 @@ import { StepHeader } from '@/components/ui/StepHeader';
 import { componentStyles } from '@/lib/design-system';
 import toast from 'react-hot-toast';
 import { LinkCard } from '@/components/LinkCard';
-import { TwitterEmbed } from '@/components/TwitterEmbed';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -510,14 +509,9 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
 
   // テキスト、アンカー、URLを出現順に処理
   parts.forEach((part, index) => {
-    // URLの場合
+    // URLの場合 - すべてLinkCardで表示
     if (/^https?:\/\//.test(part)) {
-      // TwitterまたはX.comのURL判定
-      if (/^https?:\/\/(twitter\.com|x\.com)\//.test(part)) {
-        elements.push(<TwitterEmbed key={`twitter-${part}-${index}`} url={part} />);
-      } else {
-        elements.push(<LinkCard key={`card-${part}-${index}`} url={part} />);
-      }
+      elements.push(<LinkCard key={`card-${part}-${index}`} url={part} />);
     }
     // アンカーの場合
     else if (/^>>\d+$/.test(part)) {
