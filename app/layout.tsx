@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
 import { Logo } from '@/components/ui/Logo';
 import { gradients, borderRadius, shadows, typography } from '@/lib/design-system';

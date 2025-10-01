@@ -233,6 +233,18 @@ async function fetchOGP(url: string): Promise<{title: string, description: strin
   }
 }
 
+// Twitter oEmbed情報を取得する関数
+async function fetchTwitterOEmbed(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.html || null;
+  } catch {
+    return null;
+  }
+}
+
 // URLをリンクカードに変換する関数（OGP情報付き）
 async function linkifyUrlsToCards(text: string): Promise<string> {
   // URLパターンにマッチする正規表現（日本語括弧や句読点で終了）
@@ -248,11 +260,10 @@ async function linkifyUrlsToCards(text: string): Promise<string> {
 
   // 各URLのOGP情報を取得してカードHTMLに変換
   for (const url of urls) {
-    // TwitterまたはX.comのURL判定
+    // TwitterまたはX.comのURL判定 - シンプルなテキストリンクに変換
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(url)) {
-      // Twitter埋め込み用のblockquote HTML
-      const twitterEmbed = `<blockquote class="twitter-tweet"><a href="${url}"></a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`;
-      result = result.replace(url, twitterEmbed);
+      const textLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
+      result = result.replace(url, textLink);
       continue;
     }
 

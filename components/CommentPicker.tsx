@@ -507,14 +507,17 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
   const pattern = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+|>>\d+)/g;
   const parts = body.split(pattern);
   const elements: React.ReactElement[] = [];
-  const urls: string[] = [];
 
-  // テキストとアンカーを処理（URLはカードのみ表示）
+  // テキスト、アンカー、URLを出現順に処理
   parts.forEach((part, index) => {
     // URLの場合
     if (/^https?:\/\//.test(part)) {
-      urls.push(part);
-      // URLカードのみ表示するため、テキストリンクは表示しない
+      // TwitterまたはX.comのURL判定
+      if (/^https?:\/\/(twitter\.com|x\.com)\//.test(part)) {
+        elements.push(<TwitterEmbed key={`twitter-${part}-${index}`} url={part} />);
+      } else {
+        elements.push(<LinkCard key={`card-${part}-${index}`} url={part} />);
+      }
     }
     // アンカーの場合
     else if (/^>>\d+$/.test(part)) {
@@ -525,18 +528,8 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
       );
     }
     // 通常のテキスト
-    else {
+    else if (part) {
       elements.push(<span key={`text-${index}`} style={{ color: color || '#000000' }}>{part}</span>);
-    }
-  });
-
-  // URLを分類して表示（Twitter埋め込み vs 通常リンクカード）
-  urls.forEach((url, index) => {
-    // TwitterまたはX.comのURL判定
-    if (/^https?:\/\/(twitter\.com|x\.com)\//.test(url)) {
-      elements.push(<TwitterEmbed key={`twitter-${url}-${index}`} url={url} />);
-    } else {
-      elements.push(<LinkCard key={`card-${url}-${index}`} url={url} />);
     }
   });
 
@@ -829,40 +822,42 @@ export default function CommentPicker({
           </div>
         </div>
         {/* 操作ボタン */}
-        <div className="flex items-center justify-between pt-2 border-t border-sky-100">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOnlySelected}
-                onChange={(e) => setShowOnlySelected(e.target.checked)}
-                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
-            </label>
-            {showOnlySelected && (
-              <span className="text-xs text-gray-500 ml-2">
-                ※ドラッグ&ドロップで自由に並び替え可能
+        <div className="pt-2 border-t border-sky-100 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlySelected}
+                  onChange={(e) => setShowOnlySelected(e.target.checked)}
+                  className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
+              </label>
+              {showOnlySelected && (
+                <span className="text-xs text-gray-500 ml-2">
+                  ※ドラッグ&ドロップで自由に並び替え可能
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-sky-600">
+                {selectedComments.length}件選択 / 全{comments.length}件
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-sky-600">
-              {selectedComments.length}件選択 / 全{comments.length}件
-            </span>
-            <span className="text-gray-400">|</span>
-            <button
-              onClick={selectAll}
-              className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
-            >
-              全て選択
-            </button>
-            <button
-              onClick={deselectAll}
-              className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
-            >
-              選択解除
-            </button>
+              <span className="text-gray-400">|</span>
+              <button
+                onClick={selectAll}
+                className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
+              >
+                全て選択
+              </button>
+              <button
+                onClick={deselectAll}
+                className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
+              >
+                選択解除
+              </button>
+            </div>
           </div>
         </div>
       </div>

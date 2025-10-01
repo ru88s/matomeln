@@ -1,58 +1,55 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { Tweet } from 'react-tweet';
+import { memo } from 'react';
 
 interface TwitterEmbedProps {
   url: string;
 }
 
-export function TwitterEmbed({ url }: TwitterEmbedProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+function TwitterEmbedComponent({ url }: TwitterEmbedProps) {
+  // URLからTweetIDを抽出
+  const tweetIdMatch = url.match(/status\/(\d+)/);
+  const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
 
-  useEffect(() => {
-    // Twitter Widgets JSの読み込み
-    const script = document.createElement('script');
-    script.src = 'https://platform.twitter.com/widgets.js';
-    script.async = true;
-    script.charset = 'utf-8';
-
-    if (!document.querySelector('script[src="https://platform.twitter.com/widgets.js"]')) {
-      document.body.appendChild(script);
-    }
-
-    // Twitterウィジェットの初期化
-    script.onload = () => {
-      if (window.twttr && containerRef.current) {
-        window.twttr.widgets.load(containerRef.current);
-      }
-    };
-
-    // 既にスクリプトが読み込まれている場合
-    if (window.twttr) {
-      window.twttr.widgets.load(containerRef.current);
-    }
-
-    return () => {
-      // クリーンアップは不要（スクリプトは共有）
-    };
-  }, [url]);
+  if (!tweetId) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block text-blue-500 hover:underline"
+      >
+        {url}
+      </a>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="my-2">
-      <blockquote className="twitter-tweet">
-        <a href={url}></a>
-      </blockquote>
-    </div>
+    <span className="block w-[75%] max-w-md [&>div]:!my-0" data-theme="light">
+      <Tweet
+        id={tweetId}
+        fallback={
+          <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              Xポスト
+            </div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 block text-blue-500 hover:text-blue-600 hover:underline text-sm"
+            >
+              {url}
+            </a>
+          </div>
+        }
+      />
+    </span>
   );
 }
 
-// Twitter Widgets API の型定義
-declare global {
-  interface Window {
-    twttr?: {
-      widgets: {
-        load: (element?: HTMLElement) => void;
-      };
-    };
-  }
-}
+export const TwitterEmbed = memo(TwitterEmbedComponent);

@@ -54,3 +54,17 @@ body {
 .animate-scaleIn {
   animation: scaleIn 0.2s ease-out;
 }
+
+/* Twitter埋め込みのスペース調整とライトモード強制 */
+.react-tweet-theme {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  color-scheme: light !important;
+}
+
+/* react-tweetのダークモードを無効化 */
+[data-theme="light"] .react-tweet-theme {
+  --tweet-bg-color: #ffffff !important;
+  --tweet-text-color: #0f1419 !important;
+  --tweet-border-color: #e1e8ed !important;
+}
