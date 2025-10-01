@@ -509,9 +509,26 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
 
   // テキスト、アンカー、URLを出現順に処理
   parts.forEach((part, index) => {
-    // URLの場合 - すべてLinkCardで表示
+    // URLの場合
     if (/^https?:\/\//.test(part)) {
-      elements.push(<LinkCard key={`card-${part}-${index}`} url={part} />);
+      // Twitter/X URLは普通のテキストリンク
+      if (/^https?:\/\/(twitter\.com|x\.com)\//.test(part)) {
+        elements.push(
+          <a
+            key={`link-${part}-${index}`}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      } else {
+        // その他のURLはLinkCardで表示
+        elements.push(<LinkCard key={`card-${part}-${index}`} url={part} />);
+      }
     }
     // アンカーの場合
     else if (/^>>\d+$/.test(part)) {
