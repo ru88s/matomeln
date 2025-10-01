@@ -7,6 +7,7 @@ import { StepHeader } from '@/components/ui/StepHeader';
 import { componentStyles } from '@/lib/design-system';
 import toast from 'react-hot-toast';
 import { LinkCard } from '@/components/LinkCard';
+import { TwitterEmbed } from '@/components/TwitterEmbed';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -529,9 +530,14 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
     }
   });
 
-  // URLカードを最後に追加
+  // URLを分類して表示（Twitter埋め込み vs 通常リンクカード）
   urls.forEach((url, index) => {
-    elements.push(<LinkCard key={`card-${url}-${index}`} url={url} />);
+    // TwitterまたはX.comのURL判定
+    if (/^https?:\/\/(twitter\.com|x\.com)\//.test(url)) {
+      elements.push(<TwitterEmbed key={`twitter-${url}-${index}`} url={url} />);
+    } else {
+      elements.push(<LinkCard key={`card-${url}-${index}`} url={url} />);
+    }
   });
 
   return elements;

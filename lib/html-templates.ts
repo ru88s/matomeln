@@ -248,6 +248,14 @@ async function linkifyUrlsToCards(text: string): Promise<string> {
 
   // 各URLのOGP情報を取得してカードHTMLに変換
   for (const url of urls) {
+    // TwitterまたはX.comのURL判定
+    if (/^https?:\/\/(twitter\.com|x\.com)\//.test(url)) {
+      // Twitter埋め込み用のblockquote HTML
+      const twitterEmbed = `<blockquote class="twitter-tweet"><a href="${url}"></a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`;
+      result = result.replace(url, twitterEmbed);
+      continue;
+    }
+
     const ogp = await fetchOGP(url);
 
     if (ogp && ogp.title) {
