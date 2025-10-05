@@ -75,5 +75,25 @@ function decodeHTMLEntities(text: string): string {
     '&#39;': "'",
     '&nbsp;': ' ',
   };
-  return text.replace(/&[a-z]+;|&#\d+;/gi, (match) => entities[match] || match);
+
+  return text.replace(/&[a-z]+;|&#x?[0-9a-f]+;/gi, (match) => {
+    // 名前付きエンティティ
+    if (entities[match]) {
+      return entities[match];
+    }
+
+    // 数値文字参照（10進数: &#1234;）
+    if (match.startsWith('&#') && !match.startsWith('&#x')) {
+      const code = parseInt(match.slice(2, -1), 10);
+      return String.fromCharCode(code);
+    }
+
+    // 数値文字参照（16進数: &#x1a2b;）
+    if (match.startsWith('&#x')) {
+      const code = parseInt(match.slice(3, -1), 16);
+      return String.fromCharCode(code);
+    }
+
+    return match;
+  });
 }
