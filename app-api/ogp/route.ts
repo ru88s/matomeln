@@ -23,7 +23,31 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to fetch: ${response.status}`);
     }
 
-    const html = await response.text();
+    // バイナリデータとして取得
+    const buffer = await response.arrayBuffer();
+
+    // Content-Typeヘッダーから文字コードを取得
+    const contentType = response.headers.get('content-type') || '';
+    const charsetMatch = contentType.match(/charset=([^;\s]+)/i);
+    let charset = charsetMatch ? charsetMatch[1].toLowerCase() : 'utf-8';
+
+    // HTMLから文字コードを検出（metaタグから）
+    if (!charsetMatch) {
+      const preliminaryHtml = new TextDecoder('utf-8').decode(buffer.slice(0, 2000));
+      const metaCharset = preliminaryHtml.match(/<meta[^>]+charset=["']?([^"'\s>]+)/i);
+      if (metaCharset) {
+        charset = metaCharset[1].toLowerCase();
+      }
+    }
+
+    // 文字コードの正規化
+    const normalizedCharset = charset
+      .replace('shift_jis', 'shift-jis')
+      .replace('euc-jp', 'euc-jp')
+      .replace('iso-2022-jp', 'iso-2022-jp');
+
+    // デコード
+    const html = new TextDecoder(normalizedCharset).decode(buffer);
 
     // OGPタグを抽出
     const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1] || '';
