@@ -39,28 +39,41 @@ const colorPalette = [
 ```
 
 ### 4. 並べ替え機能
-- 「レスの並び替え」チェックボックスでモード切り替え
-- **並び替えモード有効時**:
-  - 選択済みコメントのみ表示
-  - ドラッグ&ドロップで自由に順番変更可能
-  - 本文（最初のコメント）は固定で移動不可
+- **「選択済みのレスのみ表示」チェックボックス**:
+  - ONの時: 選択済みコメントのみを並び替え順序で表示
+  - ONの時: コメントのチェックボックスを無効化（選択解除不可）
+  - OFFの時: 全コメントを表示（選択済みは並び替え位置、未選択は元の位置）
+- **並び替え操作**（選択済みコメントに対して常に有効）:
+  - **ドラッグ&ドロップ**: グラブカーソルで直感的に並び替え
+    - 選択済みコメントのみドラッグ可能
+    - 本文（最初のコメント）はドラッグ不可
+    - ドラッグ中は要素を半透明表示（opacity-50）
+  - **「↑最初へ」ボタン**: 全コメント中の絶対最初の位置に移動
+    - 位置管理: `commentPositions[id] = -0.5`
+    - 本文（インデックス0）には表示しない
+  - **「↓最後へ」ボタン**: 全コメント中の絶対最後の位置に移動
+    - 位置管理: `commentPositions[id] = comments.length - 1 + 0.5`
+  - **番号指定移動**: 特定コメントの下に移動
+    - 入力欄に番号を入力してEnterまたは「移動」ボタン
+    - 位置管理: `commentPositions[id] = targetIndex + 0.5`
+  - **toast通知**: 移動操作時に成功/エラーメッセージを表示
+- **本文コメントの扱い**:
+  - 選択済みコメントの最初（インデックス0）が本文
   - 「固定」ラベルと鍵アイコンで視覚的に表現
   - グレー背景（bg-gray-50）とcursor-not-allowedで操作不可を明示
-  - 選択解除（チェックボックス）を無効化
-  - 「↑最初へ」「↓最後へ」ボタンで簡単に移動
-  - **ピンポイント移動**: 番号入力で特定コメントの下に移動可能
-  - **toast通知**: 移動操作時に成功/エラーメッセージを表示
-  - **重要**: 「↑最初へ」で移動したコメントが新しい本文になる（インデックス0）
-- **並び替えモード無効時**:
-  - アンカー（>>番号）に基づいた自動並び替え
-  - 返信コメントはインデントして表示（ml-8 border-l-2 border-sky-200 pl-4）
-  - **重要**: 選択状態に関係なく全コメントを元の位置で表示
-  - **重要**: 選択済み・未選択の分離表示は行わない
-- **並べ替えた順番の反映**:
+  - ドラッグ、移動ボタン、すべて無効
+- **位置管理システム**:
+  - `commentPositions` stateで各選択コメントの全コメント中の位置を管理
+  - 小数値（-0.5, 0.5, index + 0.5）で元コメントの間に挿入
+  - 表示時は `sortKey` でソートして選択済み・未選択をマージ
+  - 新しいトークを読み込むと位置情報をリセット
+- **並び替えた順番の反映**:
   - HTMLタグ生成時の順番に反映
   - ブログ投稿時の順番に反映
-  - 並べ替えモードOFF時は反映しない（元の順序を保持）
   - **最初のコメントが本文**、2番目以降が「続きを読む」部分
+- **アンカー表示**（選択済みのレスのみ表示がOFFの時）:
+  - 返信コメント（>>番号）はインデント表示（ml-8 border-l-2 border-sky-200 pl-4）
+  - 選択状態に関係なく全コメントを表示
 - **重要**: すべてのコメントを必ず表示する（アンカーの有無に関わらず）
 
 ### 5. 編集ボタンの配置
@@ -104,21 +117,35 @@ const colorPalette = [
 - **重要**: imgタグは必ず自己閉じタグ（`<img ... />`）で生成（XMLパース対応）
 
 ### 12. ドラッグ&ドロップ操作
-- draggable属性で要素をドラッグ可能に設定
-- onDragStart/onDragEnd/onDragOver/onDropイベントで処理
-- 本文コメント（isFirstSelected）はドラッグ不可
-- ドラッグ中は要素を半透明表示（opacity-50）
-- ドロップ位置をborder-t-2で視覚化
+- **基本設定**:
+  - draggable属性で要素をドラッグ可能に設定
+  - `cursor-grab active:cursor-grabbing` でグラブカーソル
+  - 本文コメント（isFirstSelected）はドラッグ不可
+  - 選択済みコメントのみドラッグ可能
+- **イベント処理**:
+  - onDragStart: `setDraggedCommentId(comment.id)` でドラッグ中のコメントを記録
+  - onDragEnd: 状態をクリア
+  - onDragOver: ドロップ可能な位置で `e.preventDefault()`
+  - onDrop: 位置情報を更新 + selectedCommentsの順序を変更
+- **視覚フィードバック**:
+  - ドラッグ中は要素を半透明表示（opacity-50）
+  - ドロップ位置をborder-t-2で視覚化（`dragOverCommentId`）
+- **位置管理**:
+  - ドロップ時に `commentPositions[draggedId] = dropIndex - 0.1` で位置を設定
+  - テキスト選択時は `onMouseDown={(e) => e.stopPropagation()}` でドラッグ防止
 
 ### 13. ボタンのUXデザイン
-- すべてのボタンにcursor-pointerを追加
-- クリック可能であることを視覚的に明確化
-- ホバー時の色変化で操作フィードバック提供
-- 対象ボタン: トークを読み込む、大中小サイズ、全て選択、選択解除、↑最初へ、↓最後へ、元に戻す、やり直す
+- **基本スタイル**:
+  - すべてのボタンにcursor-pointerを追加
+  - クリック可能であることを視覚的に明確化
+  - ホバー時の色変化で操作フィードバック提供
+  - 対象ボタン: トークを読み込む、大中小サイズ、全て選択、選択解除、↑最初へ、↓最後へ、元に戻す、やり直す
 - **移動ボタンの仕様**:
-  - 「↑最初へ」: コメントを配列のインデックス0に移動（本文として扱われる）
-  - 「↓最後へ」: コメントを配列の最後に移動
+  - 「↑最初へ」: 全コメント中の絶対最初の位置に移動
+  - 「↓最後へ」: 全コメント中の絶対最後の位置に移動
   - 本文（インデックス0）には移動ボタンを表示しない
+  - 選択済みコメントのみ表示
+  - `e.stopPropagation()` でクリック時のコメント選択を防止
 
 ### 14. Undo/Redo機能
 - **履歴管理**: useUndoRedoカスタムフックで実装
@@ -224,6 +251,7 @@ const colorPalette = [
 - `app-api`ディレクトリを`app/api`にコピー（開発時のみ）
 - `scripts/dev-setup.sh`で自動セットアップ
 - Cloudflare Functionsは`functions`ディレクトリで管理
+- AIコメント生成ボタンは開発環境のみ表示: `process.env.NODE_ENV === 'development'`
 
 ## テストコマンド
 ```bash
@@ -233,21 +261,52 @@ npm run build  # ビルド
 
 ## コメント表示ロジック
 
-### 通常モード（並び替えモードOFF）
-```typescript
-// すべてのコメントをアンカー順で表示（選択状態に関係なく）
-arrangeCommentsByAnchor(comments)
-```
-
-### 並び替えモード（並び替えモードON）
+### 選択済みのみ表示モード（showOnlySelected = true）
 ```typescript
 // 選択したコメントのみをユーザーが並べ替えた順番で表示
 selectedComments.map(sc => ({
   ...comments.find(c => c.id === sc.id)!,
   body: editedComments[sc.id] || sc.body
 }))
-// 注: res_idでのソートは行わない（ユーザーの並び順を保持）
 ```
+
+### 全コメント表示モード（showOnlySelected = false）
+```typescript
+// 選択済みコメントを位置情報に基づいて全コメント中に挿入
+const selectedIds = new Set(selectedComments.map(sc => sc.id));
+const result: Array<Comment & { body: string; sortKey: number }> = [];
+
+// 未選択コメントに元のインデックスを割り当て
+comments.forEach((c, index) => {
+  if (!selectedIds.has(c.id)) {
+    result.push({ ...c, body: editedComments[c.id] || c.body, sortKey: index });
+  }
+});
+
+// 選択済みコメントを位置情報に基づいて挿入
+selectedComments.forEach(sc => {
+  const comment = comments.find(c => c.id === sc.id);
+  if (comment) {
+    const originalIndex = comments.findIndex(c => c.id === sc.id);
+    const targetPosition = commentPositions[sc.id] !== undefined
+      ? commentPositions[sc.id]
+      : originalIndex;
+    result.push({ ...comment, body: editedComments[comment.id] || comment.body, sortKey: targetPosition });
+  }
+});
+
+// sortKeyでソートして返す
+return result.sort((a, b) => a.sortKey - b.sortKey);
+```
+
+### 位置管理システム
+- **commentPositions**: 各選択コメントの全コメント中の位置を記録
+- **小数値での挿入**: 元のコメントの間に挿入するため小数値を使用
+  - 最初に移動: `-0.5`
+  - 最後に移動: `comments.length - 1 + 0.5`
+  - 特定位置の後: `targetIndex + 0.5`
+  - ドラッグ&ドロップ: `dropIndex - 0.1`
+- **リセット**: トークが変更されたら `commentPositions = {}` でリセット
 
 ## SEO対策
 - サイトマップ: /sitemap.xml（動的生成）

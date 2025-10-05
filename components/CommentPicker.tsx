@@ -19,7 +19,7 @@ interface CommentPickerProps {
   onRedo?: () => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -39,6 +39,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   onMoveToEnd?: () => void;
   onMoveToTop?: () => void;
   onMoveToPosition?: (targetResId: string) => void;
+  onDragHandleStart?: (e: React.DragEvent) => void;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -157,12 +158,20 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
   return (
     <div
-      className={`relative border-2 rounded-2xl p-4 transition-all cursor-pointer ${
+      className={`relative border-2 rounded-2xl p-4 transition-all ${
+        isSelected && !isFirstSelected ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      } ${
         isSelected ? 'bg-gradient-to-r from-sky-50 to-cyan-50 border-sky-300 shadow-md' : 'bg-white/80 border-sky-100 hover:border-sky-200'
       }`}
+      draggable={isSelected && !isFirstSelected}
+      onDragStart={(e) => {
+        if (isSelected && !isFirstSelected) {
+          onDragHandleStart?.(e);
+        }
+      }}
       onClick={(e) => {
-        // 編集中または並び替えモード中はクリックで選択状態を変更しない
-        if (!isEditing && (!isInSortMode || !isSelected)) {
+        // 編集中はクリックで選択状態を変更しない
+        if (!isEditing) {
           onToggle();
         }
       }}
@@ -188,11 +197,13 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           checked={isSelected}
           onChange={onToggle}
           disabled={isInSortMode}
-          className={`mt-1 h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 rounded ${isInSortMode ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`mt-1 h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 rounded ${
+            isInSortMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          }`}
           onClick={(e) => e.stopPropagation()}
         />
 
-        <div className="flex-1 select-none pr-10 relative">
+        <div className="flex-1 pr-10 relative">
           <div className="mb-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-gray-500">{comment.res_id}.</span>
@@ -201,24 +212,22 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               {showId && comment.name_id && (
                 <span className="text-xs text-gray-400">ID: {comment.name_id}</span>
               )}
-              {/* 本文バッジを右上に表示 */}
+              {/* 本文バッジ */}
               {isFirstSelected && (
                 <div className="absolute top-0 right-0 flex items-center gap-2">
                   <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">
                     本文
                   </span>
-                  {isInSortMode && (
-                    <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      固定
-                    </span>
-                  )}
+                  <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    固定
+                  </span>
                 </div>
               )}
               {/* 移動ボタン */}
-              {isInSortMode && !isFirstSelected && (
+              {isSelected && !isFirstSelected && (
                 <div className="absolute top-0 right-0 flex gap-1">
                   <button
                     onClick={(e) => {
@@ -316,7 +325,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           </div>
 
           {/* 文字サイズ選択 - カラーパレットの下に表示 */}
-          <div className="flex gap-2 mb-3 select-none">
+          <div className="flex gap-2 mb-3">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -428,6 +437,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   className="text-gray-900 whitespace-pre-wrap font-bold cursor-text hover:bg-gray-50 p-2 rounded -m-2"
                   style={{ color: color || '#000000', fontSize: `${fontSize || 18}px` }}
                   onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     onEditingChange?.(true);
@@ -638,20 +648,22 @@ export default function CommentPicker({
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [draggedCommentId, setDraggedCommentId] = useState<string | null>(null);
   const [dragOverCommentId, setDragOverCommentId] = useState<string | null>(null);
+  // 選択済みコメントの位置を全コメント中のインデックスで管理
+  const [commentPositions, setCommentPositions] = useState<Record<string, number>>({});
 
   // クライアントサイドでのみ実行
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // コメントが変更されたら位置情報をリセット
+  useEffect(() => {
+    setCommentPositions({});
+  }, [comments]);
+
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
     const isSelected = selectedComments.some(sc => sc.id === comment.id);
-
-    // 並び替えモード中は選択解除を無効化
-    if (isSelected && showOnlySelected) {
-      return;
-    }
 
     if (isSelected) {
       onSelectionChange(selectedComments.filter(sc => sc.id !== comment.id));
@@ -664,7 +676,7 @@ export default function CommentPicker({
       const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
       onSelectionChange([...selectedComments, newComment]);
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, showOnlySelected, commentSizes]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
@@ -843,13 +855,8 @@ export default function CommentPicker({
                   onChange={(e) => setShowOnlySelected(e.target.checked)}
                   className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
                 />
-                <span className="text-sm font-medium text-gray-700">レスの並び替え (選択済みのレスが表示)</span>
+                <span className="text-sm font-medium text-gray-700">選択済みのレスのみ表示</span>
               </label>
-              {showOnlySelected && (
-                <span className="text-xs text-gray-500 ml-2">
-                  ※ドラッグ&ドロップで自由に並び替え可能
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold text-sky-600">
@@ -874,15 +881,49 @@ export default function CommentPicker({
       </div>
 
       <div className="space-y-2 mt-4">
-        {(showOnlySelected
-          ? // 並べ替えモード: 選択済みのみ表示（ユーザーが並べ替えた順番）
-            selectedComments.map(sc => ({
+        {(() => {
+          if (showOnlySelected) {
+            // 選択済みのみ表示モード：並び替え順序を保持
+            return selectedComments.map(sc => ({
               ...comments.find(c => c.id === sc.id)!,
               body: editedComments[sc.id] || sc.body
-            }))
-          : // 通常モード: すべてのコメントをアンカー順で表示
-            arrangeCommentsByAnchor(comments)
-        ).map(comment => {
+            }));
+          } else {
+            // 全て表示モード：選択済みコメントを配置位置に従って全コメント中に挿入
+            const selectedIds = new Set(selectedComments.map(sc => sc.id));
+            const result: Array<Comment & { body: string; sortKey: number }> = [];
+
+            // 未選択コメントに元のインデックスを割り当て
+            comments.forEach((c, index) => {
+              if (!selectedIds.has(c.id)) {
+                result.push({
+                  ...c,
+                  body: editedComments[c.id] || c.body,
+                  sortKey: index
+                });
+              }
+            });
+
+            // 選択済みコメントを位置情報に基づいて挿入
+            selectedComments.forEach(sc => {
+              const comment = comments.find(c => c.id === sc.id);
+              if (comment) {
+                // commentPositionsに位置が記録されていればそれを使用、なければ元のインデックス
+                const originalIndex = comments.findIndex(c => c.id === sc.id);
+                const targetPosition = commentPositions[sc.id] !== undefined ? commentPositions[sc.id] : originalIndex;
+
+                result.push({
+                  ...comment,
+                  body: editedComments[comment.id] || comment.body,
+                  sortKey: targetPosition
+                });
+              }
+            });
+
+            // sortKeyでソートして返す
+            return result.sort((a, b) => a.sortKey - b.sortKey);
+          }
+        })().map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body
@@ -892,39 +933,28 @@ export default function CommentPicker({
           const isReply = anchorId !== null && comments.some(c => Number(c.res_id) === anchorId);
 
           // 本文バッジの表示判定
-          // 並び替えモードでは最初の要素が本文、通常モードではres_idが最小が本文
-          const isFirstSelected = showOnlySelected
-            ? selectedComments.length > 0 && selectedComments[0].id === comment.id
-            : selectedComments.length > 0 && Number(comment.res_id) === Math.min(...selectedComments.map(c => Number(c.res_id)));
+          // 並び替え順序の最初のコメントが本文
+          const isFirstSelected = selectedComments.length > 0 && selectedComments[0].id === comment.id;
 
           return (
             <div
               key={comment.id}
               className={`${
-                isReply && !showOnlySelected ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''
+                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''
               } ${
                 dragOverCommentId === comment.id ? 'border-t-2 border-sky-500 pt-2' : ''
               } ${
                 draggedCommentId === comment.id ? 'opacity-50' : ''
               } ${
-                showOnlySelected && !isFirstSelected ? 'cursor-move' : ''
-              } ${
-                showOnlySelected && isFirstSelected ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : ''
+                isFirstSelected ? 'bg-gray-50 border-gray-200 cursor-not-allowed' : ''
               } transition-all`}
-              draggable={showOnlySelected && !isFirstSelected}
-              onDragStart={(e) => {
-                if (showOnlySelected && !isFirstSelected) {
-                  setDraggedCommentId(comment.id);
-                  e.dataTransfer.effectAllowed = 'move';
-                }
-              }}
               onDragEnd={() => {
                 setDraggedCommentId(null);
                 setDragOverCommentId(null);
               }}
               onDragOver={(e) => {
                 // 本文のコメントにはドロップできない
-                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
+                if (isSelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
                   e.preventDefault();
                   setDragOverCommentId(comment.id);
                 }
@@ -935,11 +965,20 @@ export default function CommentPicker({
               onDrop={(e) => {
                 e.preventDefault();
                 // 本文のコメントにはドロップできない
-                if (showOnlySelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
+                if (isSelected && draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
                   const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
                   const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
 
                   if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
+                    // ドロップ先のコメントの位置情報を取得
+                    const dropCommentIndex = comments.findIndex(c => c.id === comment.id);
+
+                    // ドラッグしたコメントの位置をドロップ先の位置に設定
+                    setCommentPositions(prev => ({
+                      ...prev,
+                      [draggedCommentId]: dropCommentIndex - 0.1  // ドロップ先の少し前に配置
+                    }));
+
                     const newSelectedComments = [...selectedComments];
                     const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
                     newSelectedComments.splice(dropIndex, 0, draggedComment);
@@ -965,46 +1004,79 @@ export default function CommentPicker({
                 onHover={setLastHoveredCommentId}
                 isEditing={editingCommentId === comment.id}
                 onEditingChange={(editing) => setEditingCommentId(editing ? comment.id : null)}
+                onDragHandleStart={(e) => {
+                  if (isSelected && !isFirstSelected) {
+                    setDraggedCommentId(comment.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }
+                }}
                 onExpandImage={setExpandedImage}
                 isInSortMode={showOnlySelected}
                 onMoveToEnd={() => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  if (currentIndex !== -1 && currentIndex < selectedComments.length - 1) {
+                  if (currentIndex !== -1) {
+                    // 全コメントの最後に配置する位置を設定
+                    const lastPosition = comments.length - 1;
+                    setCommentPositions(prev => ({
+                      ...prev,
+                      [comment.id]: lastPosition + 0.5  // 小数を使って最後に配置
+                    }));
+
+                    // selectedCommentsから削除して最後に追加
                     const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                    newSelectedComments.push(movedComment);
+                    newSelectedComments.splice(currentIndex, 1);
+                    newSelectedComments.push(selectedComments[currentIndex]);
+
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを最後に移動しました`);
                   }
                 }}
                 onMoveToTop={() => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  if (currentIndex !== -1 && currentIndex > 0) { // 本文（index 0）に移動
+                  if (currentIndex !== -1 && currentIndex > 0) {
+                    // 全コメントの最初に配置する位置を設定
+                    setCommentPositions(prev => ({
+                      ...prev,
+                      [comment.id]: -0.5  // 負の小数を使って最初に配置
+                    }));
+
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                    newSelectedComments.unshift(movedComment); // 最初に挿入
+                    newSelectedComments.unshift(movedComment);
+
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを最初に移動しました`);
                   }
                 }}
                 onMoveToPosition={(targetResId) => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  // res_idを文字列として比較
-                  const targetIndex = selectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
+                  // 全コメントから対象のコメントを探す
+                  const targetCommentIndex = comments.findIndex(c => String(c.res_id) === String(targetResId));
 
-                  if (targetIndex === -1) {
+                  if (targetCommentIndex === -1) {
                     toast.error(`${targetResId}番のコメントが見つかりません`);
                     return;
                   }
 
-                  if (currentIndex !== -1 && currentIndex !== targetIndex) {
+                  if (currentIndex !== -1) {
+                    // ターゲットコメントの下に配置するため、targetIndex + 0.5 の位置を設定
+                    setCommentPositions(prev => ({
+                      ...prev,
+                      [comment.id]: targetCommentIndex + 0.5
+                    }));
+
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
 
-                    // ターゲットの下に配置（targetIndex + 1）
-                    // ただし、currentIndexがtargetIndexより前の場合は調整が必要
-                    const insertIndex = currentIndex < targetIndex ? targetIndex : targetIndex + 1;
-                    newSelectedComments.splice(insertIndex, 0, movedComment);
+                    // selectedCommentsの中で適切な位置に挿入
+                    const selectedTargetIndex = selectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
+                    if (selectedTargetIndex !== -1) {
+                      const insertIndex = currentIndex < selectedTargetIndex ? selectedTargetIndex : selectedTargetIndex + 1;
+                      newSelectedComments.splice(insertIndex, 0, movedComment);
+                    } else {
+                      newSelectedComments.push(movedComment);
+                    }
+
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを${targetResId}番の下に移動しました`);
                   }

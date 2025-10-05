@@ -1,8 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# シクマト (ShikuMato)
 
-## Getting Started
+Shikutokuのまとめ作成ツール
 
-First, run the development server:
+## 機能
+
+- トークからコメントを読み込み
+- コメントの選択・編集・並べ替え
+- AIによるコメント自動生成（約20件）
+- HTMLタグ生成
+- ライブドアブログへの投稿
+
+## セットアップ
+
+### 1. 依存パッケージのインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.local`ファイルを作成して、以下の環境変数を設定してください：
+
+```bash
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+Anthropic APIキーは[Anthropic Console](https://console.anthropic.com/)で取得できます。
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev

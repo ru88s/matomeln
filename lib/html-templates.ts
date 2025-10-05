@@ -54,7 +54,7 @@ async function generateSimpleHTML(
   const { includeTimestamp, includeName, includeImages } = options;
 
   // タイトル部分
-  const titleHTML = `【まとめ】${escapeHtml(talk.title)}`;
+  const titleHTML = escapeHtml(talk.title);
 
   // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {
@@ -150,7 +150,7 @@ async function generateRichHTML(
 }
 </style>`;
 
-  const titleHTML = `【まとめ】${escapeHtml(talk.title)}`;
+  const titleHTML = escapeHtml(talk.title);
 
   // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {

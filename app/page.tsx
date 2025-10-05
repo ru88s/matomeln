@@ -26,6 +26,7 @@ export default function Home() {
     maxHistorySize: 30
   });
   const [showHTMLModal, setShowHTMLModal] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -34,6 +35,72 @@ export default function Home() {
       return;
     }
     setShowHTMLModal(true);
+  };
+
+  const handleGenerateAIComments = async () => {
+    if (!currentTalk) {
+      toast.error('トークを読み込んでください');
+      return;
+    }
+
+    // 毎回20件追加
+    const generateCount = 20;
+
+    setGeneratingAI(true);
+    try {
+      const response = await fetch('/api/generate-comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          talkTitle: currentTalk.title,
+          talkBody: currentTalk.body,
+          existingComments: comments.length > 0 ? comments : [{ body: currentTalk.body || currentTalk.title }],
+          count: generateCount,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'コメント生成に失敗しました');
+      }
+
+      const data = await response.json();
+
+      // 生成されたコメントをComment型に変換して追加
+      // 最後のコメントの時刻を基準にする
+      const lastComment = comments[comments.length - 1];
+      const baseTime = lastComment ? new Date(lastComment.created_at) : new Date();
+
+      const newComments: Comment[] = data.comments.map((body: string, index: number) => {
+        // 各コメントの投稿時刻を前のコメントから1-5分後に設定
+        const minutesAfter = Math.floor(Math.random() * 4) + 1; // 1-5分
+        const commentTime = new Date(baseTime.getTime() + (index * minutesAfter * 60 * 1000));
+
+        return {
+          id: `ai-${Date.now()}-${index}`,
+          res_id: `${comments.length + index + 1}`,
+          name: '匿名',
+          body,
+          talk_id: currentTalk.id,
+          created_at: commentTime.toISOString(),
+          images: [],
+        };
+      });
+
+      setComments([...comments, ...newComments]);
+      toast.success(`${newComments.length}件のコメントを生成しました`);
+    } catch (error) {
+      console.error('AI comment generation error:', error);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('コメント生成に失敗しました');
+      }
+    } finally {
+      setGeneratingAI(false);
+    }
   };
 
   const handleLoadTalk = async (talkId: string) => {
@@ -95,8 +162,36 @@ export default function Home() {
           )}
         </div>
 
+        {currentTalk && process.env.NODE_ENV === 'development' && (
+          <>
+            {/* AIコメント生成ボタン（開発環境のみ） */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleGenerateAIComments}
+                disabled={generatingAI}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-6 rounded-full shadow-md hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
+              >
+                {generatingAI ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    AI生成中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    AIで20件追加
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+
         {comments.length > 0 && (
           <>
+
             <CommentPicker
               comments={comments}
               selectedComments={selectedComments}
