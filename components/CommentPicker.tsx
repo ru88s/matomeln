@@ -976,7 +976,7 @@ export default function CommentPicker({
                     newSelectedComments.splice(dropIndex, 0, draggedComment);
 
                     // 位置情報を完全に再計算
-                    const newPositions: Record<number, number> = {};
+                    const newPositions: Record<string, number> = {};
                     newSelectedComments.forEach((sc, index) => {
                       if (index > 0) { // 本文以外
                         newPositions[sc.id] = index;
@@ -1023,7 +1023,7 @@ export default function CommentPicker({
                     newSelectedComments.push(selectedComments[currentIndex]);
 
                     // 位置情報を完全に再計算
-                    const newPositions: Record<number, number> = {};
+                    const newPositions: Record<string, number> = {};
                     newSelectedComments.forEach((sc, index) => {
                       if (index > 0) { // 本文以外
                         newPositions[sc.id] = index;
@@ -1043,7 +1043,7 @@ export default function CommentPicker({
                     newSelectedComments.unshift(movedComment);
 
                     // 位置情報を完全に再計算
-                    const newPositions: Record<number, number> = {};
+                    const newPositions: Record<string, number> = {};
                     newSelectedComments.forEach((sc, index) => {
                       if (index > 0) { // 本文以外
                         newPositions[sc.id] = index;

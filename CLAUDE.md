@@ -132,12 +132,24 @@ const colorPalette = [
   - onDragStart: `setDraggedCommentId(comment.id)` でドラッグ中のコメントを記録
   - onDragEnd: 状態をクリア
   - onDragOver: ドロップ可能な位置で `e.preventDefault()`
-  - onDrop: 位置情報を更新 + selectedCommentsの順序を変更
+  - onDrop: 配列順序を変更 + 位置情報を完全再計算
 - **視覚フィードバック**:
   - ドラッグ中は要素を半透明表示（opacity-50）
   - ドロップ位置をborder-t-2で視覚化（`dragOverCommentId`）
-- **位置管理**:
-  - ドロップ時に `commentPositions[draggedId] = dropIndex - 0.1` で位置を設定
+- **位置管理システム（重要）**:
+  - **絶対的なインデックス位置**を使用（相対位置は使用しない）
+  - `selectedComments`の配列順序が唯一の真実（source of truth）
+  - ドロップ/移動操作後に`commentPositions`を完全に再計算:
+    ```typescript
+    const newPositions: Record<number, number> = {};
+    newSelectedComments.forEach((sc, index) => {
+      if (index > 0) { // 本文以外
+        newPositions[sc.id] = index;
+      }
+    });
+    setCommentPositions(newPositions);
+    ```
+  - この方式により何度でも自由に並べ替え可能
   - テキスト選択時は `onMouseDown={(e) => e.stopPropagation()}` でドラッグ防止
 
 ### 13. ボタンのUXデザイン
@@ -147,11 +159,13 @@ const colorPalette = [
   - ホバー時の色変化で操作フィードバック提供
   - 対象ボタン: トークを読み込む、大中小サイズ、全て選択、選択解除、↑最初へ、↓最後へ、元に戻す、やり直す
 - **移動ボタンの仕様**:
-  - 「↑最初へ」: 全コメント中の絶対最初の位置に移動
-  - 「↓最後へ」: 全コメント中の絶対最後の位置に移動
+  - 「↑最初へ」: selectedCommentsの配列先頭に移動（unshift）
+  - 「↓最後へ」: selectedCommentsの配列末尾に移動（push）
+  - 移動後は必ず`commentPositions`を完全再計算（ドラッグ&ドロップと同じロジック）
   - 本文（インデックス0）には移動ボタンを表示しない
   - 選択済みコメントのみ表示
   - `e.stopPropagation()` でクリック時のコメント選択を防止
+  - toast通知で移動成功をフィードバック
 
 ### 14. Undo/Redo機能
 - **履歴管理**: useUndoRedoカスタムフックで実装
