@@ -1,3 +1,5 @@
+import Encoding from 'encoding-japanese';
+
 export async function onRequest(context: any) {
   const { request } = context;
   const url = new URL(request.url);
@@ -24,7 +26,21 @@ export async function onRequest(context: any) {
       throw new Error(`Failed to fetch: ${response.status}`);
     }
 
-    const html = await response.text();
+    // バイナリデータとして取得
+    const buffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+
+    // 文字コード自動検出
+    const detectedEncoding = Encoding.detect(uint8Array);
+
+    // UNICODEに変換
+    const unicodeArray = Encoding.convert(uint8Array, {
+      to: 'UNICODE',
+      from: detectedEncoding || 'AUTO',
+    });
+
+    // 文字列に変換
+    const html = Encoding.codeToString(unicodeArray);
 
     // OGPタグを抽出
     const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1] || '';
