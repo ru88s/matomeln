@@ -112,6 +112,12 @@ const colorPalette = [
   - 生成HTMLタグ: OGP API（/api/ogp）から取得した情報で静的HTMLカード生成
   - OGP情報: タイトル、説明文、画像、サイト名を表示
   - OGP取得失敗時: URLとホスト名のみのシンプルなカード表示
+- **文字エンコーディング対応**:
+  - `encoding-japanese`ライブラリで多様な文字コードをサポート
+  - 対応文字コード: UTF-8, EUC-JP, Shift_JIS, ISO-2022-JP など
+  - 自動検出機能で適切なデコードを実行
+  - 開発環境（app-api）とCloudflare Functions（functions/api/ogp）で同じ実装
+  - HTMLエンティティ（数値文字参照 `&#1234;` `&#x1a2b;`）も正しくデコード
 - アンカー（>>番号）は青色表示（#3b82f6）、下線なし
 - リンクはtarget="_blank"で新規タブで開く
 - **重要**: imgタグは必ず自己閉じタグ（`<img ... />`）で生成（XMLパース対応）
@@ -244,8 +250,20 @@ const colorPalette = [
 - `/api/ogp` - OGP情報取得（リンクカード生成用）
   - パラメータ: `url`（エンコード済みURL）
   - レスポンス: `{title, description, image, siteName, url}`
+  - **文字エンコーディング処理**:
+    - `encoding-japanese`ライブラリで自動検出・変換
+    - バイナリデータとして取得 → 文字コード検出 → Unicode変換
+    - 対応: UTF-8, EUC-JP, Shift_JIS, ISO-2022-JP など
+  - **HTMLエンティティデコード**:
+    - 名前付きエンティティ: `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;`, `&nbsp;`
+    - 数値文字参照（10進数）: `&#1234;`
+    - 数値文字参照（16進数）: `&#x1a2b;`
   - HTMLパース: 正規表現でOGPタグ抽出
   - フォールバック: titleタグ、descriptionメタタグ
+  - **デュアル実装**:
+    - 開発環境: `app-api/ogp/route.ts`（Next.js API Routes）
+    - 本番環境: `functions/api/ogp/index.ts`（Cloudflare Functions）
+    - 両方で同じロジックを使用
 
 ### 開発環境設定
 - `app-api`ディレクトリを`app/api`にコピー（開発時のみ）
