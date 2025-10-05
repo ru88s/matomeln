@@ -970,18 +970,20 @@ export default function CommentPicker({
                   const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
 
                   if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
-                    // ドロップ先のコメントの位置情報を取得
-                    const dropCommentIndex = comments.findIndex(c => c.id === comment.id);
-
-                    // ドラッグしたコメントの位置をドロップ先の位置に設定
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [draggedCommentId]: dropCommentIndex - 0.1  // ドロップ先の少し前に配置
-                    }));
-
+                    // selectedCommentsの順序を更新
                     const newSelectedComments = [...selectedComments];
                     const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
                     newSelectedComments.splice(dropIndex, 0, draggedComment);
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<number, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) { // 本文以外
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
+
                     onSelectionChange(newSelectedComments);
                   }
                 }
@@ -1015,17 +1017,19 @@ export default function CommentPicker({
                 onMoveToEnd={() => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
                   if (currentIndex !== -1) {
-                    // 全コメントの最後に配置する位置を設定
-                    const lastPosition = comments.length - 1;
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [comment.id]: lastPosition + 0.5  // 小数を使って最後に配置
-                    }));
-
                     // selectedCommentsから削除して最後に追加
                     const newSelectedComments = [...selectedComments];
                     newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.push(selectedComments[currentIndex]);
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<number, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) { // 本文以外
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
 
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを最後に移動しました`);
@@ -1034,15 +1038,18 @@ export default function CommentPicker({
                 onMoveToTop={() => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
                   if (currentIndex !== -1 && currentIndex > 0) {
-                    // 全コメントの最初に配置する位置を設定
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [comment.id]: -0.5  // 負の小数を使って最初に配置
-                    }));
-
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
                     newSelectedComments.unshift(movedComment);
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<number, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) { // 本文以外
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
 
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを最初に移動しました`);
