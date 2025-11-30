@@ -15,7 +15,16 @@ export function LinkCard({ url }: { url: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // imgurのURLはフルURLでテキストリンク表示
+  const isImgur = /^https?:\/\/(i\.)?imgur\.com\//i.test(url);
+
   useEffect(() => {
+    // imgurの場合はOGP取得をスキップ
+    if (isImgur) {
+      setLoading(false);
+      return;
+    }
+
     const fetchOGP = async () => {
       try {
         const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
@@ -34,7 +43,22 @@ export function LinkCard({ url }: { url: string }) {
     };
 
     fetchOGP();
-  }, [url]);
+  }, [url, isImgur]);
+
+  // imgurの場合はフルURLでテキストリンク表示
+  if (isImgur) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block text-blue-500 hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>
+    );
+  }
 
   if (loading) {
     return (
