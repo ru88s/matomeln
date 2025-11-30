@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
@@ -31,6 +31,26 @@ export default function Home() {
   const [customName, setCustomName] = useState('');
   const [customNameBold, setCustomNameBold] = useState(true);
   const [customNameColor, setCustomNameColor] = useState('#ff69b4');
+
+  // レス名設定をローカルストレージから読み込み
+  useEffect(() => {
+    const savedNameSettings = localStorage.getItem('customNameSettings');
+    if (savedNameSettings) {
+      const settings = JSON.parse(savedNameSettings);
+      setCustomName(settings.name || '');
+      setCustomNameBold(settings.bold !== false);
+      setCustomNameColor(settings.color || '#ff69b4');
+    }
+  }, []);
+
+  // レス名設定をローカルストレージに保存
+  useEffect(() => {
+    localStorage.setItem('customNameSettings', JSON.stringify({
+      name: customName,
+      bold: customNameBold,
+      color: customNameColor
+    }));
+  }, [customName, customNameBold, customNameColor]);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
