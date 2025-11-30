@@ -21,6 +21,8 @@ interface CommentPickerProps {
   onCustomNameBoldChange?: (bold: boolean) => void;
   customNameColor?: string;
   onCustomNameColorChange?: (color: string) => void;
+  onSelectFirstPoster?: () => void;
+  onChangeFirstPosterColor?: (color: string) => void;
 }
 
 function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
@@ -687,6 +689,8 @@ export default function CommentPicker({
   onCustomNameBoldChange,
   customNameColor = '#ff69b4',
   onCustomNameColorChange,
+  onSelectFirstPoster,
+  onChangeFirstPosterColor,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
@@ -937,68 +941,6 @@ export default function CommentPicker({
         </div>
         {/* 操作ボタン */}
         <div className="pt-2 border-t border-gray-100 space-y-2">
-          {/* レス名設定 */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">レス名:</label>
-            <input
-              type="text"
-              value={customName}
-              onChange={(e) => onCustomNameChange?.(e.target.value)}
-              placeholder="名無しさん"
-              className="flex-1 max-w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
-            />
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={customNameBold}
-                onChange={(e) => onCustomNameBoldChange?.(e.target.checked)}
-                className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded cursor-pointer"
-              />
-              <span className="text-sm text-gray-700">太字</span>
-            </label>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm text-gray-700">色:</span>
-              <input
-                type="color"
-                value={customNameColor}
-                onChange={(e) => onCustomNameColorChange?.(e.target.value)}
-                className="w-7 h-7 rounded border border-gray-300 cursor-pointer"
-                style={{ padding: '2px' }}
-              />
-            </div>
-            {customName && (
-              <button
-                onClick={() => onCustomNameChange?.('')}
-                className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-              >
-                リセット
-              </button>
-            )}
-          </div>
-          {/* スレ主操作 */}
-          {firstPosterId && firstPosterCount > 1 && (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-gray-700">スレ主（{firstPosterCount}件）:</span>
-              <button
-                onClick={selectFirstPoster}
-                className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded-full font-bold cursor-pointer transition-colors"
-              >
-                全選択
-              </button>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-600">色:</span>
-                {['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#000000'].map(color => (
-                  <button
-                    key={color}
-                    onClick={() => changeFirstPosterColor(color)}
-                    className="w-5 h-5 rounded border border-gray-300 hover:scale-110 transition-transform cursor-pointer"
-                    style={{ backgroundColor: color }}
-                    title={`スレ主の色を変更`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">

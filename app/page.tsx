@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
+import SettingsSidebar from '@/components/SettingsSidebar';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
@@ -31,6 +32,9 @@ export default function Home() {
   const [customName, setCustomName] = useState('');
   const [customNameBold, setCustomNameBold] = useState(true);
   const [customNameColor, setCustomNameColor] = useState('#ff69b4');
+  const [commentColors, setCommentColors] = useState<Record<string, string>>({});
+  const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
+  const [editedComments, setEditedComments] = useState<Record<string, string>>({});
 
   // レス名設定をローカルストレージから読み込み
   useEffect(() => {
@@ -51,6 +55,50 @@ export default function Home() {
       color: customNameColor
     }));
   }, [customName, customNameBold, customNameColor]);
+
+  // スレ主のID
+  const firstPosterId = comments[0]?.name_id;
+
+  // スレ主のコメントを全選択
+  const selectFirstPoster = useCallback(() => {
+    if (!firstPosterId) return;
+    const firstPosterComments = comments.filter(c => c.name_id === firstPosterId);
+    const newSelected = firstPosterComments.map(c => {
+      const existing = selectedComments.find(sc => sc.id === c.id);
+      if (existing) return existing;
+      const sizeValue = commentSizes[c.id];
+      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+      return {
+        ...c,
+        body: editedComments[c.id] || c.body,
+        color: commentColors[c.id] || '#ef4444',
+        fontSize
+      };
+    });
+    // 既存の選択に追加（重複を除く）
+    const existingIds = new Set(selectedComments.map(sc => sc.id));
+    const toAdd = newSelected.filter(c => !existingIds.has(c.id));
+    setSelectedComments([...selectedComments, ...toAdd]);
+  }, [comments, firstPosterId, selectedComments, setSelectedComments, commentColors, commentSizes, editedComments]);
+
+  // スレ主のコメントの色を一括変更
+  const changeFirstPosterColor = useCallback((color: string) => {
+    if (!firstPosterId) return;
+    const firstPosterIds = new Set(comments.filter(c => c.name_id === firstPosterId).map(c => c.id));
+
+    // 色情報を更新
+    const newColors = { ...commentColors };
+    firstPosterIds.forEach(id => {
+      newColors[id] = color;
+    });
+    setCommentColors(newColors);
+
+    // 選択済みコメントの色を更新
+    const updated = selectedComments.map(c =>
+      firstPosterIds.has(c.id) ? { ...c, color } : c
+    );
+    setSelectedComments(updated);
+  }, [comments, firstPosterId, selectedComments, setSelectedComments, commentColors]);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -205,23 +253,42 @@ export default function Home() {
 
         {comments.length > 0 && (
           <>
+            <div className="flex gap-6">
+              {/* メインコンテンツ（コメントピッカー） */}
+              <div className="flex-1 min-w-0">
+                <CommentPicker
+                  comments={comments}
+                  selectedComments={selectedComments}
+                  onSelectionChange={setSelectedComments}
+                  showId={currentTalk?.show_id}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                  customName={customName}
+                  onCustomNameChange={setCustomName}
+                  customNameBold={customNameBold}
+                  onCustomNameBoldChange={setCustomNameBold}
+                  customNameColor={customNameColor}
+                  onCustomNameColorChange={setCustomNameColor}
+                  onSelectFirstPoster={selectFirstPoster}
+                  onChangeFirstPosterColor={changeFirstPosterColor}
+                />
+              </div>
 
-            <CommentPicker
-              comments={comments}
-              selectedComments={selectedComments}
-              onSelectionChange={setSelectedComments}
-              showId={currentTalk?.show_id}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
-              customName={customName}
-              onCustomNameChange={setCustomName}
-              customNameBold={customNameBold}
-              onCustomNameBoldChange={setCustomNameBold}
-              customNameColor={customNameColor}
-              onCustomNameColorChange={setCustomNameColor}
-            />
+              {/* サイドバー */}
+              <SettingsSidebar
+                customName={customName}
+                onCustomNameChange={setCustomName}
+                customNameBold={customNameBold}
+                onCustomNameBoldChange={setCustomNameBold}
+                customNameColor={customNameColor}
+                onCustomNameColorChange={setCustomNameColor}
+                comments={comments}
+                onSelectFirstPoster={selectFirstPoster}
+                onChangeFirstPosterColor={changeFirstPosterColor}
+              />
+            </div>
 
             {/* HTML生成ボタン */}
             {selectedComments.length > 0 && (
