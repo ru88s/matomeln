@@ -53,7 +53,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm text-gray-600 mb-1">
-            Shikutoku または 5ch のURL
+            shikutoku.me または 5ch.net のURL
           </label>
           <input
             type="text"
