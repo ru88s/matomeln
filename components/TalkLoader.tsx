@@ -53,7 +53,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm text-gray-600 mb-1">
-            shikutoku.me または 5ch.net のURL
+            <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">shikutoku.me</a> または <a href="https://5ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.net</a> のURL
           </label>
           <input
             type="text"
