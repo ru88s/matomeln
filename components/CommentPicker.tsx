@@ -167,8 +167,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
   return (
     <div
-      className={`relative border-2 rounded-xl p-4 transition-all cursor-pointer shadow-sm ${
-        isSelected ? 'bg-purple-50 border-purple-300 shadow-purple-100' : 'bg-white border-gray-200 hover:border-purple-200 hover:shadow-md'
+      className={`relative border rounded-xl p-4 transition-all cursor-pointer ${
+        isSelected ? 'bg-orange-50 border-orange-300 shadow-sm' : 'bg-white border-gray-200 hover:border-orange-200 hover:shadow-sm'
       }`}
       onClick={(e) => {
         // 編集中はクリックで選択状態を変更しない
@@ -188,7 +188,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       {/* ショートカットヒント（ホバー時のみ表示） */}
       {isHovered && !isEditing && (
         <div className="absolute bottom-3 right-3 z-30">
-          <span className="text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 px-2.5 py-1 rounded-full font-bold shadow-sm border border-purple-200">Space: 選択</span>
+          <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-bold">Space: 選択</span>
         </div>
       )}
 
@@ -198,7 +198,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           checked={isSelected}
           onChange={onToggle}
           disabled={isInSortMode}
-          className={`mt-1 h-5 w-5 text-purple-500 focus:ring-purple-400 border-gray-300 rounded ${
+          className={`mt-1 h-5 w-5 text-orange-500 focus:ring-orange-400 border-gray-300 rounded ${
             isInSortMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -874,16 +874,16 @@ export default function CommentPicker({
   const firstPosterCount = firstPosterId ? comments.filter(c => c.name_id === firstPosterId).length : 0;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-purple-100 p-6 shadow-sm hover:border-purple-200 transition-all">
+    <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
-          <span className="font-black text-xl">2</span>
+        <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-pink-400 text-white rounded-xl flex items-center justify-center shadow-md">
+          <span className="font-bold text-lg">2</span>
         </div>
-        <h2 className="text-lg font-black text-gray-900">コメントを選択</h2>
+        <h2 className="text-lg font-bold text-gray-800">コメントを選択</h2>
       </div>
 
       {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-purple-100 rounded-t-xl">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-100">
         <div className="flex justify-between items-center">
           <div className="flex-1">
             <div className="flex items-center gap-4 text-xs">
@@ -1006,19 +1006,19 @@ export default function CommentPicker({
                   type="checkbox"
                   checked={showOnlySelected}
                   onChange={(e) => setShowOnlySelected(e.target.checked)}
-                  className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded"
+                  className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded"
                 />
                 <span className="text-sm font-medium text-gray-700">選択済みのレスのみ表示</span>
               </label>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-purple-500">
+              <span className="text-sm font-bold text-orange-500">
                 {selectedComments.length}件選択 / 全{comments.length}件
               </span>
               <span className="text-gray-400">|</span>
               <button
                 onClick={selectAll}
-                className="text-sm text-purple-500 hover:text-purple-600 font-bold cursor-pointer"
+                className="text-sm text-orange-500 hover:text-orange-600 font-bold cursor-pointer"
               >
                 全て選択
               </button>
