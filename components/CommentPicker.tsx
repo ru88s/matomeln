@@ -17,9 +17,13 @@ interface CommentPickerProps {
   onRedo?: () => void;
   customName?: string;
   onCustomNameChange?: (name: string) => void;
+  customNameBold?: boolean;
+  onCustomNameBoldChange?: (bold: boolean) => void;
+  customNameColor?: string;
+  onCustomNameColorChange?: (color: string) => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -41,6 +45,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   onMoveToPosition?: (targetResId: string) => void;
   onDragHandleStart?: (e: React.DragEvent) => void;
   displayName?: string;
+  displayNameBold?: boolean;
+  displayNameColor?: string;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -160,8 +166,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
   return (
     <div
-      className={`relative border rounded-lg p-4 transition-all cursor-pointer ${
-        isSelected ? 'bg-orange-50 border-orange-300' : 'bg-white border-gray-200 hover:border-gray-300'
+      className={`relative border rounded-xl p-4 transition-all cursor-pointer shadow-sm ${
+        isSelected ? 'bg-orange-50 border-orange-300 shadow-orange-100' : 'bg-white border-gray-200 hover:border-orange-200 hover:shadow-md'
       }`}
       onClick={(e) => {
         // 編集中はクリックで選択状態を変更しない
@@ -181,7 +187,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       {/* ショートカットヒント（ホバー時のみ表示） */}
       {isHovered && !isEditing && (
         <div className="absolute bottom-3 right-3 z-30">
-          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold shadow-sm">Space: 選択</span>
+          <span className="text-xs bg-gradient-to-r from-orange-100 to-pink-100 text-orange-700 px-2.5 py-1 rounded-full font-bold shadow-sm border border-orange-200">Space: 選択</span>
         </div>
       )}
 
@@ -234,7 +240,15 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               }}
             >
               <span className="text-sm font-medium text-gray-500">{comment.res_id}.</span>
-              <span className="text-sm text-gray-600">{displayName || comment.name}</span>
+              <span
+                className="text-sm"
+                style={{
+                  color: displayName ? (displayNameColor || '#ff69b4') : '#4b5563',
+                  fontWeight: displayName && displayNameBold ? 'bold' : 'normal'
+                }}
+              >
+                {displayName || comment.name}
+              </span>
               <span className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
               {showId && comment.name_id && (
                 <span className="text-xs text-gray-400">ID: {comment.name_id}</span>
@@ -666,6 +680,10 @@ export default function CommentPicker({
   onRedo,
   customName = '',
   onCustomNameChange,
+  customNameBold = true,
+  onCustomNameBoldChange,
+  customNameColor = '#ff69b4',
+  onCustomNameColorChange,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
@@ -806,14 +824,14 @@ export default function CommentPicker({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl border border-orange-100 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
-        <span className="w-6 h-6 bg-orange-500 text-white rounded text-sm font-bold flex items-center justify-center">2</span>
+        <span className="w-7 h-7 bg-gradient-to-br from-orange-400 to-pink-400 text-white rounded-full text-sm font-bold flex items-center justify-center shadow-sm">2</span>
         <h2 className="text-base font-bold text-gray-900">コメントを選択</h2>
       </div>
 
       {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-orange-100 rounded-t-xl">
         <div className="flex justify-between items-center">
           <div className="flex-1">
             <div className="flex items-center gap-4 text-xs">
@@ -868,15 +886,34 @@ export default function CommentPicker({
         {/* 操作ボタン */}
         <div className="pt-2 border-t border-gray-100 space-y-2">
           {/* レス名設定 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">レス名:</label>
             <input
               type="text"
               value={customName}
               onChange={(e) => onCustomNameChange?.(e.target.value)}
               placeholder="名無しさん"
-              className="flex-1 max-w-48 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+              className="flex-1 max-w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
             />
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={customNameBold}
+                onChange={(e) => onCustomNameBoldChange?.(e.target.checked)}
+                className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded cursor-pointer"
+              />
+              <span className="text-sm text-gray-700">太字</span>
+            </label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-gray-700">色:</span>
+              <input
+                type="color"
+                value={customNameColor}
+                onChange={(e) => onCustomNameColorChange?.(e.target.value)}
+                className="w-7 h-7 rounded border border-gray-300 cursor-pointer"
+                style={{ padding: '2px' }}
+              />
+            </div>
             {customName && (
               <button
                 onClick={() => onCustomNameChange?.('')}
@@ -1015,7 +1052,7 @@ export default function CommentPicker({
             <div
               key={comment.id}
               className={`${
-                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''
+                isReply && !showOnlySelected ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''
               } ${
                 dragOverCommentId === comment.id ? 'border-t-2 border-orange-400 pt-2' : ''
               } ${
@@ -1093,6 +1130,8 @@ export default function CommentPicker({
                 isEditing={editingCommentId === comment.id}
                 onEditingChange={(editing) => setEditingCommentId(editing ? comment.id : null)}
                 displayName={customName}
+                displayNameBold={customNameBold}
+                displayNameColor={customNameColor}
                 onDragHandleStart={(e) => {
                   if (!isFirstSelected) {
                     // 未選択の場合は自動選択

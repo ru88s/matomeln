@@ -29,6 +29,8 @@ export default function Home() {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch'; originalUrl: string } | null>(null);
   const [customName, setCustomName] = useState('');
+  const [customNameBold, setCustomNameBold] = useState(true);
+  const [customNameColor, setCustomNameColor] = useState('#ff69b4');
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -195,6 +197,10 @@ export default function Home() {
               onRedo={redo}
               customName={customName}
               onCustomNameChange={setCustomName}
+              customNameBold={customNameBold}
+              onCustomNameBoldChange={setCustomNameBold}
+              customNameColor={customNameColor}
+              onCustomNameColorChange={setCustomNameColor}
             />
 
             {/* HTML生成ボタン */}
@@ -202,7 +208,7 @@ export default function Home() {
               <div className="fixed bottom-6 right-6 z-40">
                 <button
                   onClick={openHTMLModal}
-                  className="bg-orange-500 text-white font-bold py-4 px-8 rounded-lg shadow-lg hover:bg-orange-600 transition-all flex items-center gap-2 cursor-pointer"
+                  className="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:from-orange-500 hover:to-pink-500 hover:shadow-xl transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -216,13 +222,20 @@ export default function Home() {
 
         {/* HTMLモーダル */}
         {showHTMLModal && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">タグ発行</h2>
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-orange-100 flex justify-between items-center bg-white/80 backdrop-blur-sm">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-400 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                  </span>
+                  タグ発行
+                </h2>
                 <button
                   onClick={() => setShowHTMLModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-orange-100 rounded-full transition-colors"
                 >
                   <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -236,6 +249,8 @@ export default function Home() {
                   sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
                   customName={customName}
+                  customNameBold={customNameBold}
+                  customNameColor={customNameColor}
                 />
               </div>
             </div>

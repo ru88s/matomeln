@@ -116,7 +116,7 @@ export default function RootLayout({
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-3">
                 <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                  <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
                     <Logo />
                   </div>
                   <span className="text-xl font-bold text-gray-900">

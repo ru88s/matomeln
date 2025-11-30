@@ -19,9 +19,11 @@ interface HTMLGeneratorProps {
   sourceInfo: SourceInfo | null;
   onClose?: () => void;
   customName?: string;
+  customNameBold?: boolean;
+  customNameColor?: string;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '' }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -50,11 +52,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor]);
 
   // API設定を保存
   const saveApiSettings = () => {
@@ -69,7 +71,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
