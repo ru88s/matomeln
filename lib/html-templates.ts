@@ -15,15 +15,16 @@ export async function generateMatomeHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions,
-  sourceInfo?: SourceInfo | null
+  sourceInfo?: SourceInfo | null,
+  customName?: string
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
   if (style === 'rich') {
-    return await generateRichHTML(talk, selectedComments, options, sourceInfo);
+    return await generateRichHTML(talk, selectedComments, options, sourceInfo, customName);
   }
 
-  return await generateSimpleHTML(talk, selectedComments, options, sourceInfo);
+  return await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName);
 }
 
 // 引用元URLを生成
@@ -72,7 +73,8 @@ async function generateSimpleHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions,
-  sourceInfo?: SourceInfo | null
+  sourceInfo?: SourceInfo | null,
+  customName?: string
 ): Promise<GeneratedHTML> {
   const { includeTimestamp, includeName, includeImages } = options;
 
@@ -85,10 +87,9 @@ async function generateSimpleHTML(
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
     const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${individualFontSize};`;
-    // 名前の表示 - 元のコメントの名前をそのまま使用
-    const nameDisplay = comment.name && comment.name !== ''
-      ? `<span style="color: #ff69b4; font-weight: bold;">${escapeHtml(comment.name)}</span>`
-      : '<span style="color: #ff69b4; font-weight: bold;">匿名</span>';
+    // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
+    const displayName = customName || comment.name || '匿名';
+    const nameDisplay = `<span style="color: #ff69b4; font-weight: bold;">${escapeHtml(displayName)}</span>`;
 
     const timestamp = includeTimestamp
       ? `<span style="color: silver;"> ${formatDateForMatome(comment.created_at)} </span>`
@@ -144,7 +145,8 @@ async function generateRichHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
   options: MatomeOptions,
-  sourceInfo?: SourceInfo | null
+  sourceInfo?: SourceInfo | null,
+  customName?: string
 ): Promise<GeneratedHTML> {
   const { includeImages, includeTimestamp, includeName } = options;
 
@@ -185,10 +187,8 @@ async function generateRichHTML(
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
     const commentStyle = `color: ${individualColor}; ${options.commentStyle.bold ? 'font-weight: bold;' : ''} font-size: ${individualFontSize};`;
 
-    // 名前の表示 - 元のコメントの名前をそのまま使用
-    const nameDisplay = comment.name && comment.name !== ''
-      ? escapeHtml(comment.name)
-      : '匿名';
+    // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
+    const nameDisplay = escapeHtml(customName || comment.name || '匿名');
 
     const timestamp = includeTimestamp
       ? formatDateForMatome(comment.created_at)

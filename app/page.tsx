@@ -28,6 +28,7 @@ export default function Home() {
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch'; originalUrl: string } | null>(null);
+  const [customName, setCustomName] = useState('');
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -147,8 +148,8 @@ export default function Home() {
             commentsCount={comments.length}
           />
           {loading && (
-            <div className="absolute inset-0 bg-white/90 rounded-3xl flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
+            <div className="absolute inset-0 bg-white/90 rounded-lg flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
             </div>
           )}
         </div>
@@ -160,7 +161,7 @@ export default function Home() {
               <button
                 onClick={handleGenerateAIComments}
                 disabled={generatingAI}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-6 rounded-full shadow-md hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
+                className="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
               >
                 {generatingAI ? (
                   <>
@@ -192,6 +193,8 @@ export default function Home() {
               canRedo={canRedo}
               onUndo={undo}
               onRedo={redo}
+              customName={customName}
+              onCustomNameChange={setCustomName}
             />
 
             {/* HTML生成ボタン */}
@@ -199,7 +202,7 @@ export default function Home() {
               <div className="fixed bottom-6 right-6 z-40">
                 <button
                   onClick={openHTMLModal}
-                  className="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:from-orange-500 hover:to-pink-500 transform hover:scale-105 transition-all flex items-center gap-2"
+                  className="bg-orange-500 text-white font-bold py-4 px-8 rounded-lg shadow-lg hover:bg-orange-600 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -214,7 +217,7 @@ export default function Home() {
         {/* HTMLモーダル */}
         {showHTMLModal && (
           <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-900">タグ発行</h2>
                 <button
@@ -232,6 +235,7 @@ export default function Home() {
                   selectedComments={selectedComments}
                   sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
+                  customName={customName}
                 />
               </div>
             </div>
@@ -239,46 +243,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* フッター */}
-      <div className="mt-16 pt-8 border-t border-gray-200">
-        <div className="text-center space-y-3">
-          <div className="flex items-center justify-center gap-2">
-            <a
-              href="https://shikutoku.me"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-xl hover:from-orange-500 hover:to-pink-500 transition-all font-bold text-xs shadow-md"
-            >
-              Shikutokuへ
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-            <a
-              href="https://shikutoku.me/talks/6501"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-pink-600 hover:text-pink-700 font-medium text-xs"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
-              ご意見ご要望
-            </a>
-            <a
-              href="https://shikutoku.me/contact"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-orange-500 hover:text-orange-600 font-medium text-xs"
-            >
-              お問い合わせ
-            </a>
-          </div>
-          <p className="text-xs text-gray-500 mt-3">
-            対応希望の掲示板様も募集中です。
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

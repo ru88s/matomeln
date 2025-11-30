@@ -3,7 +3,6 @@ import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
 import { Logo } from '@/components/ui/Logo';
-import { gradients, borderRadius, shadows, typography } from '@/lib/design-system';
 
 export const metadata: Metadata = {
   title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
@@ -100,81 +99,64 @@ export default function RootLayout({
         {/* Cloudflare Web Analytics */}
         <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
       </head>
-      <body className="bg-gradient-to-br from-orange-50 via-white to-pink-50 min-h-screen">
+      <body className="bg-gray-50 min-h-screen">
         <Toaster
           position="top-center"
           toastOptions={{
             style: {
-              borderRadius: '16px',
+              borderRadius: '8px',
               background: '#fff',
-              color: '#44403C',
-              boxShadow: '0 4px 12px rgba(251, 146, 60, 0.15)',
+              color: '#1f2937',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             },
           }}
         />
-        <nav className="bg-gradient-to-r from-orange-400 via-orange-400 to-pink-400 shadow-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-20">
+        <nav className="bg-white border-b border-gray-200">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
               <div className="flex items-center gap-3">
-                <a href="/" className="group flex items-center gap-3 hover:opacity-90 transition-opacity">
-                  <div className={`w-12 h-12 bg-white ${borderRadius.appIcon} flex items-center justify-center ${shadows.lg} group-hover:shadow-xl transition-all group-hover:scale-105`}>
+                <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center">
                     <Logo />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-2xl text-white drop-shadow-sm" style={{ fontFamily: typography.fonts.rounded, letterSpacing: '0.05em', fontWeight: '800' }}>
-                      まとめるん
-                    </span>
-                    <span className="text-xs text-orange-100 font-medium">掲示板まとめ作成ツール</span>
-                  </div>
+                  <span className="text-xl font-bold text-gray-900">
+                    まとめるん
+                  </span>
                 </a>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <a
                   href="/about"
-                  className="px-4 py-2 text-sm text-white hover:bg-white/20 rounded-xl transition-all font-bold backdrop-blur-sm"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
                   使い方
-                </a>
-                <a
-                  href="https://shikutoku.me"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-white text-orange-500 hover:bg-orange-50 rounded-xl transition-all font-bold shadow-md hover:shadow-lg"
-                >
-                  Shikutoku
-                  <svg className="w-4 h-4 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
                 </a>
               </div>
             </div>
           </div>
         </nav>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}
         </main>
 
-        <footer className="py-5 bg-white/70 backdrop-blur-sm border-t border-orange-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="flex items-center justify-center gap-3 text-xs mb-2">
-              <a href="/site-map" className="text-stone-500 hover:text-orange-500 transition-colors">
+        <footer className="py-6 border-t border-gray-200 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="flex items-center justify-center gap-4 text-xs mb-2">
+              <a href="/site-map" className="text-gray-500 hover:text-gray-700 transition-colors">
                 サイトマップ
               </a>
-              <span className="text-stone-300">|</span>
-              <a href="/privacy" className="text-stone-500 hover:text-orange-500 transition-colors">
+              <span className="text-gray-300">|</span>
+              <a href="/privacy" className="text-gray-500 hover:text-gray-700 transition-colors">
                 プライバシーポリシー
               </a>
-              <span className="text-stone-300">|</span>
-              <a href="/terms" className="text-stone-500 hover:text-orange-500 transition-colors">
+              <span className="text-gray-300">|</span>
+              <a href="/terms" className="text-gray-500 hover:text-gray-700 transition-colors">
                 利用規約
               </a>
             </div>
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-gray-400">
               © 2025 まとめるん
             </p>
           </div>

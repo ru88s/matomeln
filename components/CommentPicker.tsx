@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
-import { StepHeader } from '@/components/ui/StepHeader';
-import { componentStyles } from '@/lib/design-system';
 import toast from 'react-hot-toast';
 import { LinkCard } from '@/components/LinkCard';
 
@@ -17,9 +15,11 @@ interface CommentPickerProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  customName?: string;
+  onCustomNameChange?: (name: string) => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -40,6 +40,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   onMoveToTop?: () => void;
   onMoveToPosition?: (targetResId: string) => void;
   onDragHandleStart?: (e: React.DragEvent) => void;
+  displayName?: string;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -159,8 +160,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
   return (
     <div
-      className={`relative border-2 rounded-2xl p-4 transition-all cursor-pointer ${
-        isSelected ? 'bg-gradient-to-r from-orange-50 to-pink-50 border-orange-300 shadow-md' : 'bg-white/80 border-orange-100 hover:border-orange-200'
+      className={`relative border rounded-lg p-4 transition-all cursor-pointer ${
+        isSelected ? 'bg-orange-50 border-orange-300' : 'bg-white border-gray-200 hover:border-gray-300'
       }`}
       onClick={(e) => {
         // 編集中はクリックで選択状態を変更しない
@@ -233,7 +234,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               }}
             >
               <span className="text-sm font-medium text-gray-500">{comment.res_id}.</span>
-              <span className="text-sm text-gray-600">{comment.name}</span>
+              <span className="text-sm text-gray-600">{displayName || comment.name}</span>
               <span className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
               {showId && comment.name_id && (
                 <span className="text-xs text-gray-400">ID: {comment.name_id}</span>
@@ -242,7 +243,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
             {/* 本文バッジ */}
             {isFirstSelected && (
               <div className="absolute top-0 right-0 flex items-center gap-2">
-                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">
+                <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
                   本文
                 </span>
                 <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
@@ -361,7 +362,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 22 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 22 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="大 (キー: Q)"
             >
@@ -381,7 +382,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 18 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 18 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="中 (キー: W)"
             >
@@ -401,7 +402,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 14 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 14 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="小 (キー: E)"
             >
@@ -663,6 +664,8 @@ export default function CommentPicker({
   canRedo = false,
   onUndo,
   onRedo,
+  customName = '',
+  onCustomNameChange,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
@@ -803,16 +806,14 @@ export default function CommentPicker({
   };
 
   return (
-    <div className={componentStyles.card.base}>
-      <StepHeader
-        number={2}
-        title="コメントを選択"
-        badge={{ text: '必須', variant: 'required' }}
-        variant="purple"
-      />
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-6 h-6 bg-orange-500 text-white rounded text-sm font-bold flex items-center justify-center">2</span>
+        <h2 className="text-base font-bold text-gray-900">コメントを選択</h2>
+      </div>
 
       {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-gradient-to-r from-orange-50/95 to-pink-50/95 backdrop-blur-sm border-b border-orange-200 shadow-sm">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200">
         <div className="flex justify-between items-center">
           <div className="flex-1">
             <div className="flex items-center gap-4 text-xs">
@@ -865,7 +866,26 @@ export default function CommentPicker({
           </div>
         </div>
         {/* 操作ボタン */}
-        <div className="pt-2 border-t border-orange-100 space-y-2">
+        <div className="pt-2 border-t border-gray-100 space-y-2">
+          {/* レス名設定 */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">レス名:</label>
+            <input
+              type="text"
+              value={customName}
+              onChange={(e) => onCustomNameChange?.(e.target.value)}
+              placeholder="名無しさん"
+              className="flex-1 max-w-48 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+            />
+            {customName && (
+              <button
+                onClick={() => onCustomNameChange?.('')}
+                className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                リセット
+              </button>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -909,35 +929,68 @@ export default function CommentPicker({
               body: editedComments[sc.id] || sc.body
             }));
           } else {
-            // 全て表示モード：選択済みコメントを配置位置に従って全コメント中に挿入
+            // 全て表示モード：アンカーがあるコメントはその参照先の直後に配置
             const selectedIds = new Set(selectedComments.map(sc => sc.id));
-            const result: Array<Comment & { body: string; sortKey: number }> = [];
 
-            // 未選択コメントに位置情報または元のインデックスを割り当て
-            comments.forEach((c, index) => {
-              if (!selectedIds.has(c.id)) {
-                // commentPositionsに位置が記録されていればそれを使用、なければ元のインデックス
-                const targetPosition = commentPositions[c.id] !== undefined ? commentPositions[c.id] : index;
-                result.push({
-                  ...c,
-                  body: editedComments[c.id] || c.body,
-                  sortKey: targetPosition
-                });
+            // res_idからコメントへのマップを作成
+            const resIdToComment = new Map<number, Comment>();
+            comments.forEach(c => {
+              resIdToComment.set(Number(c.res_id), c);
+            });
+
+            // アンカーによる返信関係をマップ化（res_id -> 返信コメントの配列）
+            const repliesMap = new Map<number, Comment[]>();
+            const commentsWithAnchor = new Set<string>();
+
+            comments.forEach(comment => {
+              const body = editedComments[comment.id] || comment.body;
+              const anchorId = extractAnchor(body);
+              if (anchorId !== null && resIdToComment.has(anchorId)) {
+                if (!repliesMap.has(anchorId)) {
+                  repliesMap.set(anchorId, []);
+                }
+                repliesMap.get(anchorId)!.push(comment);
+                commentsWithAnchor.add(comment.id);
               }
             });
 
-            // 選択済みコメントを位置情報に基づいて挿入
-            selectedComments.forEach(sc => {
-              const comment = comments.find(c => c.id === sc.id);
-              if (comment) {
-                // commentPositionsに位置が記録されていればそれを使用、なければ元のインデックス
-                const originalIndex = comments.findIndex(c => c.id === sc.id);
-                const targetPosition = commentPositions[sc.id] !== undefined ? commentPositions[sc.id] : originalIndex;
+            // 結果配列を構築（親コメントの後に返信を挿入）
+            const result: Array<Comment & { body: string; sortKey: number }> = [];
+            let sortIndex = 0;
 
-                result.push({
-                  ...comment,
-                  body: editedComments[comment.id] || comment.body,
-                  sortKey: targetPosition
+            comments.forEach((c) => {
+              // アンカーを持つコメントは親の後に挿入されるのでスキップ
+              if (commentsWithAnchor.has(c.id)) {
+                return;
+              }
+
+              // commentPositionsに位置が記録されていればそれを使用
+              const targetPosition = commentPositions[c.id] !== undefined
+                ? commentPositions[c.id]
+                : sortIndex;
+
+              result.push({
+                ...c,
+                body: editedComments[c.id] || c.body,
+                sortKey: targetPosition
+              });
+              sortIndex++;
+
+              // このコメントへの返信を追加
+              const replies = repliesMap.get(Number(c.res_id));
+              if (replies) {
+                // 返信をres_id順でソート
+                replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+                replies.forEach(reply => {
+                  const replyPosition = commentPositions[reply.id] !== undefined
+                    ? commentPositions[reply.id]
+                    : sortIndex;
+                  result.push({
+                    ...reply,
+                    body: editedComments[reply.id] || reply.body,
+                    sortKey: replyPosition
+                  });
+                  sortIndex++;
                 });
               }
             });
@@ -962,7 +1015,7 @@ export default function CommentPicker({
             <div
               key={comment.id}
               className={`${
-                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-orange-200 pl-4' : ''
+                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''
               } ${
                 dragOverCommentId === comment.id ? 'border-t-2 border-orange-400 pt-2' : ''
               } ${
@@ -1039,6 +1092,7 @@ export default function CommentPicker({
                 onHover={setLastHoveredCommentId}
                 isEditing={editingCommentId === comment.id}
                 onEditingChange={(editing) => setEditingCommentId(editing ? comment.id : null)}
+                displayName={customName}
                 onDragHandleStart={(e) => {
                   if (!isFirstSelected) {
                     // 未選択の場合は自動選択

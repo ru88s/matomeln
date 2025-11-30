@@ -18,9 +18,10 @@ interface HTMLGeneratorProps {
   selectedComments: CommentWithStyle[];
   sourceInfo: SourceInfo | null;
   onClose?: () => void;
+  customName?: string;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -49,11 +50,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo]);
+  }, [talk, selectedComments, options, sourceInfo, customName]);
 
   // API設定を保存
   const saveApiSettings = () => {
@@ -68,7 +69,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
@@ -235,9 +236,9 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             <button
               onClick={handleBlogPost}
               disabled={!apiSettings.blogUrl || !apiSettings.apiKey || isPosting}
-              className={`w-full py-3 rounded-2xl font-bold shadow-md transition-all ${
+              className={`w-full py-3 rounded-lg font-bold transition-all cursor-pointer ${
                 apiSettings.blogUrl && apiSettings.apiKey && !isPosting
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+                  ? 'bg-orange-500 text-white hover:bg-orange-600'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
