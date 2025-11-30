@@ -23,7 +23,7 @@ interface CommentPickerProps {
   onCustomNameColorChange?: (color: string) => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -47,6 +47,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   displayName?: string;
   displayNameBold?: boolean;
   displayNameColor?: string;
+  firstPosterId?: string;
 }) {
 
   const [isHovered, setIsHovered] = useState(false);
@@ -251,7 +252,9 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               </span>
               <span className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
               {showId && comment.name_id && (
-                <span className="text-xs text-gray-400">ID: {comment.name_id}</span>
+                <span className={`text-xs ${comment.name_id === firstPosterId ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                  ID: {comment.name_id}
+                </span>
               )}
             </div>
             {/* 本文バッジ */}
@@ -1134,6 +1137,7 @@ export default function CommentPicker({
                 displayName={customName}
                 displayNameBold={customNameBold}
                 displayNameColor={customNameColor}
+                firstPosterId={comments[0]?.name_id}
                 onDragHandleStart={(e) => {
                   if (!isFirstSelected) {
                     // 未選択の場合は自動選択
