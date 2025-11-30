@@ -160,7 +160,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   return (
     <div
       className={`relative border-2 rounded-2xl p-4 transition-all cursor-pointer ${
-        isSelected ? 'bg-gradient-to-r from-sky-50 to-cyan-50 border-sky-300 shadow-md' : 'bg-white/80 border-sky-100 hover:border-sky-200'
+        isSelected ? 'bg-gradient-to-r from-orange-50 to-pink-50 border-orange-300 shadow-md' : 'bg-white/80 border-orange-100 hover:border-orange-200'
       }`}
       onClick={(e) => {
         // 編集中はクリックで選択状態を変更しない
@@ -180,7 +180,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       {/* ショートカットヒント（ホバー時のみ表示） */}
       {isHovered && !isEditing && (
         <div className="absolute bottom-3 right-3 z-30">
-          <span className="text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded font-bold shadow-sm">Space: 選択</span>
+          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold shadow-sm">Space: 選択</span>
         </div>
       )}
 
@@ -190,7 +190,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           checked={isSelected}
           onChange={onToggle}
           disabled={isInSortMode}
-          className={`mt-1 h-5 w-5 text-sky-600 focus:ring-sky-500 border-gray-300 rounded ${
+          className={`mt-1 h-5 w-5 text-orange-500 focus:ring-orange-400 border-gray-300 rounded ${
             isInSortMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -327,7 +327,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 <button
                   key={paletteColor}
                   className={`relative w-6 h-6 rounded border-2 transition-all hover:scale-110 cursor-pointer ${
-                    color === paletteColor ? 'border-sky-500 shadow-md' : 'border-gray-300'
+                    color === paletteColor ? 'border-orange-400 shadow-md' : 'border-gray-300'
                   }`}
                   style={{ backgroundColor: paletteColor }}
                   onClick={(e) => {
@@ -361,7 +361,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 22 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 22 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="大 (キー: Q)"
             >
@@ -381,7 +381,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 18 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 18 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="中 (キー: W)"
             >
@@ -401,7 +401,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 }
               }}
               className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
-                fontSize === 14 ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                fontSize === 14 ? 'bg-orange-100 border-orange-300 text-sky-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="小 (キー: E)"
             >
@@ -430,7 +430,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       setEditingBody(comment.body);
                     }
                   }}
-                  className="w-full p-2 border border-sky-300 rounded-lg font-bold resize-none bg-white"
+                  className="w-full p-2 border border-orange-300 rounded-lg font-bold resize-none bg-white"
                   style={{ color: color || '#000000', fontSize: `${fontSize || 18}px` }}
                   rows={4}
                   autoFocus
@@ -451,7 +451,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       e.stopPropagation();
                       handleBodyEdit();
                     }}
-                    className="px-3 py-1 bg-sky-500 text-white text-sm rounded-lg hover:bg-sky-600 transition-colors font-medium"
+                    className="px-3 py-1 bg-orange-400 text-white text-sm rounded-lg hover:bg-orange-500 transition-colors font-medium"
                   >
                     保存 (Ctrl+Enter)
                   </button>
@@ -479,11 +479,11 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     e.stopPropagation();
                     onEditingChange?.(true);
                   }}
-                  className="absolute top-0 -right-8 p-1 bg-sky-100 hover:bg-sky-200 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-0 -right-8 p-1 bg-orange-100 hover:bg-orange-200 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                   title="編集 (キー: Ctrl+E)"
                 >
                   <div className="relative">
-                    <svg className="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     {isHovered && (
@@ -812,7 +812,7 @@ export default function CommentPicker({
       />
 
       {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-gradient-to-r from-sky-50/95 to-cyan-50/95 backdrop-blur-sm border-b border-sky-200 shadow-sm">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-gradient-to-r from-orange-50/95 to-pink-50/95 backdrop-blur-sm border-b border-orange-200 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="flex-1">
             <div className="flex items-center gap-4 text-xs">
@@ -865,7 +865,7 @@ export default function CommentPicker({
           </div>
         </div>
         {/* 操作ボタン */}
-        <div className="pt-2 border-t border-sky-100 space-y-2">
+        <div className="pt-2 border-t border-orange-100 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -873,19 +873,19 @@ export default function CommentPicker({
                   type="checkbox"
                   checked={showOnlySelected}
                   onChange={(e) => setShowOnlySelected(e.target.checked)}
-                  className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded"
                 />
                 <span className="text-sm font-medium text-gray-700">選択済みのレスのみ表示</span>
               </label>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-sky-600">
+              <span className="text-sm font-bold text-orange-500">
                 {selectedComments.length}件選択 / 全{comments.length}件
               </span>
               <span className="text-gray-400">|</span>
               <button
                 onClick={selectAll}
-                className="text-sm text-sky-600 hover:text-sky-700 font-bold cursor-pointer"
+                className="text-sm text-orange-500 hover:text-orange-600 font-bold cursor-pointer"
               >
                 全て選択
               </button>
@@ -962,9 +962,9 @@ export default function CommentPicker({
             <div
               key={comment.id}
               className={`${
-                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-sky-200 pl-4' : ''
+                isReply && !showOnlySelected && !isSelected ? 'ml-8 border-l-2 border-orange-200 pl-4' : ''
               } ${
-                dragOverCommentId === comment.id ? 'border-t-2 border-sky-500 pt-2' : ''
+                dragOverCommentId === comment.id ? 'border-t-2 border-orange-400 pt-2' : ''
               } ${
                 draggedCommentId === comment.id ? 'opacity-50' : ''
               } ${

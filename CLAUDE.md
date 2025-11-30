@@ -1,4 +1,4 @@
-# シクマト開発ルール
+# まとめるん開発ルール
 
 ## UI/UXデザイン原則
 
@@ -119,7 +119,7 @@ const colorPalette = [
 ### 11. リンクとアンカー
 - URL（http://、https://）は自動的にリンクカード化
 - **リンクカード表示**:
-  - シクマト画面: Reactコンポーネント（LinkCard）でOGP情報付きカード表示
+  - まとめるん画面: Reactコンポーネント（LinkCard）でOGP情報付きカード表示
   - 生成HTMLタグ: OGP API（/api/ogp）から取得した情報で静的HTMLカード生成
   - OGP情報: タイトル、説明文、画像、サイト名を表示
   - OGP取得失敗時: URLとホスト名のみのシンプルなカード表示
@@ -371,7 +371,7 @@ return result.sort((a, b) => a.sortKey - b.sortKey);
 - robots.txt: APIへのアクセスを制限
 - 構造化データ: WebApplicationスキーマ実装
 - OGP・Twitterカード設定済み
-- 本番ドメイン: https://matome.shikutoku.me
+- 本番ドメイン: https://matomeln.pages.dev
 
 ## 今後の方針
 - UIのシンプルさを最優先

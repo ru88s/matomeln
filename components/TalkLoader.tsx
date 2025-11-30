@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { extractTalkIdFromUrl } from '@/lib/shikutoku-api';
+import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
 import { Talk } from '@/lib/types';
 import { StepHeader } from '@/components/ui/StepHeader';
 import { componentStyles } from '@/lib/design-system';
 
 interface TalkLoaderProps {
-  onLoad: (talkId: string) => void;
+  onLoad: (input: string) => void;
   currentTalk: Talk | null;
   commentsCount?: number;
 }
@@ -20,21 +20,36 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
     e.preventDefault();
     setError('');
 
-    const talkId = extractTalkIdFromUrl(input);
-
-    if (!talkId) {
-      setError('有効なURLまたはトークIDを入力してください');
+    const trimmedInput = input.trim();
+    if (!trimmedInput) {
+      setError('URLまたはトークIDを入力してください');
       return;
     }
 
-    onLoad(talkId);
+    const sourceType = detectSourceType(trimmedInput);
+
+    if (sourceType === 'unknown') {
+      setError('有効なShikutokuまたは5chのURLを入力してください');
+      return;
+    }
+
+    // Shikutokuの場合はIDを抽出して検証
+    if (sourceType === 'shikutoku') {
+      const talkId = extractTalkIdFromUrl(trimmedInput);
+      if (!talkId) {
+        setError('有効なShikutoku URLまたはトークIDを入力してください');
+        return;
+      }
+    }
+
+    onLoad(trimmedInput);
   };
 
   return (
     <div className={componentStyles.card.base}>
       <StepHeader
         number={1}
-        title="トークを読み込む"
+        title="スレッドを読み込む"
         badge={{ text: '必須', variant: 'required' }}
         variant="pink"
       />
@@ -42,16 +57,19 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
-            ShikutokuのトークURL または トークID
+            Shikutoku または 5ch のURL
           </label>
           <input
             type="text"
             id="url"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="https://shikutoku.me/talks/123 または 123"
-            className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            placeholder="https://shikutoku.me/talks/123 または https://xxx.5ch.net/test/read.cgi/..."
+            className="w-full px-3 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            ShikutokuのトークIDのみの入力も可能です（例: 6454）
+          </p>
         </div>
 
         {error && (
@@ -60,16 +78,16 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold py-3 px-4 rounded-2xl hover:from-sky-600 hover:to-cyan-600 transition-all shadow-md cursor-pointer"
+          className="w-full bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-3 px-4 rounded-2xl hover:from-orange-500 hover:to-pink-500 transition-all shadow-md cursor-pointer"
         >
-          トークを読み込む
+          読み込む
         </button>
       </form>
 
       {currentTalk && (
-        <div className="mt-4 p-4 bg-gradient-to-r from-sky-50 to-cyan-50 rounded-2xl border border-sky-100">
-          <div className="font-medium text-gray-900">{currentTalk.title}</div>
-          <div className="text-xs text-gray-500 mt-1">
+        <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-pink-50 rounded-2xl border border-orange-100">
+          <div className="font-medium text-stone-800">{currentTalk.title}</div>
+          <div className="text-xs text-stone-500 mt-1">
             コメント数: {commentsCount !== undefined ? commentsCount : 0}
           </div>
         </div>

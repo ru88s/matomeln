@@ -1,11 +1,11 @@
 {
-  "name": "シクマト - Shikutokuまとめ作成ツール",
-  "short_name": "シクマト",
-  "description": "Shikutokuのトークを簡単にまとめてブログ記事に",
+  "name": "まとめるん - 掲示板まとめ作成ツール",
+  "short_name": "まとめるん",
+  "description": "5chやShikutokuのスレッドを簡単にまとめてブログ記事に",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",
-  "theme_color": "#0EA5E9",
+  "theme_color": "#FB923C",
   "icons": [
     {
       "src": "/favicon.svg",

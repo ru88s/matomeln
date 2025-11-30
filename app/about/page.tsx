@@ -9,11 +9,11 @@ export default function AboutPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* ヘッダー */}
       <div className="text-center">
-        <h1 className="text-4xl font-black bg-gradient-to-r from-sky-500 to-cyan-500 bg-clip-text text-transparent mb-4">
-          シクマトの使い方
+        <h1 className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent mb-4">
+          まとめるんの使い方
         </h1>
         <p className="text-gray-600 text-lg">
-          Shikutokuのトークから簡単にまとめ記事を作成できます
+          5chやShikutokuのスレッドから簡単にまとめ記事を作成できます
         </p>
       </div>
 
@@ -21,30 +21,30 @@ export default function AboutPage() {
       <div className="flex justify-center gap-2">
         <button
           onClick={() => setActiveTab('basic')}
-          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+          className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'basic'
-              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
+              ? 'bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-lg'
+              : 'bg-white text-stone-600 hover:bg-orange-50'
           }`}
         >
           基本の使い方
         </button>
         <button
           onClick={() => setActiveTab('features')}
-          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+          className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'features'
-              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
+              ? 'bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-lg'
+              : 'bg-white text-stone-600 hover:bg-orange-50'
           }`}
         >
           便利な機能
         </button>
         <button
           onClick={() => setActiveTab('faq')}
-          className={`px-6 py-3 rounded-xl font-bold transition-all ${
+          className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'faq'
-              ? 'bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-lg'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
+              ? 'bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-lg'
+              : 'bg-white text-stone-600 hover:bg-orange-50'
           }`}
         >
           よくある質問
@@ -53,7 +53,7 @@ export default function AboutPage() {
 
       {/* 基本の使い方 */}
       {activeTab === 'basic' && (
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100 space-y-8">
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-orange-100 space-y-8">
           <div className="grid gap-6">
             {/* ステップ1 */}
             <div className="relative">
@@ -65,18 +65,18 @@ export default function AboutPage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-3">
-                    <h3 className="font-black text-xl text-gray-900">トークを読み込む</h3>
+                    <h3 className="font-black text-xl text-gray-900">スレッドを読み込む</h3>
                     <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full font-bold">必須</span>
                   </div>
                   <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 space-y-3">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      ShikutokuのトークページURLまたはトークIDを入力してください。
+                      5chまたはShikutokuのスレッドURLを入力してください。
                     </p>
                     <div className="bg-white rounded-lg p-3 border border-pink-200 shadow-sm">
                       <p className="text-xs font-bold text-gray-600 mb-2">📝 入力例</p>
                       <div className="space-y-1">
-                        <code className="block text-xs bg-gray-100 p-1 rounded text-sky-600">https://shikutoku.me/talks/6454</code>
-                        <code className="block text-xs bg-gray-100 p-1 rounded text-sky-600">6454（IDのみでもOK）</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.5ch.net/test/read.cgi/...</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://shikutoku.me/talks/6454</code>
                       </div>
                     </div>
                   </div>
@@ -180,7 +180,7 @@ export default function AboutPage() {
       {/* 便利な機能 */}
       {activeTab === 'features' && (
         <div className="space-y-4">
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-orange-100">
             <h3 className="font-bold text-lg text-gray-900 mb-4">
               <span className="text-2xl mr-2">⌨️</span>
               キーボードショートカット
@@ -215,49 +215,49 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-orange-100">
             <h3 className="font-bold text-lg text-gray-900 mb-4">
               <span className="text-2xl mr-2">🎨</span>
               カスタマイズ機能
             </h3>
             <ul className="space-y-3">
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">コメントの個別編集</p>
                   <p className="text-xs text-gray-600">ダブルクリックまたはCtrl+Eでコメント本文を編集できます</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">色のカスタマイズ</p>
                   <p className="text-xs text-gray-600">10色のカラーパレットから各コメントの色を選択</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">文字サイズの調整</p>
                   <p className="text-xs text-gray-600">大・中・小の3段階でサイズを変更可能</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">自動リンク化</p>
                   <p className="text-xs text-gray-600">コメント内のURLは自動的にクリック可能なリンクに変換</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">レスの並び替え</p>
                   <p className="text-xs text-gray-600">「レスの並び替え」モードでドラッグ&ドロップで順番変更可能</p>
                 </div>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-sky-500 mt-1">•</span>
+                <span className="text-orange-400 mt-1">•</span>
                 <div>
                   <p className="text-sm font-medium text-gray-900">ピンポイント移動</p>
                   <p className="text-xs text-gray-600">番号を指定して特定のコメントの下に移動可能</p>
@@ -266,7 +266,7 @@ export default function AboutPage() {
             </ul>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-sky-100">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-orange-100">
             <h3 className="font-bold text-lg text-gray-900 mb-4">
               <span className="text-2xl mr-2">🚀</span>
               ライブドアブログ自動投稿
@@ -280,7 +280,7 @@ export default function AboutPage() {
                 <ol className="space-y-1 text-xs text-gray-600">
                   <li>1. ライブドアブログの管理画面にログイン</li>
                   <li>2. 「設定」→「API Key」でAPIキーを取得</li>
-                  <li>3. シクマトの「ライブドアブログAPI設定」に入力</li>
+                  <li>3. まとめるんの「ライブドアブログAPI設定」に入力</li>
                 </ol>
               </div>
             </div>
@@ -290,7 +290,7 @@ export default function AboutPage() {
 
       {/* よくある質問 */}
       {activeTab === 'faq' && (
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-sky-100">
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-orange-100">
           <div className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
               <p className="font-bold text-gray-900 mb-2">
@@ -347,7 +347,16 @@ export default function AboutPage() {
                 Q: 引用元のリンクは含まれますか？
               </p>
               <p className="text-sm text-gray-600">
-                A: はい、生成されたHTMLの最後に自動的にShikutokuの元トークへのリンクが含まれます。
+                A: はい、生成されたHTMLの最後に自動的に元スレッドへのリンクが含まれます。
+              </p>
+            </div>
+
+            <div className="border-b border-gray-200 pb-4">
+              <p className="font-bold text-gray-900 mb-2">
+                Q: 対応している掲示板は？
+              </p>
+              <p className="text-sm text-gray-600">
+                A: 現在、5ch（5ちゃんねる）とShikutokuに対応しています。
               </p>
             </div>
 
@@ -364,18 +373,18 @@ export default function AboutPage() {
       )}
 
       {/* お問い合わせ */}
-      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 rounded-3xl p-6 border-2 border-sky-200 shadow-md text-center">
-        <h2 className="text-lg font-bold text-gray-900 mb-3">
+      <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-3xl p-6 border-2 border-orange-200 shadow-md text-center">
+        <h2 className="text-lg font-bold text-stone-800 mb-3">
           お困りの際は
         </h2>
-        <p className="text-sm text-gray-700 mb-4">
+        <p className="text-sm text-stone-600 mb-4">
           使い方でご不明な点がございましたら、お気軽にお問い合わせください。
         </p>
         <a
           href="https://shikutoku.me/contact"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-500 to-cyan-500 text-white rounded-xl hover:from-sky-600 hover:to-cyan-600 transition-all font-bold shadow-lg"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-2xl hover:from-orange-500 hover:to-pink-500 transition-all font-bold shadow-lg"
         >
           お問い合わせはこちら
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

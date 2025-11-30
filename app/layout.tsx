@@ -6,9 +6,9 @@ import { Logo } from '@/components/ui/Logo';
 import { gradients, borderRadius, shadows, typography } from '@/lib/design-system';
 
 export const metadata: Metadata = {
-  title: "シクマト - Shikutokuまとめ作成ツール | 無料でかんたんブログ記事作成",
-  description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
-  keywords: "シクトク,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,シクマト,まとめ作成,ブログ記事,自動生成",
+  title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+  description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
+  keywords: "5ch,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,まとめるん,まとめ作成,ブログ記事,自動生成",
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -18,28 +18,28 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "シクマト - Shikutokuまとめ作成ツール | 無料でかんたんブログ記事作成",
-    description: "Shikutoku（シクトク）のトークを簡単にまとめてブログ記事に。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。",
-    url: "https://matome.shikutoku.me",
-    siteName: "シクマト",
+    title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。",
+    url: "https://matomeln.pages.dev",
+    siteName: "まとめるん",
     type: "website",
     locale: "ja_JP",
     images: [
       {
-        url: "https://matome.shikutoku.me/og-image.png",
+        url: "https://matomeln.pages.dev/og-image.png",
         width: 1200,
         height: 630,
-        alt: "シクマト - Shikutokuまとめ作成ツール",
+        alt: "まとめるん - 掲示板まとめ作成ツール",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "シクマト - Shikutokuまとめ作成ツール",
-    description: "Shikutokuのトークを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
-    images: ["https://matome.shikutoku.me/og-image.png"],
+    title: "まとめるん - 掲示板まとめ作成ツール",
+    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
+    images: ["https://matomeln.pages.dev/og-image.png"],
   },
-  metadataBase: new URL('https://matome.shikutoku.me'),
+  metadataBase: new URL('https://matomeln.pages.dev'),
   alternates: {
     canonical: '/',
   },
@@ -64,10 +64,10 @@ export default function RootLayout({
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: 'シクマト',
-    alternateName: 'Shikumato',
-    url: 'https://matome.shikutoku.me',
-    description: 'Shikutoku（シクトク）のトークを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。',
+    name: 'まとめるん',
+    alternateName: 'Matomeln',
+    url: 'https://matomeln.pages.dev',
+    description: '5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。',
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'Web',
     offers: {
@@ -76,17 +76,17 @@ export default function RootLayout({
       priceCurrency: 'JPY',
     },
     featureList: [
-      'Shikutokuトークのまとめ作成',
+      '5ch・Shikutokuスレッドのまとめ作成',
       'ドラッグ&ドロップによるコメント並べ替え',
       'コメントの色・サイズカスタマイズ',
       'HTMLタグ自動生成',
       'ライブドアブログ直接投稿',
     ],
-    screenshot: 'https://matome.shikutoku.me/og-image.svg',
+    screenshot: 'https://matomeln.pages.dev/og-image.svg',
     author: {
       '@type': 'Organization',
-      name: 'シクマト',
-      url: 'https://matome.shikutoku.me',
+      name: 'まとめるん',
+      url: 'https://matomeln.pages.dev',
     },
   };
 
@@ -100,9 +100,19 @@ export default function RootLayout({
         {/* Cloudflare Web Analytics */}
         <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
       </head>
-      <body className="bg-gradient-to-br from-sky-50 via-white to-cyan-50 min-h-screen">
-        <Toaster position="top-center" />
-        <nav className={`${gradients.primary} ${shadows.lg}`}>
+      <body className="bg-gradient-to-br from-orange-50 via-white to-pink-50 min-h-screen">
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: {
+              borderRadius: '16px',
+              background: '#fff',
+              color: '#44403C',
+              boxShadow: '0 4px 12px rgba(251, 146, 60, 0.15)',
+            },
+          }}
+        />
+        <nav className="bg-gradient-to-r from-orange-400 via-orange-400 to-pink-400 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-20">
               <div className="flex items-center gap-3">
@@ -111,10 +121,10 @@ export default function RootLayout({
                     <Logo />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-2xl text-white" style={{ fontFamily: typography.fonts.apple, letterSpacing: '0.08em', fontWeight: '800' }}>
-                      シクマト
+                    <span className="text-2xl text-white drop-shadow-sm" style={{ fontFamily: typography.fonts.rounded, letterSpacing: '0.05em', fontWeight: '800' }}>
+                      まとめるん
                     </span>
-                    <span className="text-xs text-sky-100 font-medium">Shikutokuのまとめ作成ツール</span>
+                    <span className="text-xs text-orange-100 font-medium">掲示板まとめ作成ツール</span>
                   </div>
                 </a>
               </div>
@@ -122,7 +132,7 @@ export default function RootLayout({
               <div className="flex items-center gap-2">
                 <a
                   href="/about"
-                  className="px-4 py-2 text-sm text-white hover:bg-white/20 rounded-lg transition-all font-bold backdrop-blur-sm"
+                  className="px-4 py-2 text-sm text-white hover:bg-white/20 rounded-xl transition-all font-bold backdrop-blur-sm"
                 >
                   <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -133,7 +143,7 @@ export default function RootLayout({
                   href="https://shikutoku.me"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-white text-sky-600 hover:bg-sky-50 rounded-lg transition-all font-bold shadow-md hover:shadow-lg"
+                  className="px-4 py-2 bg-white text-orange-500 hover:bg-orange-50 rounded-xl transition-all font-bold shadow-md hover:shadow-lg"
                 >
                   Shikutoku
                   <svg className="w-4 h-4 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,23 +159,23 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="py-4 bg-white/60 backdrop-blur-sm border-t border-sky-100">
+        <footer className="py-5 bg-white/70 backdrop-blur-sm border-t border-orange-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-3 text-xs mb-2">
-              <a href="/site-map" className="text-gray-600 hover:text-gray-800">
+              <a href="/site-map" className="text-stone-500 hover:text-orange-500 transition-colors">
                 サイトマップ
               </a>
-              <span className="text-gray-400">|</span>
-              <a href="/privacy" className="text-gray-600 hover:text-gray-800">
+              <span className="text-stone-300">|</span>
+              <a href="/privacy" className="text-stone-500 hover:text-orange-500 transition-colors">
                 プライバシーポリシー
               </a>
-              <span className="text-gray-400">|</span>
-              <a href="/terms" className="text-gray-600 hover:text-gray-800">
+              <span className="text-stone-300">|</span>
+              <a href="/terms" className="text-stone-500 hover:text-orange-500 transition-colors">
                 利用規約
               </a>
             </div>
-            <p className="text-xs text-gray-500">
-              © 2025 シクマト
+            <p className="text-xs text-stone-400">
+              © 2025 まとめるん
             </p>
           </div>
         </footer>

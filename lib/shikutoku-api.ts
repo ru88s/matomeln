@@ -1,5 +1,6 @@
 import { Talk, Comment } from './types';
 import { logger } from './logger';
+import { detectSourceType, fetch5chThread, parse5chUrl } from './5ch-api';
 
 // プロキシAPIを使用してCORS問題を回避
 const API_BASE = '/api/proxy';
@@ -76,7 +77,7 @@ export async function fetchAllComments(talkId: string): Promise<Comment[]> {
   return allComments;
 }
 
-// URLからトークIDを抽出
+// URLからトークIDを抽出（シクトク用）
 export function extractTalkIdFromUrl(url: string): string | null {
   const patterns = [
     /shikutoku\.me\/talks\/(\d+)/,
@@ -92,3 +93,48 @@ export function extractTalkIdFromUrl(url: string): string | null {
 
   return null;
 }
+
+// URLまたはIDからデータを取得（シクトク/5ch両対応）
+export interface ThreadData {
+  talk: Talk;
+  comments: Comment[];
+  source: 'shikutoku' | '5ch';
+}
+
+export async function fetchThreadData(input: string): Promise<ThreadData> {
+  const sourceType = detectSourceType(input);
+
+  if (sourceType === '5ch') {
+    // 5chスレッドを取得
+    const result = await fetch5chThread(input);
+    if (!result) {
+      throw new Error('5chスレッドの取得に失敗しました');
+    }
+    return {
+      talk: result.talk,
+      comments: result.comments,
+      source: '5ch',
+    };
+  }
+
+  // シクトクの場合
+  const talkId = extractTalkIdFromUrl(input);
+  if (!talkId) {
+    throw new Error('有効なURLまたはトークIDを入力してください');
+  }
+
+  const talk = await fetchTalk(talkId);
+  if (!talk) {
+    throw new Error('トークが見つかりません');
+  }
+
+  const comments = await fetchAllComments(talkId);
+  return {
+    talk,
+    comments,
+    source: 'shikutoku',
+  };
+}
+
+// Re-export for convenience
+export { detectSourceType, parse5chUrl } from './5ch-api';

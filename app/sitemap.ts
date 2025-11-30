@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 export const dynamic = 'error';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://matome.shikutoku.me';
+  const baseUrl = 'https://matomeln.pages.dev';
 
   return [
     {

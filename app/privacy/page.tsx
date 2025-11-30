@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { componentStyles } from '@/lib/design-system';
 
 export const metadata: Metadata = {
-  title: 'プライバシーポリシー | シクマト',
-  description: 'シクマトのプライバシーポリシーについて説明しています。',
+  title: 'プライバシーポリシー | まとめるん',
+  description: 'まとめるんのプライバシーポリシーについて説明しています。',
 };
 
 export default function Privacy() {
@@ -11,9 +11,9 @@ export default function Privacy() {
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">プライバシーポリシー</h1>
 
-      <div className="prose prose-sky max-w-none">
+      <div className="prose prose-orange max-w-none">
         <p className="text-gray-600 mb-6">
-          シクマト（以下、「当サービス」といいます）は、ユーザーのプライバシーを尊重し、個人情報の保護に努めています。
+          まとめるん（以下、「当サービス」といいます）は、ユーザーのプライバシーを尊重し、個人情報の保護に努めています。
           本プライバシーポリシーは、当サービスにおける情報の取り扱いについて説明します。
         </p>
 
@@ -119,11 +119,11 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">10. お問い合わせ</h2>
           <p className="text-gray-700">
             本プライバシーポリシーに関するお問い合わせは、
-            <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 mx-1">
+            <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
               ご意見ご要望ページ
             </a>
             または
-            <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 mx-1">
+            <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
               お問い合わせフォーム
             </a>
             からお願いします。

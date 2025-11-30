@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { componentStyles } from '@/lib/design-system';
 
 export const metadata: Metadata = {
-  title: '利用規約 | シクマト',
-  description: 'シクマトの利用規約について説明しています。',
+  title: '利用規約 | まとめるん',
+  description: 'まとめるんの利用規約について説明しています。',
 };
 
 export default function Terms() {
@@ -11,9 +11,9 @@ export default function Terms() {
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">利用規約</h1>
 
-      <div className="prose prose-sky max-w-none">
+      <div className="prose prose-orange max-w-none">
         <p className="text-gray-600 mb-6">
-          本利用規約（以下、「本規約」といいます）は、シクマト（以下、「当サービス」といいます）の利用条件を定めるものです。
+          本利用規約（以下、「本規約」といいます）は、まとめるん（以下、「当サービス」といいます）の利用条件を定めるものです。
           ユーザーの皆様には、本規約に従って当サービスをご利用いただきます。
         </p>
 
@@ -138,7 +138,7 @@ export default function Terms() {
           <p className="text-gray-700">
             当サービスの利用によって取得する個人情報については、
             当サービスの
-            <a href="/privacy" className="text-sky-600 hover:text-sky-700 mx-1">プライバシーポリシー</a>
+            <a href="/privacy" className="text-orange-500 hover:text-orange-600 mx-1">プライバシーポリシー</a>
             に従い適切に取り扱うものとします。
           </p>
         </section>
@@ -186,11 +186,11 @@ export default function Terms() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">第14条（お問い合わせ）</h2>
           <p className="text-gray-700">
             本規約に関するお問い合わせは、
-            <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 mx-1">
+            <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
               ご意見ご要望ページ
             </a>
             または
-            <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:text-sky-700 mx-1">
+            <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
               お問い合わせフォーム
             </a>
             からお願いします。

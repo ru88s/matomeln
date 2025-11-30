@@ -8,13 +8,19 @@ import toast from 'react-hot-toast';
 // 注: アンカーベースの並び替えは削除しました。
 // ユーザーが手動で並べ替えた順番をそのまま使用します。
 
+interface SourceInfo {
+  source: 'shikutoku' | '5ch';
+  originalUrl: string;
+}
+
 interface HTMLGeneratorProps {
   talk: Talk | null;
   selectedComments: CommentWithStyle[];
+  sourceInfo: SourceInfo | null;
   onClose?: () => void;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -43,11 +49,11 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options]);
+  }, [talk, selectedComments, options, sourceInfo]);
 
   // API設定を保存
   const saveApiSettings = () => {
@@ -62,7 +68,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
@@ -131,7 +137,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
               <h4 className="font-bold text-gray-900">タイトル:</h4>
               <button
                 onClick={() => handleCopy(generatedHTML.title)}
-                className="text-sm px-3 py-1 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors"
+                className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
               </button>
@@ -149,7 +155,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
               <h4 className="font-bold text-gray-900">本文の内容: <span className="text-sm font-normal text-gray-600">（1つめのコメント）</span></h4>
               <button
                 onClick={() => handleCopy(generatedHTML.body)}
-                className="text-sm px-3 py-1 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors"
+                className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
               </button>
@@ -167,7 +173,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
               <h4 className="font-bold text-gray-900">「続きを読む」の内容: <span className="text-sm font-normal text-gray-600">（2つめ以降のコメント）</span></h4>
               <button
                 onClick={() => handleCopy(generatedHTML.footer)}
-                className="text-sm px-3 py-1 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors"
+                className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
               </button>
@@ -195,7 +201,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
                     value={apiSettings.blogUrl}
                     onChange={(e) => setApiSettings({...apiSettings, blogUrl: e.target.value})}
                     placeholder="例: myblog (https://myblog.blog.jp のmyblog部分)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     ※ブログURLの https://●●●.blog.jp の●●●部分を入力
@@ -210,7 +216,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
                     value={apiSettings.apiKey}
                     onChange={(e) => setApiSettings({...apiSettings, apiKey: e.target.value})}
                     placeholder="APIキーを入力"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                   />
                 </div>
                 <div className="flex justify-between items-center">
@@ -245,7 +251,7 @@ export default function HTMLGenerator({ talk, selectedComments, onClose }: HTMLG
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400 mx-auto mb-4"></div>
           <p>HTMLタグを生成中...</p>
         </div>
       )}

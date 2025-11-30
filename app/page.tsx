@@ -4,7 +4,7 @@ import { useState } from 'react';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
-import { fetchTalk, fetchAllComments } from '@/lib/shikutoku-api';
+import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import toast from 'react-hot-toast';
@@ -27,6 +27,7 @@ export default function Home() {
   });
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch'; originalUrl: string } | null>(null);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -103,46 +104,36 @@ export default function Home() {
     }
   };
 
-  const handleLoadTalk = async (talkId: string) => {
+  const handleLoadThread = async (input: string) => {
     setLoading(true);
     setComments([]); // 既存のコメントをクリア
     resetHistory(); // 履歴もリセット
 
     try {
-      const talk = await fetchTalk(talkId);
-      if (!talk) {
-        toast.error('トークが見つかりません');
-        setLoading(false);
-        return;
-      }
+      const { talk, comments: loadedComments, source } = await fetchThreadData(input);
 
       setCurrentTalk(talk);
-      toast.success(`「${talk.title}」を読み込みました`);
+      setComments(loadedComments);
+      setSourceInfo({ source, originalUrl: input });
 
-      const allComments = await fetchAllComments(talkId);
-      setComments(allComments);
+      const sourceLabel = source === '5ch' ? '5ch' : 'Shikutoku';
+      toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
     } catch (error) {
       // 開発環境のみエラーログを出力
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading talk:', error);
+        console.error('Error loading thread:', error);
       }
 
       // エラーメッセージをより具体的に表示
       if (error instanceof Error) {
-        if (error.message.includes('見つかりません')) {
-          toast.error('指定されたトークIDが見つかりません');
-        } else if (error.message.includes('Failed to fetch')) {
-          toast.error('サーバーへの接続に失敗しました');
-        } else {
-          toast.error(`エラー: ${error.message}`);
-        }
+        toast.error(error.message);
       } else {
         toast.error('読み込みエラーが発生しました');
       }
     } finally {
       setLoading(false);
     }
-  };;
+  };
 
   return (
     <div className="space-y-6">
@@ -151,13 +142,13 @@ export default function Home() {
       <div className="space-y-6">
         <div className="relative">
           <TalkLoader
-            onLoad={handleLoadTalk}
+            onLoad={handleLoadThread}
             currentTalk={currentTalk}
             commentsCount={comments.length}
           />
           {loading && (
             <div className="absolute inset-0 bg-white/90 rounded-3xl flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400"></div>
             </div>
           )}
         </div>
@@ -208,7 +199,7 @@ export default function Home() {
               <div className="fixed bottom-6 right-6 z-40">
                 <button
                   onClick={openHTMLModal}
-                  className="bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:from-sky-600 hover:to-cyan-600 transform hover:scale-105 transition-all flex items-center gap-2"
+                  className="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:from-orange-500 hover:to-pink-500 transform hover:scale-105 transition-all flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -239,6 +230,7 @@ export default function Home() {
                 <HTMLGenerator
                   talk={currentTalk}
                   selectedComments={selectedComments}
+                  sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
                 />
               </div>
@@ -255,9 +247,9 @@ export default function Home() {
               href="https://shikutoku.me"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-sky-500 to-cyan-500 text-white rounded-lg hover:from-sky-600 hover:to-cyan-600 transition-all font-bold text-xs shadow-md"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-xl hover:from-orange-500 hover:to-pink-500 transition-all font-bold text-xs shadow-md"
             >
-              Shikutoku（シクトク）へ
+              Shikutokuへ
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
@@ -277,7 +269,7 @@ export default function Home() {
               href="https://shikutoku.me/contact"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sky-600 hover:text-sky-700 font-medium text-xs"
+              className="text-orange-500 hover:text-orange-600 font-medium text-xs"
             >
               お問い合わせ
             </a>
