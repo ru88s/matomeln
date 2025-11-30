@@ -1,4 +1,4 @@
 name = "matomeln"
 compatibility_date = "2024-12-27"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+pages_build_output_dir = "out"
