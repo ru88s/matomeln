@@ -826,6 +826,53 @@ export default function CommentPicker({
     onSelectionChange([]);
   };
 
+  // スレ主のID
+  const firstPosterId = comments[0]?.name_id;
+
+  // スレ主のコメントを全選択
+  const selectFirstPoster = () => {
+    if (!firstPosterId) return;
+    const firstPosterComments = comments.filter(c => c.name_id === firstPosterId);
+    const newSelected = firstPosterComments.map(c => {
+      const existing = selectedComments.find(sc => sc.id === c.id);
+      if (existing) return existing;
+      const sizeValue = commentSizes[c.id];
+      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+      return {
+        ...c,
+        body: editedComments[c.id] || c.body,
+        color: commentColors[c.id] || '#ef4444',
+        fontSize
+      };
+    });
+    // 既存の選択に追加（重複を除く）
+    const existingIds = new Set(selectedComments.map(sc => sc.id));
+    const toAdd = newSelected.filter(c => !existingIds.has(c.id));
+    onSelectionChange([...selectedComments, ...toAdd]);
+  };
+
+  // スレ主のコメントの色を一括変更
+  const changeFirstPosterColor = (color: string) => {
+    if (!firstPosterId) return;
+    const firstPosterIds = new Set(comments.filter(c => c.name_id === firstPosterId).map(c => c.id));
+
+    // 色情報を更新
+    const newColors = { ...commentColors };
+    firstPosterIds.forEach(id => {
+      newColors[id] = color;
+    });
+    setCommentColors(newColors);
+
+    // 選択済みコメントの色を更新
+    const updated = selectedComments.map(c =>
+      firstPosterIds.has(c.id) ? { ...c, color } : c
+    );
+    onSelectionChange(updated);
+  };
+
+  // スレ主のコメント数を取得
+  const firstPosterCount = firstPosterId ? comments.filter(c => c.name_id === firstPosterId).length : 0;
+
   return (
     <div className="bg-white rounded-2xl border-2 border-purple-100 p-6 shadow-sm hover:border-purple-200 transition-all">
       <div className="flex items-center gap-3 mb-4">
@@ -928,6 +975,30 @@ export default function CommentPicker({
               </button>
             )}
           </div>
+          {/* スレ主操作 */}
+          {firstPosterId && firstPosterCount > 1 && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-medium text-gray-700">スレ主（{firstPosterCount}件）:</span>
+              <button
+                onClick={selectFirstPoster}
+                className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded-full font-bold cursor-pointer transition-colors"
+              >
+                全選択
+              </button>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-600">色:</span>
+                {['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#000000'].map(color => (
+                  <button
+                    key={color}
+                    onClick={() => changeFirstPosterColor(color)}
+                    className="w-5 h-5 rounded border border-gray-300 hover:scale-110 transition-transform cursor-pointer"
+                    style={{ backgroundColor: color }}
+                    title={`スレ主の色を変更`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -935,19 +1006,19 @@ export default function CommentPicker({
                   type="checkbox"
                   checked={showOnlySelected}
                   onChange={(e) => setShowOnlySelected(e.target.checked)}
-                  className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded"
+                  className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded"
                 />
                 <span className="text-sm font-medium text-gray-700">選択済みのレスのみ表示</span>
               </label>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-orange-500">
+              <span className="text-sm font-bold text-purple-500">
                 {selectedComments.length}件選択 / 全{comments.length}件
               </span>
               <span className="text-gray-400">|</span>
               <button
                 onClick={selectAll}
-                className="text-sm text-orange-500 hover:text-orange-600 font-bold cursor-pointer"
+                className="text-sm text-purple-500 hover:text-purple-600 font-bold cursor-pointer"
               >
                 全て選択
               </button>
@@ -1137,7 +1208,7 @@ export default function CommentPicker({
                 displayName={customName}
                 displayNameBold={customNameBold}
                 displayNameColor={customNameColor}
-                firstPosterId={comments[0]?.name_id}
+                firstPosterId={firstPosterId}
                 onDragHandleStart={(e) => {
                   if (!isFirstSelected) {
                     // 未選択の場合は自動選択
