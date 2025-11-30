@@ -81,7 +81,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
 
       {currentTalk && (
         <div className="mt-4 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm">
-          <div className="font-bold text-red-600">{currentTalk.title}</div>
+          <div className="font-bold text-rose-500">{currentTalk.title}</div>
           <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
             <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
             {commentsCount !== undefined ? commentsCount : 0}件のコメント
