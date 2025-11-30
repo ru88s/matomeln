@@ -166,8 +166,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
   return (
     <div
-      className={`relative border rounded-xl p-4 transition-all cursor-pointer shadow-sm ${
-        isSelected ? 'bg-orange-50 border-orange-300 shadow-orange-100' : 'bg-white border-gray-200 hover:border-orange-200 hover:shadow-md'
+      className={`relative border-2 rounded-xl p-4 transition-all cursor-pointer shadow-sm ${
+        isSelected ? 'bg-purple-50 border-purple-300 shadow-purple-100' : 'bg-white border-gray-200 hover:border-purple-200 hover:shadow-md'
       }`}
       onClick={(e) => {
         // 編集中はクリックで選択状態を変更しない
@@ -187,7 +187,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       {/* ショートカットヒント（ホバー時のみ表示） */}
       {isHovered && !isEditing && (
         <div className="absolute bottom-3 right-3 z-30">
-          <span className="text-xs bg-gradient-to-r from-orange-100 to-pink-100 text-orange-700 px-2.5 py-1 rounded-full font-bold shadow-sm border border-orange-200">Space: 選択</span>
+          <span className="text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 px-2.5 py-1 rounded-full font-bold shadow-sm border border-purple-200">Space: 選択</span>
         </div>
       )}
 
@@ -197,7 +197,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           checked={isSelected}
           onChange={onToggle}
           disabled={isInSortMode}
-          className={`mt-1 h-5 w-5 text-orange-500 focus:ring-orange-400 border-gray-300 rounded ${
+          className={`mt-1 h-5 w-5 text-purple-500 focus:ring-purple-400 border-gray-300 rounded ${
             isInSortMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -824,14 +824,16 @@ export default function CommentPicker({
   };
 
   return (
-    <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl border border-orange-100 p-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-7 h-7 bg-gradient-to-br from-orange-400 to-pink-400 text-white rounded-full text-sm font-bold flex items-center justify-center shadow-sm">2</span>
-        <h2 className="text-base font-bold text-gray-900">コメントを選択</h2>
+    <div className="bg-white rounded-2xl border-2 border-purple-100 p-6 shadow-sm hover:border-purple-200 transition-all">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+          <span className="font-black text-xl">2</span>
+        </div>
+        <h2 className="text-lg font-black text-gray-900">コメントを選択</h2>
       </div>
 
       {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-orange-100 rounded-t-xl">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-purple-100 rounded-t-xl">
         <div className="flex justify-between items-center">
           <div className="flex-1">
             <div className="flex items-center gap-4 text-xs">

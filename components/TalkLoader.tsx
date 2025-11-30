@@ -44,10 +44,12 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
   };
 
   return (
-    <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl border border-orange-100 p-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-7 h-7 bg-gradient-to-br from-orange-400 to-pink-400 text-white rounded-full text-sm font-bold flex items-center justify-center shadow-sm">1</span>
-        <h2 className="text-base font-bold text-gray-900">スレッドを読み込む</h2>
+    <div className="bg-white rounded-2xl border-2 border-pink-100 p-6 shadow-sm hover:border-pink-200 transition-all">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+          <span className="font-black text-xl">1</span>
+        </div>
+        <h2 className="text-lg font-black text-gray-900">スレッドを読み込む</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,7 +63,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="https://shikutoku.me/talks/123 または https://xxx.5ch.net/test/read.cgi/..."
-            className="w-full px-4 py-2.5 border border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm bg-white shadow-sm"
+            className="w-full px-4 py-2.5 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent text-sm bg-white shadow-sm"
           />
         </div>
 
@@ -71,14 +73,14 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-3 px-4 rounded-xl hover:from-orange-500 hover:to-pink-500 transition-all shadow-md hover:shadow-lg cursor-pointer"
+          className="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold py-3 px-4 rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg cursor-pointer"
         >
           読み込む
         </button>
       </form>
 
       {currentTalk && (
-        <div className="mt-4 p-4 bg-white rounded-xl border border-orange-200 shadow-sm">
+        <div className="mt-4 p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm">
           <div className="font-bold text-red-600">{currentTalk.title}</div>
           <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
             <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
