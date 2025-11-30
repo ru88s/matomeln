@@ -73,7 +73,7 @@ export default function TalkLoader({ onLoad, currentTalk, commentsCount }: TalkL
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold py-3 px-4 rounded-xl hover:from-pink-500 hover:to-rose-500 transition-all shadow-md hover:shadow-lg cursor-pointer"
+          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-4 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg cursor-pointer"
         >
           読み込む
         </button>
