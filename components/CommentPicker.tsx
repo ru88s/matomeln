@@ -250,9 +250,9 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               >
                 {displayName || comment.name}
               </span>
-              <span className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
+              <span className="text-sm text-gray-400">{formatDate(comment.created_at)}</span>
               {showId && comment.name_id && (
-                <span className={`text-xs ${comment.name_id === firstPosterId ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                <span className={`text-sm ${comment.name_id === firstPosterId ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
                   ID: {comment.name_id}
                 </span>
               )}
