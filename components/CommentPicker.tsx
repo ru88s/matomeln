@@ -730,8 +730,8 @@ export default function CommentPicker({
         }
       }
 
-      // Ctrl+Eキーで最後にホバーしたコメントを編集
-      if (e.key && e.key.toLowerCase() === 'e' && e.ctrlKey && lastHoveredCommentId) {
+      // Cmd+E (Mac) / Ctrl+E (Windows) キーで最後にホバーしたコメントを編集
+      if (e.key && e.key.toLowerCase() === 'e' && (e.metaKey || e.ctrlKey) && lastHoveredCommentId) {
         e.preventDefault();
         setEditingCommentId(lastHoveredCommentId);
       }

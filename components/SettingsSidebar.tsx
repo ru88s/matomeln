@@ -330,7 +330,7 @@ export default function SettingsSidebar({
                 <span className="text-gray-500">選択</span>
               </div>
               <div className="flex items-center gap-1">
-                <kbd className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">Ctrl+E</kbd>
+                <kbd className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">⌘E</kbd>
                 <span className="text-gray-500">編集</span>
               </div>
               <div className="flex items-center gap-1">
