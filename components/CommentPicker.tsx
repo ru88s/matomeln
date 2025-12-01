@@ -47,7 +47,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   const [isHovered, setIsHovered] = useState(false);
   const [editingBody, setEditingBody] = useState(comment.body);
   const [targetPosition, setTargetPosition] = useState<string>('');  // 移動先番号入力用
-  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
 
   // 編集開始時に現在のbodyを設定
   useEffect(() => {
@@ -203,25 +202,11 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 <div
                   className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-gray-100 rounded"
                   draggable={true}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setDragStartPos({ x: e.clientX, y: e.clientY });
-                  }}
                   onDragStart={(e) => {
                     e.stopPropagation();
-                    if (dragStartPos) {
-                      const distance = Math.sqrt(
-                        Math.pow(e.clientX - dragStartPos.x, 2) +
-                        Math.pow(e.clientY - dragStartPos.y, 2)
-                      );
-                      if (distance < 5) {
-                        e.preventDefault();
-                        setDragStartPos(null);
-                        return;
-                      }
-                    }
+                    e.dataTransfer.setData('text/plain', comment.id);
+                    e.dataTransfer.effectAllowed = 'move';
                     onDragHandleStart?.(e);
-                    setDragStartPos(null);
                   }}
                   title="ドラッグして並べ替え"
                 >
