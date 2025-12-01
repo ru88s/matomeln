@@ -223,7 +223,17 @@ export default function SettingsSidebar({
 
         {/* レス名設定 */}
         <div className="space-y-2 pt-3 border-t border-gray-100">
-          <h4 className="text-xs font-bold text-gray-600">レス名</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-gray-600">レス名</h4>
+            {customName && (
+              <button
+                onClick={() => onCustomNameChange('')}
+                className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                リセット
+              </button>
+            )}
+          </div>
           <input
             type="text"
             value={customName}
@@ -252,14 +262,6 @@ export default function SettingsSidebar({
               />
             </div>
           </div>
-          {customName && (
-            <button
-              onClick={() => onCustomNameChange('')}
-              className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-            >
-              リセット
-            </button>
-          )}
         </div>
 
         {/* ブログ設定 */}
