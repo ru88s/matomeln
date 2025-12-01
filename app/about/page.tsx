@@ -13,7 +13,7 @@ export default function AboutPage() {
           まとめるんの使い方
         </h1>
         <p className="text-gray-600 text-lg">
-          5chやShikutokuのスレッドから簡単にまとめ記事を作成できます
+          5ch、open2ch、Shikutokuのスレッドから簡単にまとめ記事を作成できます
         </p>
       </div>
 
@@ -70,12 +70,13 @@ export default function AboutPage() {
                   </div>
                   <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 space-y-3">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      5chまたはShikutokuのスレッドURLを入力してください。
+                      5ch、open2ch、ShikutokuのスレッドURLを入力してください。
                     </p>
                     <div className="bg-white rounded-lg p-3 border border-pink-200 shadow-sm">
                       <p className="text-xs font-bold text-gray-600 mb-2">📝 入力例</p>
                       <div className="space-y-1">
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.5ch.net/test/read.cgi/...</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.open2ch.net/test/read.cgi/...</code>
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://shikutoku.me/talks/6454</code>
                       </div>
                     </div>
@@ -211,6 +212,12 @@ export default function AboutPage() {
                 +
                 <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">E</kbd>
                 <span className="ml-2 text-sm text-gray-700">コメント編集</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Ctrl</kbd>
+                +
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Enter</kbd>
+                <span className="ml-2 text-sm text-gray-700">タグ発行</span>
               </div>
             </div>
           </div>
@@ -356,7 +363,7 @@ export default function AboutPage() {
                 Q: 対応している掲示板は？
               </p>
               <p className="text-sm text-gray-600">
-                A: 現在、5ch（5ちゃんねる）とShikutokuに対応しています。
+                A: 現在、5ch（5ちゃんねる）、open2ch（おーぷん2ちゃんねる）、Shikutokuに対応しています。
               </p>
             </div>
 
@@ -365,7 +372,7 @@ export default function AboutPage() {
                 Q: 他の掲示板にも対応予定はありますか？
               </p>
               <p className="text-sm text-gray-600">
-                A: はい、対応希望の掲示板様を募集中です。お問い合わせフォームからご連絡ください。
+                A: はい、対応希望の掲示板がありましたらお問い合わせください。
               </p>
             </div>
           </div>

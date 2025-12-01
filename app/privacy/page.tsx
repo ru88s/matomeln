@@ -21,7 +21,7 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">1. 収集する情報</h2>
           <p className="text-gray-700 mb-3">当サービスは以下の情報を取り扱います：</p>
           <ul className="list-disc pl-6 text-gray-700 space-y-2">
-            <li>ShikutokuのトークURL・ID（一時的な処理のみ、保存しません）</li>
+            <li>5ch、open2ch、ShikutokuのスレッドURL・ID（一時的な処理のみ、保存しません）</li>
             <li>選択・編集されたコメントデータ（一時的な処理のみ、保存しません）</li>
             <li>ライブドアブログAPIキー（ブラウザのローカルストレージに保存）</li>
             <li>ライブドアブログID（ブラウザのローカルストレージに保存）</li>
@@ -32,7 +32,7 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">2. 情報の利用目的</h2>
           <p className="text-gray-700 mb-3">収集した情報は以下の目的で利用します：</p>
           <ul className="list-disc pl-6 text-gray-700 space-y-2">
-            <li>Shikutokuからコメントデータを取得するため</li>
+            <li>5ch、open2ch、Shikutokuからコメントデータを取得するため</li>
             <li>まとめ記事のHTMLタグを生成するため</li>
             <li>ライブドアブログへの記事投稿を可能にするため</li>
             <li>サービスの利便性向上のため</li>
@@ -91,6 +91,8 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">7. 外部サービスとの連携</h2>
           <p className="text-gray-700 mb-3">当サービスは以下の外部サービスと連携しています：</p>
           <ul className="list-disc pl-6 text-gray-700 space-y-2">
+            <li><strong>5ch（5ちゃんねる）：</strong> コメントデータの取得元</li>
+            <li><strong>open2ch（おーぷん2ちゃんねる）：</strong> コメントデータの取得元</li>
             <li><strong>Shikutoku：</strong> コメントデータの取得元</li>
             <li><strong>ライブドアブログ：</strong> まとめ記事の投稿先</li>
           </ul>
@@ -119,12 +121,8 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">10. お問い合わせ</h2>
           <p className="text-gray-700">
             本プライバシーポリシーに関するお問い合わせは、
-            <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
-              ご意見ご要望ページ
-            </a>
-            または
-            <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 mx-1">
-              お問い合わせフォーム
+            <a href="/contact" className="text-orange-500 hover:text-orange-600 mx-1">
+              お問い合わせページ
             </a>
             からお願いします。
           </p>

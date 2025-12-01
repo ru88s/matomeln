@@ -36,6 +36,12 @@ export default function Sitemap() {
               </a>
               <span className="text-gray-500 text-sm ml-2">- まとめるんの使用方法とFAQ</span>
             </li>
+            <li>
+              <a href="/contact" className="text-orange-500 hover:text-orange-600 font-medium">
+                お問い合わせ
+              </a>
+              <span className="text-gray-500 text-sm ml-2">- バグ報告・ご質問</span>
+            </li>
           </ul>
         </section>
 
@@ -44,9 +50,27 @@ export default function Sitemap() {
             <svg className="w-5 h-5 inline-block mr-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
-            外部リンク
+            対応掲示板
           </h2>
           <ul className="space-y-3">
+            <li>
+              <a href="https://5ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
+                5ch（5ちゃんねる）
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+              <span className="text-gray-500 text-sm ml-2">- 日本最大級の掲示板</span>
+            </li>
+            <li>
+              <a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
+                open2ch（おーぷん2ちゃんねる）
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+              <span className="text-gray-500 text-sm ml-2">- オープンな2ちゃんねる</span>
+            </li>
             <li>
               <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
                 Shikutoku
@@ -54,25 +78,7 @@ export default function Sitemap() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </a>
-              <span className="text-gray-500 text-sm ml-2">- 対応掲示板のひとつ</span>
-            </li>
-            <li>
-              <a href="https://shikutoku.me/talks/6501" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
-                ご意見ご要望
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-              <span className="text-gray-500 text-sm ml-2">- 不具合報告・機能要望はこちら</span>
-            </li>
-            <li>
-              <a href="https://shikutoku.me/contact" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
-                お問い合わせ
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-              <span className="text-gray-500 text-sm ml-2">- 一般的なお問い合わせ</span>
+              <span className="text-gray-500 text-sm ml-2">- 新しい掲示板サービス</span>
             </li>
           </ul>
         </section>
@@ -111,7 +117,7 @@ export default function Sitemap() {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
                 <span className="text-orange-400 mr-2">✓</span>
-                <span>Shikutokuのスレッドからコメントを取得</span>
+                <span>5ch、open2ch、Shikutokuのスレッドからコメントを取得</span>
               </li>
               <li className="flex items-start">
                 <span className="text-orange-400 mr-2">✓</span>
@@ -147,8 +153,9 @@ export default function Sitemap() {
               <li><kbd className="px-2 py-1 bg-white border rounded">1-9</kbd> - カラー選択</li>
               <li><kbd className="px-2 py-1 bg-white border rounded">0</kbd> - 黒色選択</li>
               <li><kbd className="px-2 py-1 bg-white border rounded">Q/W/E</kbd> - 文字サイズ変更</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Enter</kbd> - 編集保存</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+C</kbd> - 編集キャンセル</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Z</kbd> - 元に戻す</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Shift+Z</kbd> - やり直す</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Enter</kbd> - タグ発行</li>
             </ul>
           </div>
         </section>
