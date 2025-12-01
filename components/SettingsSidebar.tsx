@@ -188,30 +188,36 @@ export default function SettingsSidebar({
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
               canUndo
                 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'
                 : 'bg-gray-50 text-gray-300 cursor-not-allowed'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-            <span className="font-bold">戻す</span>
+            <div className="flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span className="font-bold">戻す</span>
+            </div>
+            <kbd className="text-[9px] text-gray-400 font-mono">⌘Z</kbd>
           </button>
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex items-center justify-center gap-1 ${
+            className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
               canRedo
                 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'
                 : 'bg-gray-50 text-gray-300 cursor-not-allowed'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-            </svg>
-            <span className="font-bold">やり直す</span>
+            <div className="flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+              </svg>
+              <span className="font-bold">やり直す</span>
+            </div>
+            <kbd className="text-[9px] text-gray-400 font-mono">⌘⇧Z</kbd>
           </button>
         </div>
 
@@ -252,6 +258,49 @@ export default function SettingsSidebar({
               className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
             >
               リセット
+            </button>
+          )}
+        </div>
+
+        {/* ブログ設定 */}
+        <div className="space-y-2 pt-3 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-gray-600">ブログ設定</h4>
+          {blogs.length > 0 ? (
+            <div className="space-y-2">
+              <select
+                value={selectedBlogId || ''}
+                onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
+                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
+              >
+                {blogs.map(blog => (
+                  <option key={blog.id} value={blog.id}>{blog.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-1">
+                <button
+                  onClick={openAddBlogModal}
+                  className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  + 追加
+                </button>
+                <button
+                  onClick={() => {
+                    const blog = blogs.find(b => b.id === selectedBlogId);
+                    if (blog) openEditBlogModal(blog);
+                  }}
+                  disabled={!selectedBlogId}
+                  className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  編集
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={openAddBlogModal}
+              className="w-full text-xs bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+            >
+              + ブログを追加
             </button>
           )}
         </div>
@@ -303,49 +352,6 @@ export default function SettingsSidebar({
                 <span className="text-gray-500">タグ発行</span>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* ブログ設定 */}
-        <div className="space-y-2 pt-3 border-t border-gray-100">
-          <h4 className="text-xs font-bold text-gray-600">ブログ設定</h4>
-          {blogs.length > 0 ? (
-            <div className="space-y-2">
-              <select
-                value={selectedBlogId || ''}
-                onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
-                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
-              >
-                {blogs.map(blog => (
-                  <option key={blog.id} value={blog.id}>{blog.name}</option>
-                ))}
-              </select>
-              <div className="flex gap-1">
-                <button
-                  onClick={openAddBlogModal}
-                  className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
-                >
-                  + 追加
-                </button>
-                <button
-                  onClick={() => {
-                    const blog = blogs.find(b => b.id === selectedBlogId);
-                    if (blog) openEditBlogModal(blog);
-                  }}
-                  disabled={!selectedBlogId}
-                  className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  編集
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={openAddBlogModal}
-              className="w-full text-xs bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-            >
-              + ブログを追加
-            </button>
           )}
         </div>
 
