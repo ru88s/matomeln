@@ -252,6 +252,9 @@ export default function Home() {
             onLoad={handleLoadThread}
             currentTalk={currentTalk}
             commentsCount={comments.length}
+            thumbnailUrl={thumbnailUrl}
+            onThumbnailUrlChange={handleThumbnailUrlChange}
+            apiSettings={apiSettings}
           />
           {loading && (
             <div className="absolute inset-0 bg-white/90 rounded-lg flex items-center justify-center">
@@ -377,9 +380,6 @@ export default function Home() {
         onShowOnlySelectedChange={setShowOnlySelected}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
-        thumbnailUrl={thumbnailUrl}
-        onThumbnailUrlChange={handleThumbnailUrlChange}
-        apiSettings={apiSettings}
       />
     </div>
   );
