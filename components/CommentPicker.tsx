@@ -547,7 +547,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     onEditingChange?.(true);
                   }}
                   className="absolute top-0 -right-8 p-1 bg-orange-100 hover:bg-orange-200 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="編集 (キー: Ctrl+E)"
+                  title={`編集 (キー: ${typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+E)`}
                 >
                   <div className="relative">
                     <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -555,7 +555,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     </svg>
                     {isHovered && (
                       <span className="absolute -top-1 -right-1 text-[6px] font-bold bg-white rounded-full px-1 flex items-center justify-center shadow-sm">
-                        Ctrl+E
+                        {typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘E' : 'Ctrl+E'}
                       </span>
                     )}
                   </div>
