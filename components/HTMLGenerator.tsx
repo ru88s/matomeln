@@ -201,21 +201,13 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
           {/* ブログ投稿 */}
           <div className="border-t pt-4">
-            {apiSettings.blogUrl && apiSettings.apiKey ? (
-              <div className="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  <span className="text-sm font-bold text-green-700">{selectedBlogName || apiSettings.blogUrl}</span>
-                  <span className="text-xs text-green-600">に投稿</span>
-                </div>
-              </div>
-            ) : (
+            {!apiSettings.blogUrl || !apiSettings.apiKey ? (
               <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-600">
                   サイドバーの「ブログ設定」からブログを追加してください
                 </p>
               </div>
-            )}
+            ) : null}
             <button
               onClick={handleBlogPost}
               disabled={!apiSettings.blogUrl || !apiSettings.apiKey || isPosting}
