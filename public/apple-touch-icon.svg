@@ -10,18 +10,16 @@
     </linearGradient>
   </defs>
 
-  <!-- 3本の線（まとめるコンテンツを表現） -->
-  <rect x="22" y="45" width="75" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.7" />
-  <rect x="22" y="79" width="90" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.85" />
-  <rect x="22" y="113" width="60" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.7" />
-
-  <!-- > 矢印（集約を表現） -->
+  <!-- メインの「M」シェイプ -->
   <path
-    d="M120 52L158 90L120 128"
+    d="M30 135V60L64 105L90 60L116 105L150 60V135"
     stroke="url(#appleIconGradient)"
-    stroke-width="18"
+    stroke-width="19"
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"
   />
+
+  <!-- アクセントのドット -->
+  <circle cx="90" cy="37" r="15" fill="url(#appleIconGradient)" />
 </svg>

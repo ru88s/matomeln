@@ -10,18 +10,16 @@
     </linearGradient>
   </defs>
 
-  <!-- 3本の線（まとめるコンテンツを表現） -->
-  <rect x="24" y="48" width="80" height="24" rx="12" fill="url(#iconGradient)" opacity="0.7" />
-  <rect x="24" y="84" width="96" height="24" rx="12" fill="url(#iconGradient)" opacity="0.85" />
-  <rect x="24" y="120" width="64" height="24" rx="12" fill="url(#iconGradient)" opacity="0.7" />
-
-  <!-- > 矢印（集約を表現） -->
+  <!-- メインの「M」シェイプ -->
   <path
-    d="M128 56L168 96L128 136"
+    d="M32 144V64L68 112L96 64L124 112L160 64V144"
     stroke="url(#iconGradient)"
     stroke-width="20"
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"
   />
+
+  <!-- アクセントのドット -->
+  <circle cx="96" cy="40" r="16" fill="url(#iconGradient)" />
 </svg>
