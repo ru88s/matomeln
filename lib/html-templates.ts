@@ -7,7 +7,7 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc';
   originalUrl: string;
 }
 

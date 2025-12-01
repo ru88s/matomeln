@@ -96,7 +96,7 @@ export default function TalkLoader({
     const sourceType = detectSourceType(trimmedInput);
 
     if (sourceType === 'unknown') {
-      setError('有効なShikutoku、5ch、open2chのURLを入力してください');
+      setError('有効なShikutoku、5ch、open2ch、2ch.scのURLを入力してください');
       return;
     }
 
@@ -124,14 +124,14 @@ export default function TalkLoader({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm text-gray-600 mb-1">
-            <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">shikutoku.me</a>、<a href="https://5ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.net</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a> のURL
+            <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">shikutoku.me</a>、<a href="https://5ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.net</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>、<a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a> のURL
           </label>
           <input
             type="text"
             id="url"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="https://shikutoku.me/talks/123 または https://xxx.5ch.net/test/read.cgi/... または https://xxx.open2ch.net/test/read.cgi/..."
+            placeholder="https://shikutoku.me/talks/123 または https://xxx.5ch.net/... または https://xxx.2ch.sc/..."
             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm bg-white"
           />
         </div>

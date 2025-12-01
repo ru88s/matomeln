@@ -152,7 +152,7 @@ function extractImagesFromBody(body: string): string[] {
 }
 
 // URLがどのサービスか判定
-export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | 'unknown';
+export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
   if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
@@ -161,10 +161,106 @@ export function detectSourceType(url: string): SourceType {
   if (/\.5ch\.net/i.test(url)) {
     return '5ch';
   }
+  if (/\.2ch\.sc/i.test(url)) {
+    return '2chsc';
+  }
   if (/open2ch\.net/i.test(url)) {
     return 'open2ch';
   }
   return 'unknown';
+}
+
+// 2ch.sc URLから情報を抽出
+export interface TwoChScThreadInfo {
+  server: string;      // ai, hayabusa9 など
+  board: string;       // newsplus など
+  threadKey: string;   // スレッドキー（数字）
+}
+
+// 2ch.sc URLのパターン
+// https://ai.2ch.sc/test/read.cgi/newsplus/1733123456/
+export function parse2chscUrl(url: string): TwoChScThreadInfo | null {
+  const patterns = [
+    // 標準形式: https://server.2ch.sc/test/read.cgi/board/threadkey/
+    /https?:\/\/([a-z0-9]+)\.2ch\.sc\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // DAT直接: https://server.2ch.sc/board/dat/threadkey.dat
+    /https?:\/\/([a-z0-9]+)\.2ch\.sc\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      return {
+        server: match[1],
+        board: match[2],
+        threadKey: match[3],
+      };
+    }
+  }
+
+  return null;
+}
+
+// 2ch.scのDATファイルをパースしてComment[]に変換（5chと同じ形式）
+export function parse2chscDatFile(
+  datContent: string,
+  threadInfo: TwoChScThreadInfo
+): { talk: Talk; comments: Comment[] } {
+  const lines = datContent.split('\n').filter(line => line.trim());
+  const comments: Comment[] = [];
+  let threadTitle = '';
+
+  lines.forEach((line, index) => {
+    // DATフォーマット: 名前<>メール<>日付 ID:xxx<>本文<>スレタイ（1レス目のみ）
+    const parts = line.split('<>');
+    if (parts.length < 4) return;
+
+    const name = parts[0] || '名無しさん';
+    const dateAndId = parts[2] || '';
+    const body = parts[3] || '';
+
+    // 1レス目のみスレタイがある
+    if (index === 0 && parts[4]) {
+      threadTitle = parts[4].trim();
+    }
+
+    // 日付とIDをパース
+    const dateIdMatch = dateAndId.match(/^(.+?)(?:\s+ID:(\S+))?$/);
+    const dateStr = dateIdMatch?.[1]?.trim() || dateAndId;
+    const nameId = dateIdMatch?.[2] || undefined;
+
+    // 日付文字列をISO形式に変換
+    const createdAt = parseDateString(dateStr);
+
+    const comment: Comment = {
+      id: `2chsc-${threadInfo.threadKey}-${index + 1}`,
+      res_id: String(index + 1),
+      name: name.replace(/<[^>]+>/g, ''), // HTMLタグを除去
+      name_id: nameId,
+      body: convertBodyFromDat(body),
+      talk_id: threadInfo.threadKey,
+      created_at: createdAt,
+      images: extractImagesFromBody(body),
+    };
+
+    comments.push(comment);
+  });
+
+  // Talk情報を作成
+  const talk: Talk = {
+    id: `2chsc-${threadInfo.threadKey}`,
+    title: threadTitle || `${threadInfo.board}スレッド`,
+    body: '',
+    created_at: comments[0]?.created_at || new Date().toISOString(),
+    updated_at: comments[comments.length - 1]?.created_at || new Date().toISOString(),
+    views_count: 0,
+    sage_count: 0,
+    hash_id: threadInfo.threadKey,
+    comment_count: comments.length,
+    show_id: true,
+  };
+
+  return { talk, comments };
 }
 
 // open2ch URLから情報を抽出
@@ -330,6 +426,30 @@ export async function fetchOpen2chThread(url: string): Promise<{ talk: Talk; com
     return parseOpen2chDatFile(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching open2ch thread:', error);
+    throw error;
+  }
+}
+
+// 2ch.scスレッドデータを取得
+export async function fetch2chscThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
+  const threadInfo = parse2chscUrl(url);
+  if (!threadInfo) {
+    throw new Error('無効な2ch.sc URLです');
+  }
+
+  try {
+    // 2ch.scはプロキシAPI経由でDATを取得
+    const response = await fetch(`/api/proxy/get2chscDat?url=${encodeURIComponent(url)}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'スレッドの取得に失敗しました');
+    }
+
+    const data = await response.json();
+    return parse2chscDatFile(data.content, threadInfo);
+  } catch (error) {
+    console.error('Error fetching 2ch.sc thread:', error);
     throw error;
   }
 }

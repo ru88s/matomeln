@@ -1,6 +1,6 @@
 import { Talk, Comment } from './types';
 import { logger } from './logger';
-import { detectSourceType, fetch5chThread, parse5chUrl, fetchOpen2chThread, parseOpen2chUrl } from './5ch-api';
+import { detectSourceType, fetch5chThread, parse5chUrl, fetchOpen2chThread, parseOpen2chUrl, fetch2chscThread, parse2chscUrl } from './5ch-api';
 
 // プロキシAPIを使用してCORS問題を回避
 const API_BASE = '/api/proxy';
@@ -94,11 +94,11 @@ export function extractTalkIdFromUrl(url: string): string | null {
   return null;
 }
 
-// URLまたはIDからデータを取得（シクトク/5ch/open2ch対応）
+// URLまたはIDからデータを取得（シクトク/5ch/open2ch/2ch.sc対応）
 export interface ThreadData {
   talk: Talk;
   comments: Comment[];
-  source: 'shikutoku' | '5ch' | 'open2ch';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc';
 }
 
 export async function fetchThreadData(input: string): Promise<ThreadData> {
@@ -130,6 +130,19 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     };
   }
 
+  if (sourceType === '2chsc') {
+    // 2ch.scスレッドを取得
+    const result = await fetch2chscThread(input);
+    if (!result) {
+      throw new Error('2ch.scスレッドの取得に失敗しました');
+    }
+    return {
+      talk: result.talk,
+      comments: result.comments,
+      source: '2chsc',
+    };
+  }
+
   // シクトクの場合
   const talkId = extractTalkIdFromUrl(input);
   if (!talkId) {
@@ -150,4 +163,4 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
 }
 
 // Re-export for convenience
-export { detectSourceType, parse5chUrl, parseOpen2chUrl } from './5ch-api';
+export { detectSourceType, parse5chUrl, parseOpen2chUrl, parse2chscUrl } from './5ch-api';

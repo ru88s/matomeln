@@ -28,7 +28,7 @@ export default function Home() {
   });
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
-  const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch'; originalUrl: string } | null>(null);
+  const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc'; originalUrl: string } | null>(null);
   const [customName, setCustomName] = useState('');
   const [customNameBold, setCustomNameBold] = useState(true);
   const [customNameColor, setCustomNameColor] = useState('#ff69b4');
@@ -304,7 +304,7 @@ export default function Home() {
       setComments(loadedComments);
       setSourceInfo({ source, originalUrl: input });
 
-      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : 'Shikutoku';
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : 'Shikutoku';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
     } catch (error) {
       // 開発環境のみエラーログを出力
