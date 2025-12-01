@@ -2,17 +2,24 @@
   <!-- Background -->
   <rect width="180" height="180" rx="40" fill="white"/>
 
-  <!-- Scaled up version of the logo (7.5x) -->
-  <!-- 3本の線 -->
-  <rect x="22" y="45" width="75" height="22" rx="11" fill="#FFB6C1" />
-  <rect x="22" y="79" width="90" height="22" rx="11" fill="#87CEEB" />
-  <rect x="22" y="113" width="60" height="22" rx="11" fill="#DDA0DD" />
+  <!-- グラデーション定義 -->
+  <defs>
+    <linearGradient id="appleIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+  </defs>
 
-  <!-- シンプルな > （集約を表現） -->
+  <!-- 3本の線（まとめるコンテンツを表現） -->
+  <rect x="22" y="45" width="75" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.7" />
+  <rect x="22" y="79" width="90" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.85" />
+  <rect x="22" y="113" width="60" height="22" rx="11" fill="url(#appleIconGradient)" opacity="0.7" />
+
+  <!-- > 矢印（集約を表現） -->
   <path
     d="M120 52L158 90L120 128"
-    stroke="#FF69B4"
-    stroke-width="22"
+    stroke="url(#appleIconGradient)"
+    stroke-width="18"
     stroke-linecap="round"
     stroke-linejoin="round"
     fill="none"

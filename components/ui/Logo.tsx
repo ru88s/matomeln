@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Logo: React.FC = () => (
   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-    {/* まとめるん - モダンなアイコン */}
+    {/* まとめるん - 集約アイコン */}
 
     {/* グラデーション定義 */}
     <defs>
@@ -12,17 +12,19 @@ export const Logo: React.FC = () => (
       </linearGradient>
     </defs>
 
-    {/* メインの「M」シェイプ */}
+    {/* 3本の線（まとめるコンテンツを表現） */}
+    <rect x="3" y="6" width="10" height="3" rx="1.5" fill="url(#logoGradient)" opacity="0.7" />
+    <rect x="3" y="10.5" width="12" height="3" rx="1.5" fill="url(#logoGradient)" opacity="0.85" />
+    <rect x="3" y="15" width="8" height="3" rx="1.5" fill="url(#logoGradient)" opacity="0.7" />
+
+    {/* > 矢印（集約を表現） */}
     <path
-      d="M4 18V8L8.5 14L12 8L15.5 14L20 8V18"
+      d="M16 7L21 12L16 17"
       stroke="url(#logoGradient)"
       strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       fill="none"
     />
-
-    {/* アクセントのドット */}
-    <circle cx="12" cy="5" r="2" fill="url(#logoGradient)" />
   </svg>
 );
