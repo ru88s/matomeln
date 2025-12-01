@@ -17,7 +17,7 @@ interface CommentPickerProps {
   showOnlySelected?: boolean;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveUp, onMoveDown, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -36,6 +36,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   isInSortMode?: boolean;
   onMoveToEnd?: () => void;
   onMoveToTop?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onMoveToPosition?: (targetResId: string) => void;
   onDragHandleStart?: (e: React.DragEvent) => void;
   displayName?: string;
@@ -284,20 +286,20 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onMoveToTop?.();
+                        onMoveUp?.();
                         setShowMoveMenu(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                       </svg>
-                      最初へ
+                      1つ上へ
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onMoveToEnd?.();
+                        onMoveDown?.();
                         setShowMoveMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -305,8 +307,36 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                      最後へ
+                      1つ下へ
                     </button>
+                    <div className="border-t border-gray-200">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToTop?.();
+                          setShowMoveMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 11l7-7 7 7M5 19l7-7 7 7" />
+                        </svg>
+                        本文の下へ
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToEnd?.();
+                          setShowMoveMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13l-7 7-7-7M19 5l-7 7-7-7" />
+                        </svg>
+                        最後へ
+                      </button>
+                    </div>
                     <div className="border-t border-gray-200 px-3 py-2">
                       <p className="text-xs text-gray-500 mb-1">番号指定</p>
                       <div className="flex items-center gap-1">
@@ -1042,10 +1072,11 @@ export default function CommentPicker({
                 }}
                 onMoveToTop={() => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  if (currentIndex !== -1 && currentIndex > 0) {
+                  if (currentIndex !== -1 && currentIndex > 1) {
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                    newSelectedComments.unshift(movedComment);
+                    // 本文（インデックス0）の次（インデックス1）に挿入
+                    newSelectedComments.splice(1, 0, movedComment);
 
                     // 位置情報を完全に再計算
                     const newPositions: Record<string, number> = {};
@@ -1057,7 +1088,49 @@ export default function CommentPicker({
                     setCommentPositions(newPositions);
 
                     onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを最初に移動しました`);
+                    toast.success(`コメントを本文の下に移動しました`);
+                  }
+                }}
+                onMoveUp={() => {
+                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  // 本文（インデックス0）とその次（インデックス1）は上に移動できない
+                  if (currentIndex > 1) {
+                    const newSelectedComments = [...selectedComments];
+                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                    newSelectedComments.splice(currentIndex - 1, 0, movedComment);
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<string, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) {
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
+
+                    onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを1つ上に移動しました`);
+                  }
+                }}
+                onMoveDown={() => {
+                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  // 本文（インデックス0）は下に移動できない、最後のコメントも移動不可
+                  if (currentIndex > 0 && currentIndex < selectedComments.length - 1) {
+                    const newSelectedComments = [...selectedComments];
+                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                    newSelectedComments.splice(currentIndex + 1, 0, movedComment);
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<string, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) {
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
+
+                    onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを1つ下に移動しました`);
                   }
                 }}
                 onMoveToPosition={(targetResId) => {
