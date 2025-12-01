@@ -6,7 +6,7 @@ import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
 import { fetchThreadData } from '@/lib/shikutoku-api';
-import { Talk, Comment, CommentWithStyle } from '@/lib/types';
+import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import toast from 'react-hot-toast';
 
@@ -37,7 +37,8 @@ export default function Home() {
   const [editedComments, setEditedComments] = useState<Record<string, string>>({});
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
-  const [apiSettings, setApiSettings] = useState({ blogUrl: '', apiKey: '' });
+  const [blogs, setBlogs] = useState<BlogSettings[]>([]);
+  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -52,9 +53,36 @@ export default function Home() {
     if (savedThumbnail) {
       setThumbnailUrl(savedThumbnail);
     }
-    const savedApiSettings = localStorage.getItem('livedoorBlogApiSettings');
-    if (savedApiSettings) {
-      setApiSettings(JSON.parse(savedApiSettings));
+    // ブログ設定を読み込み
+    const savedBlogs = localStorage.getItem('blogSettingsList');
+    if (savedBlogs) {
+      const blogsList = JSON.parse(savedBlogs) as BlogSettings[];
+      setBlogs(blogsList);
+      // 選択中のブログIDを読み込み
+      const savedSelectedId = localStorage.getItem('selectedBlogId');
+      if (savedSelectedId && blogsList.some(b => b.id === savedSelectedId)) {
+        setSelectedBlogId(savedSelectedId);
+      } else if (blogsList.length > 0) {
+        setSelectedBlogId(blogsList[0].id);
+      }
+    } else {
+      // 旧形式のAPI設定があれば移行
+      const savedApiSettings = localStorage.getItem('livedoorBlogApiSettings');
+      if (savedApiSettings) {
+        const oldSettings = JSON.parse(savedApiSettings);
+        if (oldSettings.blogUrl && oldSettings.apiKey) {
+          const migratedBlog: BlogSettings = {
+            id: crypto.randomUUID(),
+            name: oldSettings.blogUrl,
+            blogId: oldSettings.blogUrl,
+            apiKey: oldSettings.apiKey,
+          };
+          setBlogs([migratedBlog]);
+          setSelectedBlogId(migratedBlog.id);
+          localStorage.setItem('blogSettingsList', JSON.stringify([migratedBlog]));
+          localStorage.setItem('selectedBlogId', migratedBlog.id);
+        }
+      }
     }
   }, []);
 
@@ -66,6 +94,28 @@ export default function Home() {
       color: customNameColor
     }));
   }, [customName, customNameBold, customNameColor]);
+
+  // 選択中のブログ設定
+  const selectedBlog = blogs.find(b => b.id === selectedBlogId);
+  const apiSettings = selectedBlog
+    ? { blogUrl: selectedBlog.blogId, apiKey: selectedBlog.apiKey }
+    : { blogUrl: '', apiKey: '' };
+
+  // ブログ設定の更新
+  const handleBlogsChange = useCallback((newBlogs: BlogSettings[]) => {
+    setBlogs(newBlogs);
+    localStorage.setItem('blogSettingsList', JSON.stringify(newBlogs));
+  }, []);
+
+  // 選択中のブログIDの更新
+  const handleSelectedBlogIdChange = useCallback((id: string | null) => {
+    setSelectedBlogId(id);
+    if (id) {
+      localStorage.setItem('selectedBlogId', id);
+    } else {
+      localStorage.removeItem('selectedBlogId');
+    }
+  }, []);
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -352,6 +402,8 @@ export default function Home() {
                   customNameBold={customNameBold}
                   customNameColor={customNameColor}
                   thumbnailUrl={thumbnailUrl}
+                  apiSettings={apiSettings}
+                  selectedBlogName={selectedBlog?.name}
                 />
               </div>
             </div>
@@ -380,6 +432,10 @@ export default function Home() {
         onShowOnlySelectedChange={setShowOnlySelected}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
+        blogs={blogs}
+        selectedBlogId={selectedBlogId}
+        onBlogsChange={handleBlogsChange}
+        onSelectedBlogIdChange={handleSelectedBlogIdChange}
       />
     </div>
   );

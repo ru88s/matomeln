@@ -22,9 +22,11 @@ interface HTMLGeneratorProps {
   customNameBold?: boolean;
   customNameColor?: string;
   thumbnailUrl?: string;
+  apiSettings?: { blogUrl: string; apiKey: string };
+  selectedBlogName?: string;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '' }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -37,20 +39,10 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     },
   });
   const [generatedHTML, setGeneratedHTML] = useState<GeneratedHTML | null>(null);
-  const [apiSettings, setApiSettings] = useState({
-    blogUrl: '',
-    apiKey: '',
-  });
   const [isPosting, setIsPosting] = useState(false);
 
-  // ローカルストレージからAPI設定を読み込む & 自動生成
+  // モーダルが開いたら自動でHTML生成
   useEffect(() => {
-    const savedSettings = localStorage.getItem('livedoorBlogApiSettings');
-    if (savedSettings) {
-      setApiSettings(JSON.parse(savedSettings));
-    }
-
-    // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
       generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl).then(html => {
@@ -58,12 +50,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       });
     }
   }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl]);
-
-  // API設定を保存
-  const saveApiSettings = () => {
-    localStorage.setItem('livedoorBlogApiSettings', JSON.stringify(apiSettings));
-    toast.success('API設定を保存しました');
-  };
 
   const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {
@@ -215,51 +201,21 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
           {/* ブログ投稿 */}
           <div className="border-t pt-4">
-            <details className="mb-4" open={false}>
-              <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                ライブドアブログAPI設定
-              </summary>
-              <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ブログID
-                  </label>
-                  <input
-                    type="text"
-                    value={apiSettings.blogUrl}
-                    onChange={(e) => setApiSettings({...apiSettings, blogUrl: e.target.value})}
-                    placeholder="例: myblog (https://myblog.blog.jp のmyblog部分)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    ※ブログURLの https://●●●.blog.jp の●●●部分を入力
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    APIキー
-                  </label>
-                  <input
-                    type="password"
-                    value={apiSettings.apiKey}
-                    onChange={(e) => setApiSettings({...apiSettings, apiKey: e.target.value})}
-                    placeholder="APIキーを入力"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-500">
-                    ※ ライブドアブログの管理画面からAPIキーを取得してください
-                  </p>
-                  <button
-                    onClick={saveApiSettings}
-                    className="px-3 py-1 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    設定を保存
-                  </button>
+            {apiSettings.blogUrl && apiSettings.apiKey ? (
+              <div className="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span className="text-sm font-bold text-green-700">{selectedBlogName || apiSettings.blogUrl}</span>
+                  <span className="text-xs text-green-600">に投稿</span>
                 </div>
               </div>
-            </details>
+            ) : (
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600">
+                  サイドバーの「ブログ設定」からブログを追加してください
+                </p>
+              </div>
+            )}
             <button
               onClick={handleBlogPost}
               disabled={!apiSettings.blogUrl || !apiSettings.apiKey || isPosting}
@@ -273,7 +229,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                 ? '投稿中...'
                 : apiSettings.blogUrl && apiSettings.apiKey
                   ? 'ブログに投稿'
-                  : 'ブログに投稿（API設定が必要）'}
+                  : 'ブログに投稿（ブログ設定が必要）'}
             </button>
           </div>
         </div>

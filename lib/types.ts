@@ -44,3 +44,10 @@ export interface MatomeOptions {
     color: string;
   };
 }
+
+export interface BlogSettings {
+  id: string;
+  name: string;
+  blogId: string;
+  apiKey: string;
+}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Comment } from '@/lib/types';
+import { Comment, BlogSettings } from '@/lib/types';
+import toast from 'react-hot-toast';
 
 interface SettingsSidebarProps {
   customName: string;
@@ -23,6 +24,10 @@ interface SettingsSidebarProps {
   onShowOnlySelectedChange: (show: boolean) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  blogs: BlogSettings[];
+  selectedBlogId: string | null;
+  onBlogsChange: (blogs: BlogSettings[]) => void;
+  onSelectedBlogIdChange: (id: string | null) => void;
 }
 
 export default function SettingsSidebar({
@@ -45,13 +50,76 @@ export default function SettingsSidebar({
   onShowOnlySelectedChange,
   onSelectAll,
   onDeselectAll,
+  blogs,
+  selectedBlogId,
+  onBlogsChange,
+  onSelectedBlogIdChange,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
+  const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
   // スレ主のコメント数を取得
   const firstPosterCount = firstPosterId ? comments.filter(c => c.name_id === firstPosterId).length : 0;
+
+  // ブログ追加モーダルを開く
+  const openAddBlogModal = () => {
+    setEditingBlog(null);
+    setBlogForm({ name: '', blogId: '', apiKey: '' });
+    setShowBlogModal(true);
+  };
+
+  // ブログ編集モーダルを開く
+  const openEditBlogModal = (blog: BlogSettings) => {
+    setEditingBlog(blog);
+    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey });
+    setShowBlogModal(true);
+  };
+
+  // ブログを保存
+  const saveBlog = () => {
+    if (!blogForm.name.trim() || !blogForm.blogId.trim() || !blogForm.apiKey.trim()) {
+      toast.error('すべての項目を入力してください');
+      return;
+    }
+
+    if (editingBlog) {
+      // 編集
+      const updated = blogs.map(b =>
+        b.id === editingBlog.id
+          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey }
+          : b
+      );
+      onBlogsChange(updated);
+      toast.success('ブログ設定を更新しました');
+    } else {
+      // 新規追加
+      const newBlog: BlogSettings = {
+        id: crypto.randomUUID(),
+        name: blogForm.name,
+        blogId: blogForm.blogId,
+        apiKey: blogForm.apiKey,
+      };
+      onBlogsChange([...blogs, newBlog]);
+      onSelectedBlogIdChange(newBlog.id);
+      toast.success('ブログを追加しました');
+    }
+    setShowBlogModal(false);
+  };
+
+  // ブログを削除
+  const deleteBlog = (id: string) => {
+    const updated = blogs.filter(b => b.id !== id);
+    onBlogsChange(updated);
+    if (selectedBlogId === id) {
+      onSelectedBlogIdChange(updated.length > 0 ? updated[0].id : null);
+    }
+    toast.success('ブログを削除しました');
+    setShowBlogModal(false);
+  };
 
   return (
     <div className="w-56 flex-shrink-0">
@@ -234,7 +302,135 @@ export default function SettingsSidebar({
           )}
         </div>
 
+        {/* ブログ設定 */}
+        <div className="space-y-2 pt-3 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-gray-600">ブログ設定</h4>
+          {blogs.length > 0 ? (
+            <div className="space-y-2">
+              <select
+                value={selectedBlogId || ''}
+                onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
+                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
+              >
+                {blogs.map(blog => (
+                  <option key={blog.id} value={blog.id}>{blog.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-1">
+                <button
+                  onClick={openAddBlogModal}
+                  className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  + 追加
+                </button>
+                <button
+                  onClick={() => {
+                    const blog = blogs.find(b => b.id === selectedBlogId);
+                    if (blog) openEditBlogModal(blog);
+                  }}
+                  disabled={!selectedBlogId}
+                  className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  編集
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={openAddBlogModal}
+              className="w-full text-xs bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+            >
+              + ブログを追加
+            </button>
+          )}
+        </div>
+
       </div>
+
+      {/* ブログ設定モーダル */}
+      {showBlogModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900">
+                {editingBlog ? 'ブログを編集' : 'ブログを追加'}
+              </h3>
+              <button
+                onClick={() => setShowBlogModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  表示名
+                </label>
+                <input
+                  type="text"
+                  value={blogForm.name}
+                  onChange={(e) => setBlogForm({ ...blogForm, name: e.target.value })}
+                  placeholder="マイブログ"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ブログID
+                </label>
+                <input
+                  type="text"
+                  value={blogForm.blogId}
+                  onChange={(e) => setBlogForm({ ...blogForm, blogId: e.target.value })}
+                  placeholder="myblog"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  https://●●●.blog.jp の ●●● 部分
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  APIキー
+                </label>
+                <input
+                  type="password"
+                  value={blogForm.apiKey}
+                  onChange={(e) => setBlogForm({ ...blogForm, apiKey: e.target.value })}
+                  placeholder="APIキー"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                {editingBlog && (
+                  <button
+                    onClick={() => deleteBlog(editingBlog.id)}
+                    className="px-4 py-2 text-sm bg-red-500 text-white hover:bg-red-600 rounded-lg font-bold cursor-pointer transition-colors"
+                  >
+                    削除
+                  </button>
+                )}
+                <div className="flex-1" />
+                <button
+                  onClick={() => setShowBlogModal(false)}
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={saveBlog}
+                  className="px-4 py-2 text-sm bg-orange-500 text-white hover:bg-orange-600 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
