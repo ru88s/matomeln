@@ -394,6 +394,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                   タグを発行 ({selectedComments.length}件)
+                  <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded">{typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter</kbd>
                 </button>
               </div>
             )}
