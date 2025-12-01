@@ -191,10 +191,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           type="checkbox"
           checked={isSelected}
           onChange={onToggle}
-          disabled={isInSortMode}
-          className={`mt-1 h-5 w-5 text-orange-500 focus:ring-orange-400 border-gray-300 rounded ${
-            isInSortMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-          }`}
+          className="mt-1 h-5 w-5 text-orange-500 focus:ring-orange-400 border-gray-300 rounded cursor-pointer"
           onClick={(e) => e.stopPropagation()}
         />
 
