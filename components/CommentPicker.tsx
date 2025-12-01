@@ -11,18 +11,10 @@ interface CommentPickerProps {
   selectedComments: CommentWithStyle[];
   onSelectionChange: (comments: CommentWithStyle[]) => void;
   showId?: boolean;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  onUndo?: () => void;
-  onRedo?: () => void;
   customName?: string;
-  onCustomNameChange?: (name: string) => void;
   customNameBold?: boolean;
-  onCustomNameBoldChange?: (bold: boolean) => void;
   customNameColor?: string;
-  onCustomNameColorChange?: (color: string) => void;
-  onSelectFirstPoster?: () => void;
-  onChangeFirstPosterColor?: (color: string) => void;
+  showOnlySelected?: boolean;
 }
 
 function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
@@ -679,18 +671,10 @@ export default function CommentPicker({
   selectedComments,
   onSelectionChange,
   showId = false,
-  canUndo = false,
-  canRedo = false,
-  onUndo,
-  onRedo,
   customName = '',
-  onCustomNameChange,
   customNameBold = true,
-  onCustomNameBoldChange,
   customNameColor = '#ff69b4',
-  onCustomNameColorChange,
-  onSelectFirstPoster,
-  onChangeFirstPosterColor,
+  showOnlySelected = false,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
@@ -699,7 +683,6 @@ export default function CommentPicker({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [draggedCommentId, setDraggedCommentId] = useState<string | null>(null);
   const [dragOverCommentId, setDragOverCommentId] = useState<string | null>(null);
   // 選択済みコメントの位置を全コメント中のインデックスで管理
@@ -812,70 +795,8 @@ export default function CommentPicker({
     onSelectionChange(updated);
   };
 
-  const selectAll = () => {
-    const allComments = comments.map(c => {
-      const sizeValue = commentSizes[c.id];
-      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
-      return {
-        ...c,
-        body: editedComments[c.id] || c.body,
-        color: commentColors[c.id] || '#000000',
-        fontSize
-      };
-    });
-    onSelectionChange(allComments);
-  };
-
-  const deselectAll = () => {
-    onSelectionChange([]);
-  };
-
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
-
-  // スレ主のコメントを全選択
-  const selectFirstPoster = () => {
-    if (!firstPosterId) return;
-    const firstPosterComments = comments.filter(c => c.name_id === firstPosterId);
-    const newSelected = firstPosterComments.map(c => {
-      const existing = selectedComments.find(sc => sc.id === c.id);
-      if (existing) return existing;
-      const sizeValue = commentSizes[c.id];
-      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
-      return {
-        ...c,
-        body: editedComments[c.id] || c.body,
-        color: commentColors[c.id] || '#ef4444',
-        fontSize
-      };
-    });
-    // 既存の選択に追加（重複を除く）
-    const existingIds = new Set(selectedComments.map(sc => sc.id));
-    const toAdd = newSelected.filter(c => !existingIds.has(c.id));
-    onSelectionChange([...selectedComments, ...toAdd]);
-  };
-
-  // スレ主のコメントの色を一括変更
-  const changeFirstPosterColor = (color: string) => {
-    if (!firstPosterId) return;
-    const firstPosterIds = new Set(comments.filter(c => c.name_id === firstPosterId).map(c => c.id));
-
-    // 色情報を更新
-    const newColors = { ...commentColors };
-    firstPosterIds.forEach(id => {
-      newColors[id] = color;
-    });
-    setCommentColors(newColors);
-
-    // 選択済みコメントの色を更新
-    const updated = selectedComments.map(c =>
-      firstPosterIds.has(c.id) ? { ...c, color } : c
-    );
-    onSelectionChange(updated);
-  };
-
-  // スレ主のコメント数を取得
-  const firstPosterCount = firstPosterId ? comments.filter(c => c.name_id === firstPosterId).length : 0;
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
@@ -886,96 +807,7 @@ export default function CommentPicker({
         <h2 className="text-lg font-bold text-gray-800">コメントを選択</h2>
       </div>
 
-      {/* スティッキーヘッダー - キーボードショートカット */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="flex justify-between items-center">
-          <div className="flex-1">
-            <div className="flex items-center gap-4 text-xs">
-              <span className="font-bold text-gray-700">ショートカット:</span>
-              <span className="inline-flex items-center text-gray-600">
-                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">Space</kbd>
-                選択
-              </span>
-              <span className="inline-flex items-center text-gray-600">
-                <kbd className="bg-white px-1.5 py-0.5 rounded font-bold mr-1 shadow-sm border border-gray-200">Ctrl+E</kbd>
-                編集
-              </span>
-              <span className="text-gray-600">1-9,0: 色</span>
-              <span className="text-gray-600">Q,W,E: サイズ</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm inline-flex items-center ${
-                canUndo
-                  ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:shadow-md cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-              }`}
-              title="元に戻す (⌘Z)"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              <span className="mr-2">元に戻す</span>
-              <kbd className="bg-gray-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-gray-300">⌘Z</kbd>
-            </button>
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm inline-flex items-center ${
-                canRedo
-                  ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:shadow-md cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-              }`}
-              title="やり直す (⌘⇧Z)"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-              </svg>
-              <span className="mr-2">やり直す</span>
-              <kbd className="bg-gray-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-gray-300">⌘⇧Z</kbd>
-            </button>
-          </div>
-        </div>
-        {/* 操作ボタン */}
-        <div className="pt-2 border-t border-gray-100 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnlySelected}
-                  onChange={(e) => setShowOnlySelected(e.target.checked)}
-                  className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded"
-                />
-                <span className="text-sm font-medium text-gray-700">選択済みのレスのみ表示</span>
-              </label>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-orange-500">
-                {selectedComments.length}件選択 / 全{comments.length}件
-              </span>
-              <span className="text-gray-400">|</span>
-              <button
-                onClick={selectAll}
-                className="text-sm text-orange-500 hover:text-orange-600 font-bold cursor-pointer"
-              >
-                全て選択
-              </button>
-              <button
-                onClick={deselectAll}
-                className="text-sm text-gray-500 hover:text-gray-600 font-medium cursor-pointer"
-              >
-                選択解除
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2 mt-4">
+      <div className="space-y-2">
         {(() => {
           if (showOnlySelected) {
             // 選択済みのみ表示モード：並び替え順序を保持

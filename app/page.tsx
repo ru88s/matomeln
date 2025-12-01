@@ -35,6 +35,7 @@ export default function Home() {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
   const [editedComments, setEditedComments] = useState<Record<string, string>>({});
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   // レス名設定をローカルストレージから読み込み
   useEffect(() => {
@@ -99,6 +100,26 @@ export default function Home() {
     );
     setSelectedComments(updated);
   }, [comments, firstPosterId, selectedComments, setSelectedComments, commentColors]);
+
+  // 全て選択
+  const selectAll = useCallback(() => {
+    const allComments = comments.map(c => {
+      const sizeValue = commentSizes[c.id];
+      const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+      return {
+        ...c,
+        body: editedComments[c.id] || c.body,
+        color: commentColors[c.id] || '#000000',
+        fontSize
+      };
+    });
+    setSelectedComments(allComments);
+  }, [comments, commentColors, commentSizes, editedComments, setSelectedComments]);
+
+  // 選択解除
+  const deselectAll = useCallback(() => {
+    setSelectedComments([]);
+  }, [setSelectedComments]);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -257,18 +278,10 @@ export default function Home() {
               selectedComments={selectedComments}
               onSelectionChange={setSelectedComments}
               showId={currentTalk?.show_id}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
               customName={customName}
-              onCustomNameChange={setCustomName}
               customNameBold={customNameBold}
-              onCustomNameBoldChange={setCustomNameBold}
               customNameColor={customNameColor}
-              onCustomNameColorChange={setCustomNameColor}
-              onSelectFirstPoster={selectFirstPoster}
-              onChangeFirstPosterColor={changeFirstPosterColor}
+              showOnlySelected={showOnlySelected}
             />
 
             {/* HTML生成ボタン */}
@@ -337,6 +350,16 @@ export default function Home() {
         comments={comments}
         onSelectFirstPoster={selectFirstPoster}
         onChangeFirstPosterColor={changeFirstPosterColor}
+        selectedCount={selectedComments.length}
+        totalCount={comments.length}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        showOnlySelected={showOnlySelected}
+        onShowOnlySelectedChange={setShowOnlySelected}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
       />
     </div>
   );
