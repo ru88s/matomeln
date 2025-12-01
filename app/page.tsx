@@ -207,10 +207,9 @@ export default function Home() {
   };
 
   return (
-    <div className="space-y-6">
-
-      {/* メインフォーム */}
-      <div className="space-y-6">
+    <div className="flex gap-6">
+      {/* メインコンテンツ */}
+      <div className="flex-1 min-w-0 space-y-6">
         <div className="relative">
           <TalkLoader
             onLoad={handleLoadThread}
@@ -253,42 +252,24 @@ export default function Home() {
 
         {comments.length > 0 && (
           <>
-            <div className="flex gap-6">
-              {/* メインコンテンツ（コメントピッカー） */}
-              <div className="flex-1 min-w-0">
-                <CommentPicker
-                  comments={comments}
-                  selectedComments={selectedComments}
-                  onSelectionChange={setSelectedComments}
-                  showId={currentTalk?.show_id}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onUndo={undo}
-                  onRedo={redo}
-                  customName={customName}
-                  onCustomNameChange={setCustomName}
-                  customNameBold={customNameBold}
-                  onCustomNameBoldChange={setCustomNameBold}
-                  customNameColor={customNameColor}
-                  onCustomNameColorChange={setCustomNameColor}
-                  onSelectFirstPoster={selectFirstPoster}
-                  onChangeFirstPosterColor={changeFirstPosterColor}
-                />
-              </div>
-
-              {/* サイドバー */}
-              <SettingsSidebar
-                customName={customName}
-                onCustomNameChange={setCustomName}
-                customNameBold={customNameBold}
-                onCustomNameBoldChange={setCustomNameBold}
-                customNameColor={customNameColor}
-                onCustomNameColorChange={setCustomNameColor}
-                comments={comments}
-                onSelectFirstPoster={selectFirstPoster}
-                onChangeFirstPosterColor={changeFirstPosterColor}
-              />
-            </div>
+            <CommentPicker
+              comments={comments}
+              selectedComments={selectedComments}
+              onSelectionChange={setSelectedComments}
+              showId={currentTalk?.show_id}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+              customName={customName}
+              onCustomNameChange={setCustomName}
+              customNameBold={customNameBold}
+              onCustomNameBoldChange={setCustomNameBold}
+              customNameColor={customNameColor}
+              onCustomNameColorChange={setCustomNameColor}
+              onSelectFirstPoster={selectFirstPoster}
+              onChangeFirstPosterColor={changeFirstPosterColor}
+            />
 
             {/* HTML生成ボタン */}
             {selectedComments.length > 0 && (
@@ -345,6 +326,18 @@ export default function Home() {
         )}
       </div>
 
+      {/* サイドバー */}
+      <SettingsSidebar
+        customName={customName}
+        onCustomNameChange={setCustomName}
+        customNameBold={customNameBold}
+        onCustomNameBoldChange={setCustomNameBold}
+        customNameColor={customNameColor}
+        onCustomNameColorChange={setCustomNameColor}
+        comments={comments}
+        onSelectFirstPoster={selectFirstPoster}
+        onChangeFirstPosterColor={changeFirstPosterColor}
+      />
     </div>
   );
 }
