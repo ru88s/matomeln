@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import toast from 'react-hot-toast';
@@ -21,9 +21,10 @@ interface HTMLGeneratorProps {
   customName?: string;
   customNameBold?: boolean;
   customNameColor?: string;
+  thumbnailUrl?: string;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4' }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -36,112 +37,32 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     },
   });
   const [generatedHTML, setGeneratedHTML] = useState<GeneratedHTML | null>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [apiSettings, setApiSettings] = useState({
     blogUrl: '',
     apiKey: '',
   });
   const [isPosting, setIsPosting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ローカルストレージからAPI設定とサムネイルを読み込む & 自動生成
+  // ローカルストレージからAPI設定を読み込む & 自動生成
   useEffect(() => {
     const savedSettings = localStorage.getItem('livedoorBlogApiSettings');
     if (savedSettings) {
       setApiSettings(JSON.parse(savedSettings));
     }
-    const savedThumbnail = localStorage.getItem('matomeThumbnailUrl');
-    if (savedThumbnail) {
-      setThumbnailUrl(savedThumbnail);
-    }
 
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      // 初回のみサムネイルを反映（後でサムネイルが変更されたら手動で再生成）
-      const savedThumbnailForGeneration = localStorage.getItem('matomeThumbnailUrl') || '';
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, savedThumbnailForGeneration).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl]);
 
   // API設定を保存
   const saveApiSettings = () => {
     localStorage.setItem('livedoorBlogApiSettings', JSON.stringify(apiSettings));
     toast.success('API設定を保存しました');
-  };
-
-  // サムネイルURL変更時に保存してHTML再生成
-  const handleThumbnailChange = async (url: string) => {
-    setThumbnailUrl(url);
-    localStorage.setItem('matomeThumbnailUrl', url);
-    // HTML再生成
-    if (talk && selectedComments.length > 0) {
-      const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, url);
-      setGeneratedHTML(html);
-    }
-  };
-
-  // サムネイル画像をアップロード
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // API設定の確認
-    if (!apiSettings.blogUrl || !apiSettings.apiKey) {
-      toast.error('先にライブドアブログAPI設定を入力してください');
-      return;
-    }
-
-    // ファイルサイズチェック（5MB以下）
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('ファイルサイズは5MB以下にしてください');
-      return;
-    }
-
-    // 画像形式チェック
-    if (!file.type.startsWith('image/')) {
-      toast.error('画像ファイルを選択してください');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('blogId', apiSettings.blogUrl);
-      formData.append('apiKey', apiSettings.apiKey);
-      formData.append('file', file);
-
-      const response = await fetch('/api/proxy/uploadImage', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '画像のアップロードに失敗しました');
-      }
-
-      if (data.url) {
-        handleThumbnailChange(data.url);
-        toast.success('画像をアップロードしました');
-      } else {
-        toast.error('画像URLの取得に失敗しました');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '画像のアップロードに失敗しました';
-      toast.error(message);
-    } finally {
-      setIsUploading(false);
-      // ファイル入力をリセット
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
   };
 
   const handleGenerate = async () => {
@@ -214,86 +135,29 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     <div>
       {generatedHTML ? (
         <div className="space-y-4">
-          {/* サムネイル */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h4 className="font-bold text-gray-900">サムネイル:</h4>
-              {thumbnailUrl && (
-                <button
-                  onClick={() => handleThumbnailChange('')}
-                  className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-                >
-                  クリア
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={thumbnailUrl}
-                onChange={(e) => handleThumbnailChange(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
+          {/* サムネイル（設定済みの場合のみ表示） */}
+          {thumbnailUrl && (
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+              <img
+                src={thumbnailUrl}
+                alt="サムネイル"
+                className="w-16 h-16 object-cover rounded border border-gray-200"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="thumbnail-upload"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || !apiSettings.blogUrl || !apiSettings.apiKey}
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                  isUploading || !apiSettings.blogUrl || !apiSettings.apiKey
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-                title={!apiSettings.blogUrl || !apiSettings.apiKey ? 'API設定が必要です' : 'ライブドアブログに画像をアップロード'}
-              >
-                {isUploading ? (
-                  <span className="flex items-center gap-1">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    UP中
-                  </span>
-                ) : (
-                  'UP'
-                )}
-              </button>
-            </div>
-            {!apiSettings.blogUrl || !apiSettings.apiKey ? (
-              <p className="text-xs text-gray-500 mt-1">
-                ※ 画像UPするにはライブドアブログAPI設定が必要です
-              </p>
-            ) : null}
-            {thumbnailUrl && (
-              <div className="mt-2 flex items-center gap-3">
-                <img
-                  src={thumbnailUrl}
-                  alt="サムネイルプレビュー"
-                  className="w-20 h-20 object-cover rounded border border-gray-200"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-green-700 mb-1">サムネイル設定済み</p>
+                <input
+                  type="text"
+                  value={thumbnailUrl}
+                  readOnly
+                  className="w-full px-2 py-1 text-xs bg-gray-100 border border-gray-200 rounded cursor-text"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 mb-1">アップロード済みURL:</p>
-                  <input
-                    type="text"
-                    value={thumbnailUrl}
-                    readOnly
-                    className="w-full px-2 py-1 text-xs bg-gray-100 border border-gray-200 rounded cursor-text"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                  />
-                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* タイトル */}
           <div>

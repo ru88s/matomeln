@@ -36,8 +36,10 @@ export default function Home() {
   const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
   const [editedComments, setEditedComments] = useState<Record<string, string>>({});
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [apiSettings, setApiSettings] = useState({ blogUrl: '', apiKey: '' });
 
-  // レス名設定をローカルストレージから読み込み
+  // 設定をローカルストレージから読み込み
   useEffect(() => {
     const savedNameSettings = localStorage.getItem('customNameSettings');
     if (savedNameSettings) {
@@ -45,6 +47,14 @@ export default function Home() {
       setCustomName(settings.name || '');
       setCustomNameBold(settings.bold !== false);
       setCustomNameColor(settings.color || '#ff69b4');
+    }
+    const savedThumbnail = localStorage.getItem('matomeThumbnailUrl');
+    if (savedThumbnail) {
+      setThumbnailUrl(savedThumbnail);
+    }
+    const savedApiSettings = localStorage.getItem('livedoorBlogApiSettings');
+    if (savedApiSettings) {
+      setApiSettings(JSON.parse(savedApiSettings));
     }
   }, []);
 
@@ -120,6 +130,12 @@ export default function Home() {
   const deselectAll = useCallback(() => {
     setSelectedComments([]);
   }, [setSelectedComments]);
+
+  // サムネイルURL変更
+  const handleThumbnailUrlChange = useCallback((url: string) => {
+    setThumbnailUrl(url);
+    localStorage.setItem('matomeThumbnailUrl', url);
+  }, []);
 
   // HTMLモーダルを開く際に自動生成
   const openHTMLModal = () => {
@@ -332,6 +348,7 @@ export default function Home() {
                   customName={customName}
                   customNameBold={customNameBold}
                   customNameColor={customNameColor}
+                  thumbnailUrl={thumbnailUrl}
                 />
               </div>
             </div>
@@ -360,6 +377,9 @@ export default function Home() {
         onShowOnlySelectedChange={setShowOnlySelected}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
+        thumbnailUrl={thumbnailUrl}
+        onThumbnailUrlChange={handleThumbnailUrlChange}
+        apiSettings={apiSettings}
       />
     </div>
   );

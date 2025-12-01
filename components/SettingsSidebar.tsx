@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Comment } from '@/lib/types';
+import toast from 'react-hot-toast';
 
 interface SettingsSidebarProps {
   customName: string;
@@ -23,6 +24,9 @@ interface SettingsSidebarProps {
   onShowOnlySelectedChange: (show: boolean) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  thumbnailUrl: string;
+  onThumbnailUrlChange: (url: string) => void;
+  apiSettings: { blogUrl: string; apiKey: string };
 }
 
 export default function SettingsSidebar({
@@ -45,8 +49,69 @@ export default function SettingsSidebar({
   onShowOnlySelectedChange,
   onSelectAll,
   onDeselectAll,
+  thumbnailUrl,
+  onThumbnailUrlChange,
+  apiSettings,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // サムネイル画像をアップロード
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!apiSettings.blogUrl || !apiSettings.apiKey) {
+      toast.error('先にライブドアブログAPI設定を入力してください');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('ファイルサイズは5MB以下にしてください');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('画像ファイルを選択してください');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('blogId', apiSettings.blogUrl);
+      formData.append('apiKey', apiSettings.apiKey);
+      formData.append('file', file);
+
+      const response = await fetch('/api/proxy/uploadImage', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '画像のアップロードに失敗しました');
+      }
+
+      if (data.url) {
+        onThumbnailUrlChange(data.url);
+        toast.success('サムネイルをアップロードしました');
+      } else {
+        toast.error('画像URLの取得に失敗しました');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '画像のアップロードに失敗しました';
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -185,6 +250,75 @@ export default function SettingsSidebar({
             >
               リセット
             </button>
+          )}
+        </div>
+
+        {/* サムネイル設定 */}
+        <div className="space-y-2 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-gray-600">サムネイル</h4>
+            {thumbnailUrl && (
+              <button
+                onClick={() => onThumbnailUrlChange('')}
+                className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+              >
+                クリア
+              </button>
+            )}
+          </div>
+          <div className="flex gap-1">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || !apiSettings.blogUrl || !apiSettings.apiKey}
+              className={`flex-1 text-xs px-2 py-2 rounded-lg font-bold transition-colors cursor-pointer ${
+                isUploading || !apiSettings.blogUrl || !apiSettings.apiKey
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              }`}
+            >
+              {isUploading ? (
+                <span className="flex items-center justify-center gap-1">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  UP中...
+                </span>
+              ) : (
+                '画像をUP'
+              )}
+            </button>
+          </div>
+          {!apiSettings.blogUrl || !apiSettings.apiKey ? (
+            <p className="text-[10px] text-gray-400">
+              ※ タグ発行画面でAPI設定後に使用可能
+            </p>
+          ) : null}
+          {thumbnailUrl && (
+            <div className="flex items-center gap-2">
+              <img
+                src={thumbnailUrl}
+                alt="サムネイル"
+                className="w-12 h-12 object-cover rounded border border-gray-200"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <input
+                type="text"
+                value={thumbnailUrl}
+                readOnly
+                className="flex-1 px-2 py-1 text-[10px] bg-gray-100 border border-gray-200 rounded cursor-text truncate"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+            </div>
           )}
         </div>
 
