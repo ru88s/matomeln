@@ -130,8 +130,8 @@ export default function Privacy() {
 
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-500">
-            制定日：2025年9月29日<br />
-            最終更新日：2025年9月29日
+            制定日：2025年12月1日<br />
+            最終更新日：2025年12月1日
           </p>
         </div>
       </div>
