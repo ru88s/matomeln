@@ -400,7 +400,7 @@ export default function Home() {
             )}
 
             {/* 上下スクロールボタン */}
-            <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-2">
+            <div className="fixed top-1/2 left-4 -translate-y-1/2 z-40 flex flex-col gap-2">
               <button
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="w-10 h-10 bg-white border border-gray-300 rounded-full shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer"
