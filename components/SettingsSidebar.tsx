@@ -89,7 +89,7 @@ export default function SettingsSidebar({
         </div>
 
         {/* スレ主操作 - よく使う機能 */}
-        {firstPosterId && firstPosterCount > 1 && (
+        {firstPosterId && (
           <div className="space-y-2 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-gray-600">スレ主</h4>
