@@ -36,17 +36,22 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     },
   });
   const [generatedHTML, setGeneratedHTML] = useState<GeneratedHTML | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [apiSettings, setApiSettings] = useState({
     blogUrl: '',
     apiKey: '',
   });
   const [isPosting, setIsPosting] = useState(false);
 
-  // ローカルストレージからAPI設定を読み込む & 自動生成
+  // ローカルストレージからAPI設定とサムネイルを読み込む & 自動生成
   useEffect(() => {
     const savedSettings = localStorage.getItem('livedoorBlogApiSettings');
     if (savedSettings) {
       setApiSettings(JSON.parse(savedSettings));
+    }
+    const savedThumbnail = localStorage.getItem('matomeThumbnailUrl');
+    if (savedThumbnail) {
+      setThumbnailUrl(savedThumbnail);
     }
 
     // モーダルが開いたら自動でHTML生成
@@ -62,6 +67,12 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   const saveApiSettings = () => {
     localStorage.setItem('livedoorBlogApiSettings', JSON.stringify(apiSettings));
     toast.success('API設定を保存しました');
+  };
+
+  // サムネイルURL変更時に保存
+  const handleThumbnailChange = (url: string) => {
+    setThumbnailUrl(url);
+    localStorage.setItem('matomeThumbnailUrl', url);
   };
 
   const handleGenerate = async () => {
@@ -134,6 +145,41 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     <div>
       {generatedHTML ? (
         <div className="space-y-4">
+          {/* サムネイル */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-bold text-gray-900">サムネイル:</h4>
+              {thumbnailUrl && (
+                <button
+                  onClick={() => handleThumbnailChange('')}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  クリア
+                </button>
+              )}
+            </div>
+            <input
+              type="url"
+              value={thumbnailUrl}
+              onChange={(e) => handleThumbnailChange(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
+            />
+            {thumbnailUrl && (
+              <div className="mt-2 flex items-center gap-2">
+                <img
+                  src={thumbnailUrl}
+                  alt="サムネイルプレビュー"
+                  className="w-20 h-20 object-cover rounded border border-gray-200"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <span className="text-xs text-gray-500">プレビュー</span>
+              </div>
+            )}
+          </div>
+
           {/* タイトル */}
           <div>
             <div className="flex justify-between items-center mb-2">
