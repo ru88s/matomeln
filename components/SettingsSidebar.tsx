@@ -28,6 +28,8 @@ interface SettingsSidebarProps {
   selectedBlogId: string | null;
   onBlogsChange: (blogs: BlogSettings[]) => void;
   onSelectedBlogIdChange: (id: string | null) => void;
+  showIdInHtml: boolean;
+  onShowIdInHtmlChange: (show: boolean) => void;
 }
 
 export default function SettingsSidebar({
@@ -54,6 +56,8 @@ export default function SettingsSidebar({
   selectedBlogId,
   onBlogsChange,
   onSelectedBlogIdChange,
+  showIdInHtml,
+  onShowIdInHtmlChange,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
@@ -262,6 +266,20 @@ export default function SettingsSidebar({
               />
             </div>
           </div>
+        </div>
+
+        {/* HTML出力設定 */}
+        <div className="space-y-2 pt-3 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-gray-600">HTML出力設定</h4>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showIdInHtml}
+              onChange={(e) => onShowIdInHtmlChange(e.target.checked)}
+              className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded cursor-pointer"
+            />
+            <span className="text-sm text-gray-700">IDを表示</span>
+          </label>
         </div>
 
         {/* ブログ設定 */}

@@ -39,6 +39,7 @@ export default function Home() {
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [blogs, setBlogs] = useState<BlogSettings[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
+  const [showIdInHtml, setShowIdInHtml] = useState(true);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -52,6 +53,11 @@ export default function Home() {
     const savedThumbnail = localStorage.getItem('matomeThumbnailUrl');
     if (savedThumbnail) {
       setThumbnailUrl(savedThumbnail);
+    }
+    // ID表示設定を読み込み
+    const savedShowIdInHtml = localStorage.getItem('showIdInHtml');
+    if (savedShowIdInHtml !== null) {
+      setShowIdInHtml(savedShowIdInHtml === 'true');
     }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
@@ -115,6 +121,12 @@ export default function Home() {
     } else {
       localStorage.removeItem('selectedBlogId');
     }
+  }, []);
+
+  // ID表示設定の更新
+  const handleShowIdInHtmlChange = useCallback((show: boolean) => {
+    setShowIdInHtml(show);
+    localStorage.setItem('showIdInHtml', String(show));
   }, []);
 
   // スレ主のID
@@ -452,6 +464,7 @@ export default function Home() {
                   thumbnailUrl={thumbnailUrl}
                   apiSettings={apiSettings}
                   selectedBlogName={selectedBlog?.name}
+                  showIdInHtml={showIdInHtml}
                 />
               </div>
             </div>
@@ -484,6 +497,8 @@ export default function Home() {
         selectedBlogId={selectedBlogId}
         onBlogsChange={handleBlogsChange}
         onSelectedBlogIdChange={handleSelectedBlogIdChange}
+        showIdInHtml={showIdInHtml}
+        onShowIdInHtmlChange={handleShowIdInHtmlChange}
       />
     </div>
   );

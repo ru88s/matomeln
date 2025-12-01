@@ -10,9 +10,9 @@
     </linearGradient>
   </defs>
 
-  <!-- メインの「M」シェイプ -->
+  <!-- メインの「M」シェイプ（中央配置: 上96, 下96の余白） -->
   <path
-    d="M85 384V171L181 299L256 171L331 299L427 171V384"
+    d="M85 416V203L181 331L256 203L331 331L427 203V416"
     stroke="url(#iconGradient512)"
     stroke-width="53"
     stroke-linecap="round"
@@ -21,5 +21,5 @@
   />
 
   <!-- アクセントのドット -->
-  <circle cx="256" cy="107" r="43" fill="url(#iconGradient512)" />
+  <circle cx="256" cy="139" r="43" fill="url(#iconGradient512)" />
 </svg>
