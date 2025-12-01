@@ -7,7 +7,7 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch';
+  source: 'shikutoku' | '5ch' | 'open2ch';
   originalUrl: string;
 }
 
@@ -39,6 +39,17 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
     const match = url.match(/https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i);
     if (match) {
       return `https://${match[1]}.5ch.net/test/read.cgi/${match[2]}/${match[3]}/`;
+    }
+    return url;
+  }
+  if (sourceInfo?.source === 'open2ch' && sourceInfo.originalUrl) {
+    // open2chの場合は入力されたURLを整形
+    const url = sourceInfo.originalUrl.trim();
+    // 末尾のスラッシュやパラメータを除去して正規化
+    const match = url.match(/https?:\/\/(?:([a-z0-9]+)\.)?open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i);
+    if (match) {
+      const host = match[1] ? `${match[1]}.open2ch.net` : 'open2ch.net';
+      return `https://${host}/test/read.cgi/${match[2]}/${match[3]}/`;
     }
     return url;
   }
