@@ -208,16 +208,20 @@ export default function AboutPage() {
                 <span className="ml-2 text-sm text-gray-700">文字サイズ：小</span>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Ctrl</kbd>
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">⌘/Ctrl</kbd>
                 +
                 <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">E</kbd>
                 <span className="ml-2 text-sm text-gray-700">コメント編集</span>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
-                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Ctrl</kbd>
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">⌘/Ctrl</kbd>
                 +
                 <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Enter</kbd>
                 <span className="ml-2 text-sm text-gray-700">タグ発行</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <kbd className="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">Esc</kbd>
+                <span className="ml-2 text-sm text-gray-700">編集キャンセル</span>
               </div>
             </div>
           </div>

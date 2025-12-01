@@ -149,13 +149,14 @@ export default function Sitemap() {
           <div className="bg-gray-50 p-4 rounded-xl">
             <ul className="space-y-2 text-sm font-mono">
               <li><kbd className="px-2 py-1 bg-white border rounded">Space</kbd> - コメント選択/解除</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+E</kbd> - コメント編集</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">⌘/Ctrl+E</kbd> - コメント編集</li>
               <li><kbd className="px-2 py-1 bg-white border rounded">1-9</kbd> - カラー選択</li>
               <li><kbd className="px-2 py-1 bg-white border rounded">0</kbd> - 黒色選択</li>
               <li><kbd className="px-2 py-1 bg-white border rounded">Q/W/E</kbd> - 文字サイズ変更</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Z</kbd> - 元に戻す</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Shift+Z</kbd> - やり直す</li>
-              <li><kbd className="px-2 py-1 bg-white border rounded">Ctrl+Enter</kbd> - タグ発行</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">⌘/Ctrl+Z</kbd> - 元に戻す</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">⌘/Ctrl+Shift+Z</kbd> - やり直す</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">⌘/Ctrl+Enter</kbd> - タグ発行</li>
+              <li><kbd className="px-2 py-1 bg-white border rounded">Esc</kbd> - 編集キャンセル</li>
             </ul>
           </div>
         </section>

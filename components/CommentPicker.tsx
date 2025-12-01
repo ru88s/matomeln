@@ -128,7 +128,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           onToggle();
         }
       }
-      if (e.key.toLowerCase() === 'e' && !e.ctrlKey) {
+      if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         onSizeChange('small');
         if (!isSelected) {
@@ -430,10 +430,10 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   value={editingBody}
                   onChange={(e) => setEditingBody(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       handleBodyEdit();
                     }
-                    if (e.key === 'c' && e.ctrlKey) {
+                    if (e.key === 'Escape') {
                       e.preventDefault();
                       onEditingChange?.(false);
                       setEditingBody(comment.body);
@@ -453,7 +453,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     }}
                     className="px-3 py-1 text-gray-600 text-sm rounded-lg hover:bg-gray-100 transition-colors font-medium"
                   >
-                    キャンセル (Ctrl+C)
+                    キャンセル (Esc)
                   </button>
                   <button
                     onClick={(e) => {
@@ -462,7 +462,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     }}
                     className="px-3 py-1 bg-orange-400 text-white text-sm rounded-lg hover:bg-orange-500 transition-colors font-medium"
                   >
-                    保存 (Ctrl+Enter)
+                    保存 ({typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter)
                   </button>
                 </div>
               </div>
