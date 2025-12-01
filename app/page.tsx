@@ -188,13 +188,31 @@ export default function Home() {
   }, []);
 
   // HTMLモーダルを開く際に自動生成
-  const openHTMLModal = () => {
+  const openHTMLModal = useCallback(() => {
     if (!currentTalk || selectedComments.length === 0) {
       toast.error('コメントを選択してください');
       return;
     }
     setShowHTMLModal(true);
-  };
+  }, [currentTalk, selectedComments.length]);
+
+  // Ctrl+Enter / Cmd+Enter でタグ発行モーダルを開く
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // モーダルが開いている場合や、入力フォーカス中は無視
+      if (showHTMLModal) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        openHTMLModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showHTMLModal, openHTMLModal]);
 
   const handleGenerateAIComments = async () => {
     if (!currentTalk) {

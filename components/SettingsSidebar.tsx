@@ -298,6 +298,10 @@ export default function SettingsSidebar({
                 <kbd className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">⌘⇧Z</kbd>
                 <span className="text-gray-500">やり直し</span>
               </div>
+              <div className="flex items-center gap-1">
+                <kbd className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">⌘↵</kbd>
+                <span className="text-gray-500">タグ発行</span>
+              </div>
             </div>
           )}
         </div>
