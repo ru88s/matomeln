@@ -47,6 +47,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   const [isHovered, setIsHovered] = useState(false);
   const [editingBody, setEditingBody] = useState(comment.body);
   const [targetPosition, setTargetPosition] = useState<string>('');  // 移動先番号入力用
+  const [showMoveMenu, setShowMoveMenu] = useState(false);  // 移動メニュー表示
 
   // 編集開始時に現在のbodyを設定
   useEffect(() => {
@@ -78,6 +79,23 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
     document.addEventListener('click', handleClickOutside, true);
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isEditing, comment.body, onEditingChange]);
+
+  // 移動メニューを外側クリックで閉じる
+  useEffect(() => {
+    if (!showMoveMenu) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // メニュー内のクリックは無視
+      if (target.closest('[data-move-menu]')) {
+        return;
+      }
+      setShowMoveMenu(false);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMoveMenu]);
 
   // ホバー中のキーボード処理
   useEffect(() => {
@@ -246,70 +264,96 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 </span>
               </div>
             )}
-            {/* 移動ボタン */}
+            {/* 移動メニュー */}
             {!isFirstSelected && (
-              <div className="absolute top-0 right-0 flex gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMoveToTop?.();
-                    }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 md:px-2 md:py-1 rounded transition-colors cursor-pointer touch-target"
-                    title="最初に移動"
-                  >
-                    ↑最初へ
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMoveToEnd?.();
-                    }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 md:px-2 md:py-1 rounded transition-colors cursor-pointer touch-target"
-                    title="最後に移動"
-                  >
-                    ↓最後へ
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={targetPosition}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setTargetPosition(e.target.value);
-                      }}
-                      onKeyPress={(e) => {
-                        e.stopPropagation();
-                        if (e.key === 'Enter') {
-                          const targetResId = parseInt(targetPosition);
-                          if (!isNaN(targetResId) && targetResId > 0) {
-                            onMoveToPosition?.(targetPosition);
-                            setTargetPosition('');
-                          }
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-12 px-1 py-0.5 text-xs border border-gray-400 rounded"
-                      placeholder="番号"
-                      min="1"
-                    />
+              <div className="absolute top-0 right-0" data-move-menu>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMoveMenu(!showMoveMenu);
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  移動
+                  <svg className={`w-3 h-3 transition-transform ${showMoveMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showMoveMenu && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const targetResId = parseInt(targetPosition);
-                        if (!isNaN(targetResId) && targetResId > 0) {
-                          onMoveToPosition?.(targetPosition);
-                          setTargetPosition('');
-                        }
+                        onMoveToTop?.();
+                        setShowMoveMenu(false);
                       }}
-                      disabled={!targetPosition || isNaN(parseInt(targetPosition))}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
-                      title="指定番号の下に移動"
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
-                      移動
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      最初へ
                     </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveToEnd?.();
+                        setShowMoveMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      最後へ
+                    </button>
+                    <div className="border-t border-gray-200 px-3 py-2">
+                      <p className="text-xs text-gray-500 mb-1">番号指定</p>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={targetPosition}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setTargetPosition(e.target.value);
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') {
+                              const targetResId = parseInt(targetPosition);
+                              if (!isNaN(targetResId) && targetResId > 0) {
+                                onMoveToPosition?.(targetPosition);
+                                setTargetPosition('');
+                                setShowMoveMenu(false);
+                              }
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-14 px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="番号"
+                          min="1"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetResId = parseInt(targetPosition);
+                            if (!isNaN(targetResId) && targetResId > 0) {
+                              onMoveToPosition?.(targetPosition);
+                              setTargetPosition('');
+                              setShowMoveMenu(false);
+                            }
+                          }}
+                          disabled={!targetPosition || isNaN(parseInt(targetPosition))}
+                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          移動
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
           </div>
 
           {/* カラーパレット - 名前欗の下に表示 */}
