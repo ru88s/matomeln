@@ -197,40 +197,39 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
         <div className="flex-1 pr-10 relative">
           <div className="mb-2">
-            <div
-              className={`flex items-center gap-2 flex-wrap ${
-                isSelected && !isFirstSelected ? 'cursor-grab active:cursor-grabbing' : ''
-              }`}
-              draggable={isSelected && !isFirstSelected}
-              onMouseDown={(e) => {
-                e.stopPropagation(); // 親要素のonClickを防ぐ
-                // マウスダウン位置を記録
-                if (isSelected && !isFirstSelected) {
-                  setDragStartPos({ x: e.clientX, y: e.clientY });
-                }
-              }}
-              onDragStart={(e) => {
-                e.stopPropagation();
-                if (isSelected && !isFirstSelected && dragStartPos) {
-                  // マウス移動距離を計算（5px以上移動していればドラッグ）
-                  const distance = Math.sqrt(
-                    Math.pow(e.clientX - dragStartPos.x, 2) +
-                    Math.pow(e.clientY - dragStartPos.y, 2)
-                  );
-
-                  if (distance < 5) {
-                    // 移動距離が小さい場合はテキスト選択と判断してドラッグをキャンセル
-                    e.preventDefault();
-                    return;
-                  }
-
-                  onDragHandleStart?.(e);
-                } else {
-                  e.preventDefault();
-                }
-                setDragStartPos(null);
-              }}
-            >
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* ドラッグハンドル */}
+              {isSelected && !isFirstSelected && (
+                <div
+                  className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-gray-100 rounded"
+                  draggable={true}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    setDragStartPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    if (dragStartPos) {
+                      const distance = Math.sqrt(
+                        Math.pow(e.clientX - dragStartPos.x, 2) +
+                        Math.pow(e.clientY - dragStartPos.y, 2)
+                      );
+                      if (distance < 5) {
+                        e.preventDefault();
+                        setDragStartPos(null);
+                        return;
+                      }
+                    }
+                    onDragHandleStart?.(e);
+                    setDragStartPos(null);
+                  }}
+                  title="ドラッグして並べ替え"
+                >
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
+                </div>
+              )}
               <span className="text-sm font-medium text-gray-500">{comment.res_id}.</span>
               <span
                 className="text-sm"

@@ -75,11 +75,11 @@ select:focus-visible,
   }
 }
 
-/* ドラッグ可能要素のタッチ操作 */
-[draggable="true"] {
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
+/* ドラッグ可能要素のタッチ操作（モバイルのみ） */
+@media (max-width: 768px) {
+  [draggable="true"] {
+    touch-action: none;
+  }
 }
 
 /* Twitter埋め込みのスペース調整とライトモード強制 */
