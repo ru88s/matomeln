@@ -6,7 +6,7 @@ import { Logo } from '@/components/ui/Logo';
 
 export const metadata: Metadata = {
   title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
-  description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
+  description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
   keywords: "5ch,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,まとめるん,まとめ作成,ブログ記事,自動生成",
   icons: {
     icon: [
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   openGraph: {
     title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
-    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。",
+    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。",
     url: "https://matomeln.pages.dev",
     siteName: "まとめるん",
     type: "website",
@@ -66,7 +66,7 @@ export default function RootLayout({
     name: 'まとめるん',
     alternateName: 'Matomeln',
     url: 'https://matomeln.pages.dev',
-    description: '5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。ドラッグ&ドロップで簡単編集、ライブドアブログへ直接投稿可能。',
+    description: '5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。',
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'Web',
     offers: {
