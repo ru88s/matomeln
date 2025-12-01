@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 
+const errorMessages: Record<number, string> = {
+  400: '無効なリクエストです',
+  404: 'トークが見つかりません',
+  429: 'リクエスト制限に達しました。少し待ってからお試しください',
+  500: 'サーバーエラーが発生しました',
+  503: 'サービスが一時的に利用できません',
+};
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const talk_id = searchParams.get('talk_id');
@@ -16,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   if (!talk_id) {
     return NextResponse.json(
-      { error: 'Talk ID is required' },
+      { error: 'トークIDが指定されていません' },
       { status: 400 }
     );
   }
@@ -40,7 +48,7 @@ export async function GET(request: NextRequest) {
       if (response.status === 404 || (data.error && data.error.includes('not found'))) {
         return NextResponse.json(
           {
-            error: data.error || 'Talk not found',
+            error: 'トークが見つかりません',
             success: false,
             data: null
           },
@@ -48,9 +56,10 @@ export async function GET(request: NextRequest) {
         );
       }
       // その他のエラーは元のステータスコードを保持
+      const errorMessage = errorMessages[response.status] || `エラーが発生しました (${response.status})`;
       return NextResponse.json(
         {
-          error: data.error || `HTTP error! status: ${response.status}`,
+          error: errorMessage,
           success: false,
           data: null
         },
@@ -62,7 +71,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Error fetching comments:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch comments', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'コメントの取得に失敗しました。ネットワーク接続を確認してください' },
       { status: 500 }
     );
   }

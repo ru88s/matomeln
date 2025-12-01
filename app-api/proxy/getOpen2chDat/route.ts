@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   if (!url) {
     return NextResponse.json(
-      { error: 'URL is required' },
+      { error: 'URLが指定されていません' },
       { status: 400 }
     );
   }

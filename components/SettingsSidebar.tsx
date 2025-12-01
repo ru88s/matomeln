@@ -379,17 +379,23 @@ export default function SettingsSidebar({
 
       {/* ブログ設定モーダル */}
       {showBlogModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="blog-modal-title"
+        >
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-gray-900">
+              <h3 id="blog-modal-title" className="font-bold text-gray-900">
                 {editingBlog ? 'ブログを編集' : 'ブログを追加'}
               </h3>
               <button
                 onClick={() => setShowBlogModal(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
+                aria-label="閉じる"
               >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

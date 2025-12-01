@@ -270,7 +270,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       e.stopPropagation();
                       onMoveToTop?.();
                     }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 md:px-2 md:py-1 rounded transition-colors cursor-pointer touch-target"
                     title="最初に移動"
                   >
                     ↑最初へ
@@ -280,7 +280,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       e.stopPropagation();
                       onMoveToEnd?.();
                     }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+                    className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 md:px-2 md:py-1 rounded transition-colors cursor-pointer touch-target"
                     title="最後に移動"
                   >
                     ↓最後へ
@@ -335,7 +335,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               return (
                 <button
                   key={paletteColor}
-                  className={`relative w-6 h-6 rounded border-2 transition-all hover:scale-110 cursor-pointer ${
+                  className={`relative w-6 h-6 md:w-6 md:h-6 min-w-[28px] min-h-[28px] rounded border-2 transition-all hover:scale-110 cursor-pointer ${
                     color === paletteColor ? 'border-orange-400 shadow-md' : 'border-gray-300'
                   }`}
                   style={{ backgroundColor: paletteColor }}
@@ -369,7 +369,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
+              className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 22 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="大 (キー: Q)"
@@ -389,7 +389,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
+              className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 18 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="中 (キー: W)"
@@ -409,7 +409,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onToggle();
                 }
               }}
-              className={`relative px-3 py-1 text-xs rounded border transition-all cursor-pointer ${
+              className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 14 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
               title="小 (キー: E)"
@@ -1079,7 +1079,11 @@ export default function CommentPicker({
 
       {/* 画像拡大モーダル - Portalでbody直下に配置 */}
       {mounted && expandedImage && createPortal(
-        <>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="画像拡大表示"
+        >
           {/* オーバーレイ */}
           <div
             className="fixed inset-0 bg-black/90 z-[9999]"
@@ -1091,10 +1095,10 @@ export default function CommentPicker({
               {/* 閉じるボタン */}
               <button
                 onClick={() => setExpandedImage(null)}
-                className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
                 aria-label="閉じる"
               >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -1107,7 +1111,7 @@ export default function CommentPicker({
               />
             </div>
           </div>
-        </>,
+        </div>,
         document.body
       )}
 

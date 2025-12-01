@@ -55,6 +55,33 @@ body {
   animation: scaleIn 0.2s ease-out;
 }
 
+/* アクセシビリティ: フォーカススタイル */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
+}
+
+/* モバイル対応: タップターゲットサイズ確保 */
+@media (max-width: 768px) {
+  /* 最小タップターゲット44px */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ドラッグ可能要素のタッチ操作 */
+[draggable="true"] {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Twitter埋め込みのスペース調整とライトモード強制 */
 .react-tweet-theme {
   margin-top: 0 !important;

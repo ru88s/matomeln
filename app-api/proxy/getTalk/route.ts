@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 
+const errorMessages: Record<number, string> = {
+  400: '無効なリクエストです',
+  404: 'トークが見つかりません',
+  429: 'リクエスト制限に達しました。少し待ってからお試しください',
+  500: 'サーバーエラーが発生しました',
+  503: 'サービスが一時的に利用できません',
+};
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
 
   if (!id) {
     return NextResponse.json(
-      { error: 'Talk ID is required' },
+      { error: 'トークIDが指定されていません' },
       { status: 400 }
     );
   }
@@ -21,7 +29,11 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorMessage = errorMessages[response.status] || `エラーが発生しました (${response.status})`;
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -29,7 +41,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Error fetching talk:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch talk', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'トークの取得に失敗しました。ネットワーク接続を確認してください' },
       { status: 500 }
     );
   }
