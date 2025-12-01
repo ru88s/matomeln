@@ -59,7 +59,9 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     // モーダルが開いたら自動でHTML生成
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor).then(html => {
+      // 初回のみサムネイルを反映（後でサムネイルが変更されたら手動で再生成）
+      const savedThumbnailForGeneration = localStorage.getItem('matomeThumbnailUrl') || '';
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, savedThumbnailForGeneration).then(html => {
         setGeneratedHTML(html);
       });
     }
@@ -71,10 +73,15 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     toast.success('API設定を保存しました');
   };
 
-  // サムネイルURL変更時に保存
-  const handleThumbnailChange = (url: string) => {
+  // サムネイルURL変更時に保存してHTML再生成
+  const handleThumbnailChange = async (url: string) => {
     setThumbnailUrl(url);
     localStorage.setItem('matomeThumbnailUrl', url);
+    // HTML再生成
+    if (talk && selectedComments.length > 0) {
+      const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, url);
+      setGeneratedHTML(html);
+    }
   };
 
   // サムネイル画像をアップロード
@@ -144,7 +151,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };

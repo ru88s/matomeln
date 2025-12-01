@@ -18,15 +18,16 @@ export async function generateMatomeHTML(
   sourceInfo?: SourceInfo | null,
   customName?: string,
   customNameBold?: boolean,
-  customNameColor?: string
+  customNameColor?: string,
+  thumbnailUrl?: string
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
   if (style === 'rich') {
-    return await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor);
+    return await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl);
   }
 
-  return await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor);
+  return await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl);
 }
 
 // 引用元URLを生成
@@ -70,6 +71,14 @@ function getCommentStyle(options: MatomeOptions): string {
   return style;
 }
 
+// サムネイル画像タグを生成（まとめくす風）
+function generateThumbnailHTML(thumbnailUrl: string): string {
+  // -s.pngを追加してサムネイルURL（小サイズ）を生成
+  const thumbnailSmallUrl = thumbnailUrl.replace(/(\.[a-zA-Z]+)$/, '-s$1');
+
+  return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailSmallUrl}" width="400" height="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
+}
+
 // まとめくす風のシンプルなHTML
 async function generateSimpleHTML(
   talk: Talk,
@@ -78,7 +87,8 @@ async function generateSimpleHTML(
   sourceInfo?: SourceInfo | null,
   customName?: string,
   customNameBold?: boolean,
-  customNameColor?: string
+  customNameColor?: string,
+  thumbnailUrl?: string
 ): Promise<GeneratedHTML> {
   const { includeTimestamp, includeName, includeImages } = options;
 
@@ -123,8 +133,14 @@ ${imageHTML}` : ''}
 <br /><br />`;
   };
 
-  // 本文（最初のコメントのみ）
-  const bodyHTML = selectedComments.length > 0 ? await formatComment(selectedComments[0]) : '';
+  // 本文（サムネイル + 最初のコメント）
+  let bodyHTML = '';
+  if (thumbnailUrl) {
+    bodyHTML += generateThumbnailHTML(thumbnailUrl);
+  }
+  if (selectedComments.length > 0) {
+    bodyHTML += await formatComment(selectedComments[0]);
+  }
 
   // フッター（2つめ以降のコメント + 引用元リンク）
   let footerHTML = '';
@@ -154,7 +170,8 @@ async function generateRichHTML(
   sourceInfo?: SourceInfo | null,
   customName?: string,
   customNameBold?: boolean,
-  customNameColor?: string
+  customNameColor?: string,
+  thumbnailUrl?: string
 ): Promise<GeneratedHTML> {
   const { includeImages, includeTimestamp, includeName } = options;
 
@@ -226,8 +243,14 @@ ${imageHTML ? `<div>${imageHTML}</div>` : ''}
 <br /><br />`;
   };
 
-  // 本文（最初のコメントのみ + スタイル）
-  const bodyHTML = styleHTML + '\n' + (selectedComments.length > 0 ? await formatComment(selectedComments[0]) : '');
+  // 本文（スタイル + サムネイル + 最初のコメント）
+  let bodyHTML = styleHTML + '\n';
+  if (thumbnailUrl) {
+    bodyHTML += generateThumbnailHTML(thumbnailUrl);
+  }
+  if (selectedComments.length > 0) {
+    bodyHTML += await formatComment(selectedComments[0]);
+  }
 
   // フッター（2つめ以降のコメント + 引用元リンク）
   let footerHTML = '';
