@@ -768,6 +768,7 @@ export default function Home() {
                   apiSettings={apiSettings}
                   selectedBlogName={selectedBlog?.name}
                   showIdInHtml={showIdInHtml}
+                  isDevMode={process.env.NODE_ENV === 'development'}
                 />
               </div>
             </div>

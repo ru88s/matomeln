@@ -20,15 +20,24 @@ export async function generateMatomeHTML(
   customNameBold?: boolean,
   customNameColor?: string,
   thumbnailUrl?: string,
-  showIdInHtml?: boolean
+  showIdInHtml?: boolean,
+  isDevMode?: boolean
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
+  let result: GeneratedHTML;
   if (style === 'rich') {
-    return await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+    result = await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+  } else {
+    result = await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
   }
 
-  return await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+  // DEVモードの場合はタイトルの頭に§を追加（ストック記事とわかるように）
+  if (isDevMode) {
+    result.title = `§ ${result.title}`;
+  }
+
+  return result;
 }
 
 // 引用元URLを生成
@@ -113,7 +122,6 @@ async function generateSimpleHTML(
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
-    const commentStyle = `color:${individualColor};${options.commentStyle.bold ? 'font-weight:bold;' : ''}font-size:${individualFontSize};`;
     // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
     const displayName = customName || comment.name || '匿名';
     const nameColor = customName ? (customNameColor || '#ff69b4') : '#ff69b4';
@@ -141,10 +149,18 @@ async function generateSimpleHTML(
     // ヘッダー情報を組み立て
     const headerParts = [timestamp, idDisplay].filter(Boolean).join(' ');
 
+    // アンカーを含むコメントかどうか判定
+    const hasAnchor = />>?\d+/.test(comment.body);
+    const headerClass = hasAnchor ? 't_h t_i' : 't_h';
+    const bodyClass = hasAnchor ? 't_b t_i' : 't_b';
+    const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
+
+    const commentStyle = `${options.commentStyle.bold ? 'font-weight:bold;' : ''}font-size:${individualFontSize};line-height:27px;color:${individualColor};${indentStyle}margin-top:10px;`;
+
     const formattedBody = await formatCommentBodyForMatome(comment.body);
     return `<div class="res_div">
-<div class="t_h">${comment.res_id}: ${nameDisplay}${headerParts ? ' ' + headerParts : ''}</div>
-<div class="t_b" style="margin-top:10px;${commentStyle}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}
+<div${hasAnchor ? ` style="${indentStyle}"` : ''} class="${headerClass}">${comment.res_id}: ${nameDisplay}${headerParts ? ' ' + headerParts : ''}</div>
+<div style="${commentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}
 </div>
 <br /><br />`;
   };

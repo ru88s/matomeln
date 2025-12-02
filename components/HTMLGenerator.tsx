@@ -25,9 +25,10 @@ interface HTMLGeneratorProps {
   apiSettings?: { blogUrl: string; apiKey: string };
   selectedBlogName?: string;
   showIdInHtml?: boolean;
+  isDevMode?: boolean;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', showIdInHtml = true }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', showIdInHtml = true, isDevMode = false }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -46,11 +47,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   useEffect(() => {
     if (talk && selectedComments.length > 0) {
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode]);
 
   const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {
@@ -59,7 +60,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
