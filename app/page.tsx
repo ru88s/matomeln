@@ -8,6 +8,7 @@ import SettingsSidebar from '@/components/SettingsSidebar';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { callClaudeAPI, AISummarizeResponse } from '@/lib/ai-summarize';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -232,66 +233,84 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHTMLModal, openHTMLModal]);
 
-  const handleGenerateAIComments = async () => {
+  // AIまとめ機能
+  const handleAISummarize = async () => {
     if (!currentTalk) {
-      toast.error('トークを読み込んでください');
+      toast.error('スレッドを読み込んでください');
       return;
     }
 
-    // 毎回20件追加
-    const generateCount = 20;
+    if (comments.length === 0) {
+      toast.error('コメントがありません');
+      return;
+    }
+
+    // Claude APIキーを取得
+    const apiKey = localStorage.getItem('matomeln_claude_api_key');
+    if (!apiKey) {
+      toast.error('Claude APIキーが設定されていません。設定ページで入力してください。');
+      return;
+    }
 
     setGeneratingAI(true);
-    try {
-      const response = await fetch('/api/generate-comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          talkTitle: currentTalk.title,
-          talkBody: currentTalk.body,
-          existingComments: comments.length > 0 ? comments : [{ body: currentTalk.body || currentTalk.title }],
-          count: generateCount,
-        }),
-      });
+    const toastId = toast.loading('AIがレスを分析中...');
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'コメント生成に失敗しました');
+    try {
+      const aiResponse = await callClaudeAPI(apiKey, currentTalk.title, comments);
+
+      // AIの選択結果をCommentWithStyle[]に変換
+      const colorMap: Record<string, string> = {
+        red: '#ef4444',
+        blue: '#3b82f6',
+        green: '#22c55e'
+      };
+
+      const newSelectedComments: CommentWithStyle[] = [];
+      const newCommentColors: Record<string, string> = { ...commentColors };
+      const newCommentSizes: Record<string, number> = { ...commentSizes };
+
+      // 選択されたレスを処理
+      for (const post of aiResponse.selected_posts) {
+        const comment = comments[post.post_number - 1];
+        if (!comment) continue;
+
+        // 色を設定
+        const color = post.decorations.color ? colorMap[post.decorations.color] : '#000000';
+        newCommentColors[comment.id] = color;
+
+        // サイズを設定（large = 22px, 通常 = 18px）
+        const size = post.decorations.size_boost === 'large' ? 22 : 18;
+        newCommentSizes[comment.id] = size;
+
+        // CommentWithStyleを作成
+        const fontSize: 'small' | 'medium' | 'large' = size === 22 ? 'large' : 'medium';
+        newSelectedComments.push({
+          ...comment,
+          body: editedComments[comment.id] || comment.body,
+          color,
+          fontSize
+        });
       }
 
-      const data = await response.json();
-
-      // 生成されたコメントをComment型に変換して追加
-      // 最後のコメントの時刻を基準にする
-      const lastComment = comments[comments.length - 1];
-      const baseTime = lastComment ? new Date(lastComment.created_at) : new Date();
-
-      const newComments: Comment[] = data.comments.map((body: string, index: number) => {
-        // 各コメントの投稿時刻を前のコメントから1-5分後に設定
-        const minutesAfter = Math.floor(Math.random() * 4) + 1; // 1-5分
-        const commentTime = new Date(baseTime.getTime() + (index * minutesAfter * 60 * 1000));
-
-        return {
-          id: `ai-${Date.now()}-${index}`,
-          res_id: `${comments.length + index + 1}`,
-          name: '匿名',
-          body,
-          talk_id: currentTalk.id,
-          created_at: commentTime.toISOString(),
-          images: [],
-        };
+      // post_number順にソート
+      newSelectedComments.sort((a, b) => {
+        const aNum = parseInt(a.res_id);
+        const bNum = parseInt(b.res_id);
+        return aNum - bNum;
       });
 
-      setComments([...comments, ...newComments]);
-      toast.success(`${newComments.length}件のコメントを生成しました`);
+      // 状態を更新
+      setCommentColors(newCommentColors);
+      setCommentSizes(newCommentSizes);
+      setSelectedComments(newSelectedComments);
+
+      toast.success(`${newSelectedComments.length}件のレスを選択しました`, { id: toastId });
     } catch (error) {
-      console.error('AI comment generation error:', error);
+      console.error('AI summarize error:', error);
       if (error instanceof Error) {
-        toast.error(error.message);
+        toast.error(error.message, { id: toastId });
       } else {
-        toast.error('コメント生成に失敗しました');
+        toast.error('AIまとめに失敗しました', { id: toastId });
       }
     } finally {
       setGeneratingAI(false);
@@ -349,26 +368,26 @@ export default function Home() {
           )}
         </div>
 
-        {currentTalk && isDevMode && (
+        {currentTalk && isDevMode && comments.length > 0 && (
           <>
-            {/* AIコメント生成ボタン（開発者モードのみ） */}
+            {/* AIまとめボタン（開発者モードのみ） */}
             <div className="flex justify-end">
               <button
-                onClick={handleGenerateAIComments}
+                onClick={handleAISummarize}
                 disabled={generatingAI}
-                className="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
+                className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
               >
                 {generatingAI ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    AI生成中...
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    AIが分析中...
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    AIで20件追加
+                    AIでまとめる
                   </>
                 )}
               </button>

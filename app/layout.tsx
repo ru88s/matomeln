@@ -133,6 +133,12 @@ export default function RootLayout({
                 >
                   使い方
                 </a>
+                <a
+                  href="/settings"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  設定
+                </a>
               </div>
             </div>
           </div>
