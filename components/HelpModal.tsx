@@ -19,7 +19,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl">
+      <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl max-w-3xl w-full h-[600px] overflow-hidden shadow-2xl flex flex-col">
         {/* ヘッダー */}
         <div className="p-4 border-b border-orange-100 flex justify-between items-center bg-white/80 backdrop-blur-sm">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -71,7 +71,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
         </div>
 
         {/* コンテンツ */}
-        <div className="p-4 max-h-[calc(85vh-130px)] overflow-y-auto">
+        <div className="p-4 flex-1 overflow-y-auto">
           {/* 基本の使い方 */}
           {activeTab === 'basic' && (
             <div className="space-y-4">
