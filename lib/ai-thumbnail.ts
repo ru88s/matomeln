@@ -269,14 +269,40 @@ export async function generateThumbnail(
       parts: parts
     }],
     generationConfig: {
-      responseModalities: ['TEXT', 'IMAGE']
-    }
+      responseModalities: ['IMAGE'],
+      imageConfig: {
+        aspectRatio: '1:1'
+      },
+      // 品質向上のための設定
+      temperature: 0.9,
+      topP: 0.95,
+      topK: 40
+    },
+    // 安全フィルター設定（最も寛容に）
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE'
+      }
+    ]
   };
 
   try {
-    // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ）
+    // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ、Nano Banana対応）
     const response: Response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
