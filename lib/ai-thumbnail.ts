@@ -269,34 +269,8 @@ export async function generateThumbnail(
       parts: parts
     }],
     generationConfig: {
-      responseModalities: ['IMAGE'],
-      imageConfig: {
-        aspectRatio: '1:1'
-      },
-      // 品質向上のための設定（すたくらくんと同じ）
-      temperature: 0.9,
-      topP: 0.95,
-      topK: 40
-    },
-    // 安全フィルター設定（最も寛容に）
-    safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_NONE'
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_NONE'
-      }
-    ]
+      responseModalities: ['TEXT', 'IMAGE']
+    }
   };
 
   try {
