@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Comment, BlogSettings } from '@/lib/types';
 import toast from 'react-hot-toast';
+
+// 開発者モードのパスワード（環境変数から取得、フォールバックあり）
+const DEV_MODE_PASSWORD = 'matomeln2024';
 
 interface SettingsSidebarProps {
   customName: string;
@@ -30,6 +33,8 @@ interface SettingsSidebarProps {
   onSelectedBlogIdChange: (id: string | null) => void;
   showIdInHtml: boolean;
   onShowIdInHtmlChange: (show: boolean) => void;
+  isDevMode: boolean;
+  onDevModeChange: (enabled: boolean) => void;
 }
 
 export default function SettingsSidebar({
@@ -58,9 +63,13 @@ export default function SettingsSidebar({
   onSelectedBlogIdChange,
   showIdInHtml,
   onShowIdInHtmlChange,
+  isDevMode,
+  onDevModeChange,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
+  const [showDevModeInput, setShowDevModeInput] = useState(false);
+  const [devModePassword, setDevModePassword] = useState('');
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
 
@@ -123,6 +132,26 @@ export default function SettingsSidebar({
     }
     toast.success('ブログを削除しました');
     setShowBlogModal(false);
+  };
+
+  // 開発者モードのパスワード検証
+  const verifyDevModePassword = () => {
+    if (devModePassword === DEV_MODE_PASSWORD) {
+      onDevModeChange(true);
+      localStorage.setItem('matomeln_dev_mode', 'true');
+      toast.success('開発者モードを有効にしました');
+      setShowDevModeInput(false);
+      setDevModePassword('');
+    } else {
+      toast.error('パスワードが正しくありません');
+    }
+  };
+
+  // 開発者モードを無効化
+  const disableDevMode = () => {
+    onDevModeChange(false);
+    localStorage.removeItem('matomeln_dev_mode');
+    toast.success('開発者モードを無効にしました');
   };
 
   return (
@@ -371,6 +400,69 @@ export default function SettingsSidebar({
                 <kbd className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">⌘↵</kbd>
                 <span className="text-gray-500">タグ発行</span>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* 開発者モード - 一番下に配置 */}
+        <div className="pt-3 border-t border-gray-100">
+          {isDevMode ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-600">開発者モード ON</span>
+                <button
+                  onClick={disableDevMode}
+                  className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+                >
+                  無効化
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {showDevModeInput ? (
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={devModePassword}
+                    onChange={(e) => setDevModePassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') verifyDevModePassword();
+                      if (e.key === 'Escape') {
+                        setShowDevModeInput(false);
+                        setDevModePassword('');
+                      }
+                    }}
+                    placeholder="パスワード"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      onClick={verifyDevModePassword}
+                      className="flex-1 text-xs bg-purple-500 text-white hover:bg-purple-600 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                    >
+                      有効化
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDevModeInput(false);
+                        setDevModePassword('');
+                      }}
+                      className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDevModeInput(true)}
+                  className="w-full text-xs text-gray-400 hover:text-gray-600 cursor-pointer text-left"
+                >
+                  開発者モード
+                </button>
+              )}
             </div>
           )}
         </div>

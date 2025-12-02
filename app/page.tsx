@@ -40,6 +40,7 @@ export default function Home() {
   const [blogs, setBlogs] = useState<BlogSettings[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [showIdInHtml, setShowIdInHtml] = useState(true);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -58,6 +59,11 @@ export default function Home() {
     const savedShowIdInHtml = localStorage.getItem('showIdInHtml');
     if (savedShowIdInHtml !== null) {
       setShowIdInHtml(savedShowIdInHtml === 'true');
+    }
+    // 開発者モードを読み込み
+    const savedDevMode = localStorage.getItem('matomeln_dev_mode');
+    if (savedDevMode === 'true') {
+      setIsDevMode(true);
     }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
@@ -343,9 +349,9 @@ export default function Home() {
           )}
         </div>
 
-        {currentTalk && process.env.NODE_ENV === 'development' && (
+        {currentTalk && isDevMode && (
           <>
-            {/* AIコメント生成ボタン（開発環境のみ） */}
+            {/* AIコメント生成ボタン（開発者モードのみ） */}
             <div className="flex justify-end">
               <button
                 onClick={handleGenerateAIComments}
@@ -506,6 +512,8 @@ export default function Home() {
         onSelectedBlogIdChange={handleSelectedBlogIdChange}
         showIdInHtml={showIdInHtml}
         onShowIdInHtmlChange={handleShowIdInHtmlChange}
+        isDevMode={isDevMode}
+        onDevModeChange={setIsDevMode}
       />
     </div>
   );
