@@ -10,7 +10,11 @@ export interface FiveChThreadInfo {
 // 5ch URLのパターン
 // https://nova.5ch.net/test/read.cgi/livegalileo/1764043617/
 // https://nova.5ch.net/test/read.cgi/livegalileo/1764043617/l50
+// https://itest.5ch.net/hayabusa9/test/read.cgi/news/1764539868 (モバイル版)
 export function parse5chUrl(url: string): FiveChThreadInfo | null {
+  // まずURLを正規化（モバイル版をPC版に変換）
+  const normalizedUrl = normalize5chUrl(url);
+
   const patterns = [
     // 標準形式: https://server.5ch.net/test/read.cgi/board/threadkey/
     /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
@@ -19,7 +23,7 @@ export function parse5chUrl(url: string): FiveChThreadInfo | null {
   ];
 
   for (const pattern of patterns) {
-    const match = url.match(pattern);
+    const match = normalizedUrl.match(pattern);
     if (match) {
       return {
         server: match[1],
@@ -30,6 +34,23 @@ export function parse5chUrl(url: string): FiveChThreadInfo | null {
   }
 
   return null;
+}
+
+// 5ch URLを正規化（モバイル版をPC版に変換）
+// itest.5ch.net/hayabusa9/test/read.cgi/news/xxx → hayabusa9.5ch.net/test/read.cgi/news/xxx
+export function normalize5chUrl(url: string): string {
+  // itest.5ch.net形式: https://itest.5ch.net/server/test/read.cgi/board/threadkey
+  const itestPattern = /https?:\/\/itest\.5ch\.net\/([a-z0-9]+)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
+  const itestMatch = url.match(itestPattern);
+
+  if (itestMatch) {
+    const server = itestMatch[1];
+    const board = itestMatch[2];
+    const threadKey = itestMatch[3];
+    return `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`;
+  }
+
+  return url;
 }
 
 // 5chのDATファイルをパースしてComment[]に変換
@@ -381,14 +402,18 @@ function parseOpen2chDateString(dateStr: string): string {
 const DENO_5CH_API = 'https://polite-squirrel-51.deno.dev';
 
 export async function fetch5chThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
-  const threadInfo = parse5chUrl(url);
+  // URLを正規化（モバイル版をPC版に変換）
+  const normalizedUrl = normalize5chUrl(url);
+
+  const threadInfo = parse5chUrl(normalizedUrl);
   if (!threadInfo) {
     throw new Error('無効な5ch URLです');
   }
 
   try {
     // Deno Deploy APIを使用（Cloudflare Workersは5chにブロックされているため）
-    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(url)}`);
+    // 正規化されたURLを使用
+    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(normalizedUrl)}`);
 
     if (!response.ok) {
       const error = await response.json();
