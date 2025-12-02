@@ -92,7 +92,7 @@ function getCommentStyle(options: MatomeOptions): string {
   return style;
 }
 
-// サムネイル画像タグを生成（まとめくす風）
+// サムネイル画像タグを生成
 function generateThumbnailHTML(thumbnailUrl: string): string {
   // -s.pngを追加してサムネイルURL（小サイズ）を生成
   const thumbnailSmallUrl = thumbnailUrl.replace(/(\.[a-zA-Z]+)$/, '-s$1');
@@ -100,7 +100,7 @@ function generateThumbnailHTML(thumbnailUrl: string): string {
   return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailSmallUrl}" width="400" height="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
 }
 
-// まとめくす風のシンプルなHTML
+// シンプルなHTML
 async function generateSimpleHTML(
   talk: Talk,
   selectedComments: CommentWithStyle[],
@@ -117,12 +117,12 @@ async function generateSimpleHTML(
   // タイトル部分
   const titleHTML = escapeHtml(talk.title);
 
-  // コメントをHTML化する関数（まとめくす風フォーマット）
+  // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
-    // line-heightはfont-sizeの1.5倍（まとめくす風）
+    // line-heightはfont-sizeの1.5倍
     const lineHeight = comment.fontSize === 'small' ? '21px' : comment.fontSize === 'large' ? '33px' : '27px';
     // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
     const displayName = customName || comment.name || '匿名';
@@ -158,14 +158,14 @@ async function generateSimpleHTML(
     const bodyClass = hasAnchor ? 't_b t_i' : 't_b';
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
-    // まとめくす風のスタイル（font-weight:bold;font-size:18px;line-height:27px;color:#0000cd;margin-top:10px;）
+    // コメント本文のスタイル
     // options.commentStyle.boldの設定を反映
     const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
     const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
     const formattedBody = await formatCommentBodyForMatome(comment.body);
 
-    // 整形されたHTMLを生成（まとめくす風フォーマット）
+    // 整形されたHTMLを生成
     if (hasAnchor) {
       return `<div class="res_div"><div style="${indentStyle}" class="${headerClass}">
 ${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
@@ -254,14 +254,14 @@ async function generateRichHTML(
 
   const titleHTML = escapeHtml(talk.title);
 
-  // コメントをHTML化する関数（まとめくす風フォーマット）
+  // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
-    // line-heightはfont-sizeの1.5倍（まとめくす風）
+    // line-heightはfont-sizeの1.5倍
     const lineHeight = comment.fontSize === 'small' ? '21px' : comment.fontSize === 'large' ? '33px' : '27px';
-    // まとめくす風のスタイル（options.commentStyle.boldの設定を反映）
+    // コメント本文のスタイル（options.commentStyle.boldの設定を反映）
     const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
     const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
