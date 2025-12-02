@@ -157,6 +157,10 @@ function convertBodyFromDat(body: string): string {
     // HTMLタグを除去（リンクなど）
     .replace(/<a[^>]*>([^<]*)<\/a>/gi, '$1')
     .replace(/<[^>]+>/g, '')
+    // 5chアイコン指定（sssp://）を含む行を除去
+    .split('\n')
+    .filter(line => !line.trim().startsWith('sssp://'))
+    .join('\n')
     .trim();
 }
 
