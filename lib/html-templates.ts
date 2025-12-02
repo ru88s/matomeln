@@ -397,6 +397,13 @@ async function linkifyUrlsToCards(text: string): Promise<string> {
       continue;
     }
 
+    // 5ch、open2ch、2ch.sc、shikutokuのスレッドURL - シンプルなテキストリンクに変換
+    if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(url)) {
+      const textLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
+      result = result.replace(url, textLink);
+      continue;
+    }
+
     const ogp = await fetchOGP(url);
 
     if (ogp && ogp.title) {
