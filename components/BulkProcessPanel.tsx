@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { fetchUnsummarizedUrls, markThreadAsSummarized, BulkProcessStatus, getInitialBulkStatus } from '@/lib/bulk-processing';
+import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
 interface BulkProcessPanelProps {
@@ -90,12 +90,7 @@ export default function BulkProcessPanel({
           break;
         }
 
-        // まとめ済みとして登録
-        try {
-          await markThreadAsSummarized(url);
-        } catch (markError) {
-          console.warn('まとめ済み登録に失敗:', markError);
-        }
+        // スレメモくんへのまとめ済み登録はonBulkProcess内で行う
 
         completedCount++;
         setStatus(prev => ({

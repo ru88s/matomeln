@@ -15,6 +15,7 @@ import { callClaudeAPI } from '@/lib/ai-summarize';
 import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML, SourceInfo } from '@/lib/html-templates';
 import { ThumbnailCharacter, MatomeOptions } from '@/lib/types';
+import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -595,6 +596,17 @@ export default function Home() {
 
     const postResult = await postResponse.json();
     toast.success(`ブログ投稿完了: ${postResult.url || '成功'}`, { id: 'bulk-step' });
+
+    // =====================
+    // 6. スレメモくんにまとめ済み登録
+    // =====================
+    try {
+      await markThreadAsSummarized(url);
+      toast.success('スレメモくんに登録完了', { id: 'bulk-memo' });
+    } catch (memoError) {
+      console.warn('スレメモくん登録失敗:', memoError);
+      // 登録失敗でもエラーにはしない（ブログ投稿は成功しているため）
+    }
 
   }, [resetHistory, setSelectedComments]);
 
