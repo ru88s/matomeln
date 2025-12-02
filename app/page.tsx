@@ -272,6 +272,7 @@ export default function Home() {
       const aiResponse = await callClaudeAPI(apiKey, currentTalk.title, comments);
 
       // AIの選択結果をCommentWithStyle[]に変換
+      // 後方互換性のためのカラーマップ（古い形式 red/blue/green にも対応）
       const colorMap: Record<string, string> = {
         red: '#ef4444',
         blue: '#3b82f6',
@@ -287,16 +288,31 @@ export default function Home() {
         const comment = comments[post.post_number - 1];
         if (!comment) continue;
 
-        // 色を設定
-        const color = post.decorations.color ? colorMap[post.decorations.color] : '#000000';
+        // 色を設定（カラーコード or 旧形式の色名）
+        let color = '#000000';
+        if (post.decorations.color) {
+          if (post.decorations.color.startsWith('#')) {
+            // カラーコード形式
+            color = post.decorations.color;
+          } else if (colorMap[post.decorations.color]) {
+            // 旧形式の色名
+            color = colorMap[post.decorations.color];
+          }
+        }
         newCommentColors[comment.id] = color;
 
-        // サイズを設定（large = 22px, 通常 = 18px）
-        const size = post.decorations.size_boost === 'large' ? 22 : 18;
+        // サイズを設定（large = 22px, small = 14px, 通常 = 18px）
+        let size = 18;
+        if (post.decorations.size_boost === 'large') {
+          size = 22;
+        } else if (post.decorations.size_boost === 'small') {
+          size = 14;
+        }
         newCommentSizes[comment.id] = size;
 
         // CommentWithStyleを作成
-        const fontSize: 'small' | 'medium' | 'large' = size === 22 ? 'large' : 'medium';
+        const fontSize: 'small' | 'medium' | 'large' =
+          size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
         newSelectedComments.push({
           ...comment,
           body: editedComments[comment.id] || comment.body,
