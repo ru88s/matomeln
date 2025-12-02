@@ -974,36 +974,33 @@ export default function CommentPicker({
                 e.preventDefault();
                 // 本文のコメントにはドロップできない
                 if (draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
-                  if (!isSelected) {
-                    // ドロップ先が未選択の場合、commentPositionsを使って位置を設定
-                    const targetIndex = comments.findIndex(c => c.id === comment.id);
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [draggedCommentId]: targetIndex + 0.5
-                    }));
-                    toast.success(`コメントを移動しました`);
-                  } else {
-                    // ドロップ先が選択済みの場合、通常の並び替え
-                    const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
-                    const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
+                  const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
 
-                    if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
-                      // selectedCommentsの順序を更新
-                      const newSelectedComments = [...selectedComments];
-                      const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
-                      newSelectedComments.splice(dropIndex, 0, draggedComment);
+                  if (draggedIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
+                    const newSelectedComments = [...selectedComments];
+                    const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
 
-                      // 位置情報を完全に再計算
-                      const newPositions: Record<string, number> = {};
-                      newSelectedComments.forEach((sc, index) => {
-                        if (index > 0) { // 本文以外
-                          newPositions[sc.id] = index;
-                        }
-                      });
-                      setCommentPositions(newPositions);
-
-                      onSelectionChange(newSelectedComments);
+                    if (dropIndex !== -1) {
+                      // ドロップ先が選択済みの場合、その位置に挿入
+                      const adjustedDropIndex = dropIndex > draggedIndex ? dropIndex - 1 : dropIndex;
+                      newSelectedComments.splice(adjustedDropIndex, 0, draggedComment);
+                    } else {
+                      // ドロップ先が未選択の場合、最後に追加
+                      newSelectedComments.push(draggedComment);
                     }
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<string, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) { // 本文以外
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
+
+                    onSelectionChange(newSelectedComments);
+                    toast.success(`コメントを移動しました`);
                   }
                 }
                 setDraggedCommentId(null);
@@ -1042,22 +1039,47 @@ export default function CommentPicker({
                 onExpandImage={setExpandedImage}
                 isInSortMode={showOnlySelected}
                 onMoveToEnd={() => {
-                  // 未選択の場合は自動選択
+                  // 未選択の場合は自動選択してから移動
                   if (!isSelected) {
-                    toggleComment(comment);
-                  }
-
-                  // 現在の最大位置を計算
-                  setCommentPositions(prev => {
-                    const maxPosition = Math.max(
-                      comments.length - 1,
-                      ...Object.values(prev)
-                    );
-                    return {
-                      ...prev,
-                      [comment.id]: maxPosition + 1
+                    const newComment: CommentWithStyle = {
+                      ...comment,
+                      color: commentColors[comment.id] || '#000000',
+                      fontSize: commentSizes[comment.id] === 14 ? 'small' : commentSizes[comment.id] === 22 ? 'large' : 'medium',
+                      body: editedComments[comment.id] || comment.body
                     };
-                  });
+                    // 新しいコメントを最後に追加
+                    const newSelectedComments = [...selectedComments, newComment];
+
+                    // 位置情報を完全に再計算
+                    const newPositions: Record<string, number> = {};
+                    newSelectedComments.forEach((sc, index) => {
+                      if (index > 0) {
+                        newPositions[sc.id] = index;
+                      }
+                    });
+                    setCommentPositions(newPositions);
+
+                    onSelectionChange(newSelectedComments);
+                  } else {
+                    // 既に選択済みの場合は最後に移動
+                    const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                    if (currentIndex > 0) { // 本文以外
+                      const newSelectedComments = [...selectedComments];
+                      const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                      newSelectedComments.push(movedComment);
+
+                      // 位置情報を完全に再計算
+                      const newPositions: Record<string, number> = {};
+                      newSelectedComments.forEach((sc, index) => {
+                        if (index > 0) {
+                          newPositions[sc.id] = index;
+                        }
+                      });
+                      setCommentPositions(newPositions);
+
+                      onSelectionChange(newSelectedComments);
+                    }
+                  }
 
                   toast.success(`コメントを最後に移動しました`);
                 }}
