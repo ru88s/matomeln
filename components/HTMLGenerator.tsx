@@ -50,6 +50,32 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   // 投稿先として選択されたブログID
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
 
+  // LocalStorageから設定を読み込み
+  useEffect(() => {
+    if (isDevMode) {
+      const saved = localStorage.getItem('matomeln_other_blogs_settings');
+      if (saved) {
+        try {
+          const settings = JSON.parse(saved);
+          setPostToOtherBlogs(settings.postToOtherBlogs || false);
+          setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
+        } catch {
+          // パースエラーは無視
+        }
+      }
+    }
+  }, [isDevMode]);
+
+  // 設定変更時にLocalStorageに保存
+  useEffect(() => {
+    if (isDevMode) {
+      localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
+        postToOtherBlogs,
+        selectedOtherBlogIds,
+      }));
+    }
+  }, [isDevMode, postToOtherBlogs, selectedOtherBlogIds]);
+
   // モーダルが開いたら自動でHTML生成
   useEffect(() => {
     if (talk && selectedComments.length > 0) {
