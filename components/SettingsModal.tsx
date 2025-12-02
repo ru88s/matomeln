@@ -89,6 +89,8 @@ export default function SettingsModal({
     if (devModePassword === DEV_MODE_PASSWORD) {
       onDevModeChange(true);
       localStorage.setItem('matomeln_dev_mode', 'true');
+      // Headerに通知
+      window.dispatchEvent(new CustomEvent('devModeChanged'));
       toast.success('開発者モードを有効にしました');
       setShowDevModeInput(false);
       setDevModePassword('');
@@ -101,6 +103,8 @@ export default function SettingsModal({
   const disableDevMode = () => {
     onDevModeChange(false);
     localStorage.removeItem('matomeln_dev_mode');
+    // Headerに通知
+    window.dispatchEvent(new CustomEvent('devModeChanged'));
     toast.success('開発者モードを無効にしました');
   };
 

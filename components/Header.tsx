@@ -1,11 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Logo } from '@/components/ui/Logo';
 import HelpModal from '@/components/HelpModal';
 
 export default function Header() {
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
+
+  // 開発者モードの状態を監視
+  useEffect(() => {
+    const checkDevMode = () => {
+      const savedDevMode = localStorage.getItem('matomeln_dev_mode');
+      setIsDevMode(savedDevMode === 'true');
+    };
+
+    // 初期チェック
+    checkDevMode();
+
+    // localStorageの変更を監視
+    const handleStorageChange = () => {
+      checkDevMode();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // カスタムイベントでも更新を受け取る
+    window.addEventListener('devModeChanged', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('devModeChanged', handleStorageChange);
+    };
+  }, []);
 
   // 設定モーダルを開くイベントを発火
   const openSettingsModal = () => {
@@ -27,6 +53,11 @@ export default function Header() {
                 </span>
                 <span className="text-[10px] text-gray-400 font-normal ml-1">Beta</span>
               </a>
+              {isDevMode && (
+                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-purple-500 text-white rounded-full">
+                  DEV
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
