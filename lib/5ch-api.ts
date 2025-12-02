@@ -61,6 +61,8 @@ function cleanThreadTitle(title: string): string {
     // [無断転載禁止] 等のテキスト
     .replace(/\s*\[無断転載禁止\]\s*/g, '')
     .replace(/\s*\[転載禁止\]\s*/g, '')
+    // [記者名★] - 記者キャップ（★や☆を含む）
+    .replace(/\s*\[[^\]]*[★☆][^\]]*\]\s*/g, '')
     // ©2ch.net, ©bbspink.com 等の著作権表記
     .replace(/\s*©[a-z0-9.]+\s*/gi, '')
     // 末尾の余分な空白
