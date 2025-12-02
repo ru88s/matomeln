@@ -734,8 +734,8 @@ export default function CommentPicker({
   // 選択済みコメントの位置を全コメント中のインデックスで管理
   const [commentPositions, setCommentPositions] = useState<Record<string, number>>({});
   // 表示するコメント件数（遅延ローディング用）
-  const INITIAL_DISPLAY_COUNT = 100;
-  const LOAD_MORE_COUNT = 100;
+  const INITIAL_DISPLAY_COUNT = 1000;
+  const LOAD_MORE_COUNT = 500;
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
 
   // クライアントサイドでのみ実行
