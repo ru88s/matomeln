@@ -167,7 +167,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           {/* 本文 */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <h4 className="font-bold text-gray-900">本文の内容: <span className="text-sm font-normal text-gray-600">（1つめのコメント）</span></h4>
+              <h4 className="font-bold text-gray-900">本文の内容: <span className="text-sm font-normal text-gray-600">（本文に設定したレス）</span></h4>
               <button
                 onClick={() => handleCopy(generatedHTML.body)}
                 className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
@@ -185,7 +185,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           {/* 続きを読む */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <h4 className="font-bold text-gray-900">「続きを読む」の内容: <span className="text-sm font-normal text-gray-600">（2つめ以降のコメント）</span></h4>
+              <h4 className="font-bold text-gray-900">「続きを読む」の内容: <span className="text-sm font-normal text-gray-600">（本文以外のレス）</span></h4>
               <button
                 onClick={() => handleCopy(generatedHTML.footer)}
                 className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
