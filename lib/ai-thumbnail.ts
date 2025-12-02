@@ -3,6 +3,8 @@
  * Google Gemini APIで画像生成
  */
 
+import { ThumbnailCharacter } from './types';
+
 /**
  * センシティブなコンテンツをサニタイズ
  */
@@ -115,32 +117,93 @@ export interface ThumbnailGenerationResult {
 }
 
 /**
+ * 画像URLをBase64に変換
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    return {
+      data: base64,
+      mimeType: blob.type || 'image/png'
+    };
+  } catch (error) {
+    console.warn('Failed to fetch reference image:', imageUrl, error);
+    return null;
+  }
+}
+
+/**
  * Google Gemini APIで画像を生成
  */
 export async function generateThumbnail(
   apiKey: string,
   title: string,
-  characterDescription?: string,
+  character?: ThumbnailCharacter,
   sanitize = false
 ): Promise<ThumbnailGenerationResult> {
-  const prompt = generatePromptFromTitle(title, characterDescription, sanitize);
+  const prompt = generatePromptFromTitle(title, character?.description, sanitize);
+
+  // リクエストパーツを構築
+  type TextPart = { text: string };
+  type ImagePart = { inlineData: { mimeType: string; data: string } };
+  const parts: (TextPart | ImagePart)[] = [];
+
+  // 参考画像がある場合は追加（最大3枚）
+  if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
+    const imagesToUse = character.referenceImageUrls.slice(0, 3);
+
+    for (const imageUrl of imagesToUse) {
+      const imageData = await fetchImageAsBase64(imageUrl);
+      if (imageData) {
+        const imagePart: ImagePart = {
+          inlineData: {
+            mimeType: imageData.mimeType,
+            data: imageData.data
+          }
+        };
+        parts.push(imagePart);
+      }
+    }
+
+    // 参考画像がある場合はプロンプトに追記
+    if (parts.length > 0) {
+      const textPart: TextPart = {
+        text: `The above image(s) show the reference character "${character.name}". Create a new thumbnail image featuring this SAME character with consistent appearance, style, and design.\n\n${prompt}`
+      };
+      parts.push(textPart);
+    } else {
+      parts.push({ text: prompt });
+    }
+  } else {
+    parts.push({ text: prompt });
+  }
+
+  const requestBody = {
+    contents: [{
+      parts: parts
+    }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE']
+    }
+  };
 
   try {
-    const response = await fetch(
+    const response: Response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE']
-          }
-        })
+        body: JSON.stringify(requestBody)
       }
     );
 
@@ -172,7 +235,7 @@ export async function generateThumbnail(
         // サニタイズしていない場合は再試行
         if (!sanitize) {
           console.log('センシティブコンテンツとして検出。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, characterDescription, true);
+          return generateThumbnail(apiKey, title, character, true);
         }
         return {
           success: false,
@@ -196,7 +259,7 @@ export async function generateThumbnail(
       if (finishReason === 'SAFETY' || finishReason === 'IMAGE_SAFETY') {
         if (!sanitize) {
           console.log('安全フィルターでブロック。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, characterDescription, true);
+          return generateThumbnail(apiKey, title, character, true);
         }
         return {
           success: false,

@@ -51,3 +51,11 @@ export interface BlogSettings {
   blogId: string;
   apiKey: string;
 }
+
+// AIサムネイル用キャラクター設定
+export interface ThumbnailCharacter {
+  id: string;
+  name: string;
+  description: string;  // キャラの説明（プロンプト用）
+  referenceImageUrls: string[];  // 参考画像URL（複数可）
+}

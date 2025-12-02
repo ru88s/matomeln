@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { BlogSettings } from '@/lib/types';
+import { BlogSettings, ThumbnailCharacter } from '@/lib/types';
 
 // 開発者モードのパスワード
 const DEV_MODE_PASSWORD = 'matomeln2025';
@@ -57,7 +57,10 @@ export default function SettingsModal({
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
-  const [thumbnailCharacter, setThumbnailCharacter] = useState('');
+  const [thumbnailCharacters, setThumbnailCharacters] = useState<ThumbnailCharacter[]>([]);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+  const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
+  const [characterForm, setCharacterForm] = useState({ name: '', description: '', imageUrl: '' });
 
   // 設定を読み込み
   useEffect(() => {
@@ -70,9 +73,13 @@ export default function SettingsModal({
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
       }
-      const savedThumbnailCharacter = localStorage.getItem('matomeln_thumbnail_character');
-      if (savedThumbnailCharacter) {
-        setThumbnailCharacter(savedThumbnailCharacter);
+      const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
+      if (savedCharacters) {
+        try {
+          setThumbnailCharacters(JSON.parse(savedCharacters));
+        } catch {
+          setThumbnailCharacters([]);
+        }
       }
     }
   }, [isOpen]);
@@ -119,15 +126,98 @@ export default function SettingsModal({
     }
   };
 
-  // サムネイルキャラクターを保存
-  const saveThumbnailCharacter = () => {
-    if (thumbnailCharacter.trim()) {
-      localStorage.setItem('matomeln_thumbnail_character', thumbnailCharacter.trim());
-      toast.success('参考キャラクターを保存しました');
-    } else {
-      localStorage.removeItem('matomeln_thumbnail_character');
-      toast.success('参考キャラクターをリセットしました');
+  // キャラクター追加モーダルを開く
+  const openAddCharacterModal = () => {
+    setEditingCharacter(null);
+    setCharacterForm({ name: '', description: '', imageUrl: '' });
+    setShowCharacterModal(true);
+  };
+
+  // キャラクター編集モーダルを開く
+  const openEditCharacterModal = (character: ThumbnailCharacter) => {
+    setEditingCharacter(character);
+    setCharacterForm({
+      name: character.name,
+      description: character.description,
+      imageUrl: character.referenceImageUrls[0] || ''
+    });
+    setShowCharacterModal(true);
+  };
+
+  // キャラクターを保存
+  const saveCharacter = () => {
+    if (!characterForm.name.trim()) {
+      toast.error('キャラクター名を入力してください');
+      return;
     }
+
+    let updatedCharacters: ThumbnailCharacter[];
+
+    if (editingCharacter) {
+      // 編集
+      updatedCharacters = thumbnailCharacters.map(c =>
+        c.id === editingCharacter.id
+          ? {
+              ...c,
+              name: characterForm.name,
+              description: characterForm.description,
+              referenceImageUrls: characterForm.imageUrl.trim()
+                ? [characterForm.imageUrl.trim()]
+                : c.referenceImageUrls
+            }
+          : c
+      );
+      toast.success('キャラクターを更新しました');
+    } else {
+      // 新規追加
+      const newCharacter: ThumbnailCharacter = {
+        id: crypto.randomUUID(),
+        name: characterForm.name,
+        description: characterForm.description,
+        referenceImageUrls: characterForm.imageUrl.trim() ? [characterForm.imageUrl.trim()] : []
+      };
+      updatedCharacters = [...thumbnailCharacters, newCharacter];
+      toast.success('キャラクターを追加しました');
+    }
+
+    setThumbnailCharacters(updatedCharacters);
+    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    setShowCharacterModal(false);
+  };
+
+  // キャラクターを削除
+  const deleteCharacter = (id: string) => {
+    const updatedCharacters = thumbnailCharacters.filter(c => c.id !== id);
+    setThumbnailCharacters(updatedCharacters);
+    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    toast.success('キャラクターを削除しました');
+    setShowCharacterModal(false);
+  };
+
+  // キャラクターに画像を追加
+  const addImageToCharacter = (characterId: string, imageUrl: string) => {
+    if (!imageUrl.trim()) return;
+
+    const updatedCharacters = thumbnailCharacters.map(c =>
+      c.id === characterId
+        ? { ...c, referenceImageUrls: [...c.referenceImageUrls, imageUrl.trim()] }
+        : c
+    );
+    setThumbnailCharacters(updatedCharacters);
+    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    toast.success('参考画像を追加しました');
+  };
+
+  // キャラクターから画像を削除
+  const removeImageFromCharacter = (characterId: string, imageIndex: number) => {
+    const updatedCharacters = thumbnailCharacters.map(c =>
+      c.id === characterId
+        ? { ...c, referenceImageUrls: c.referenceImageUrls.filter((_, i) => i !== imageIndex) }
+        : c
+    );
+    setThumbnailCharacters(updatedCharacters);
+    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    toast.success('参考画像を削除しました');
   };
 
   // ブログ追加モーダルを開く
@@ -492,27 +582,60 @@ export default function SettingsModal({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      参考キャラクター（オプション）
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={thumbnailCharacter}
-                        onChange={(e) => setThumbnailCharacter(e.target.value)}
-                        placeholder="例: nano banana, 猫耳少女, ゆるキャラ..."
-                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
+                  {/* キャラクター管理 */}
+                  <div className="border-t border-blue-200 pt-3 mt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-medium text-gray-700">
+                        参考キャラクター
+                      </label>
                       <button
-                        onClick={saveThumbnailCharacter}
-                        className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                        onClick={openAddCharacterModal}
+                        className="text-xs bg-blue-500 text-white hover:bg-blue-600 px-2 py-1 rounded font-bold cursor-pointer transition-colors"
                       >
-                        保存
+                        + 追加
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      キャラの一貫性を維持するための参考情報
+
+                    {thumbnailCharacters.length === 0 ? (
+                      <p className="text-xs text-gray-500">
+                        キャラクターを追加するとサムネイル生成時に参考にされます
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {thumbnailCharacters.map((char) => (
+                          <div
+                            key={char.id}
+                            className="bg-white rounded-lg p-2 border border-blue-100 cursor-pointer hover:border-blue-300 transition-colors"
+                            onClick={() => openEditCharacterModal(char)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {char.referenceImageUrls[0] && (
+                                <img
+                                  src={char.referenceImageUrls[0]}
+                                  alt={char.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-sm text-gray-800 truncate">{char.name}</div>
+                                {char.description && (
+                                  <div className="text-xs text-gray-500 truncate">{char.description}</div>
+                                )}
+                                <div className="text-xs text-blue-500">
+                                  {char.referenceImageUrls.length}枚の参考画像
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-500 mt-2">
+                      推奨: 2-6枚/キャラ（多様なシチュエーションを含む画像がベスト）
                     </p>
                   </div>
 
@@ -608,6 +731,175 @@ export default function SettingsModal({
                 <button
                   onClick={saveBlog}
                   className="px-4 py-2 text-sm bg-orange-500 text-white hover:bg-orange-600 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* キャラクター設定モーダル */}
+      {showCharacterModal && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900">
+                {editingCharacter ? 'キャラクターを編集' : 'キャラクターを追加'}
+              </h3>
+              <button
+                onClick={() => setShowCharacterModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  キャラクター名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={characterForm.name}
+                  onChange={(e) => setCharacterForm({ ...characterForm, name: e.target.value })}
+                  placeholder="例: やる子"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  キャラ説明（プロンプト用）
+                </label>
+                <textarea
+                  value={characterForm.description}
+                  onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })}
+                  placeholder="例: blonde bob cut hair with a ribbon, cheerful expression, anime style illustration"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 h-20 resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  英語推奨。キャラの見た目や雰囲気を記述
+                </p>
+              </div>
+
+              {/* 参考画像管理 */}
+              {editingCharacter && (
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    参考画像URL
+                  </label>
+                  <p className="text-xs text-amber-600 mb-2">
+                    重要: 必ず大きい画像（-sなし）のURLを使用してください
+                  </p>
+
+                  {/* 既存の画像一覧 */}
+                  {editingCharacter.referenceImageUrls.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {editingCharacter.referenceImageUrls.map((url, index) => (
+                        <div key={index} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2">
+                          <img
+                            src={url}
+                            alt={`参考画像 ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded border border-gray-200"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect fill="%23f3f4f6" width="64" height="64"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="10">Error</text></svg>';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={url}
+                              readOnly
+                              className="w-full text-xs px-2 py-1 bg-white border border-gray-200 rounded truncate"
+                            />
+                          </div>
+                          <button
+                            onClick={() => removeImageFromCharacter(editingCharacter.id, index)}
+                            className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 新しい画像を追加 */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={characterForm.imageUrl}
+                      onChange={(e) => setCharacterForm({ ...characterForm, imageUrl: e.target.value })}
+                      placeholder="https://livedoor.blogimg.jp/.../image.png"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <button
+                      onClick={() => {
+                        if (characterForm.imageUrl.trim()) {
+                          addImageToCharacter(editingCharacter.id, characterForm.imageUrl);
+                          setCharacterForm({ ...characterForm, imageUrl: '' });
+                          // 編集中のキャラクターを更新
+                          const updated = thumbnailCharacters.find(c => c.id === editingCharacter.id);
+                          if (updated) {
+                            setEditingCharacter({ ...updated, referenceImageUrls: [...updated.referenceImageUrls, characterForm.imageUrl.trim()] });
+                          }
+                        }
+                      }}
+                      className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                    >
+                      追加
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 新規作成時の初期画像URL */}
+              {!editingCharacter && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    参考画像URL（最初の1枚）
+                  </label>
+                  <input
+                    type="text"
+                    value={characterForm.imageUrl}
+                    onChange={(e) => setCharacterForm({ ...characterForm, imageUrl: e.target.value })}
+                    placeholder="https://livedoor.blogimg.jp/.../image.png"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    追加の画像は保存後に登録できます
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                {editingCharacter && (
+                  <button
+                    onClick={() => deleteCharacter(editingCharacter.id)}
+                    className="px-4 py-2 text-sm bg-red-500 text-white hover:bg-red-600 rounded-lg font-bold cursor-pointer transition-colors"
+                  >
+                    削除
+                  </button>
+                )}
+                <div className="flex-1" />
+                <button
+                  onClick={() => setShowCharacterModal(false)}
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={saveCharacter}
+                  className="px-4 py-2 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   保存
                 </button>

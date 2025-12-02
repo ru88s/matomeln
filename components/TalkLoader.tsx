@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
-import { Talk } from '@/lib/types';
+import { Talk, ThumbnailCharacter } from '@/lib/types';
 import { generateThumbnail } from '@/lib/ai-thumbnail';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -31,18 +31,22 @@ export default function TalkLoader({
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [thumbnailCharacter, setThumbnailCharacter] = useState('');
+  const [thumbnailCharacters, setThumbnailCharacters] = useState<ThumbnailCharacter[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gemini APIキーと参考キャラクターを読み込み
+  // Gemini APIキーとキャラクターを読み込み
   useEffect(() => {
     const savedKey = localStorage.getItem('matomeln_gemini_api_key');
     if (savedKey) {
       setGeminiApiKey(savedKey);
     }
-    const savedCharacter = localStorage.getItem('matomeln_thumbnail_character');
-    if (savedCharacter) {
-      setThumbnailCharacter(savedCharacter);
+    const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
+    if (savedCharacters) {
+      try {
+        setThumbnailCharacters(JSON.parse(savedCharacters));
+      } catch {
+        setThumbnailCharacters([]);
+      }
     }
   }, []);
 
@@ -123,7 +127,9 @@ export default function TalkLoader({
     const toastId = toast.loading('AIサムネイルを生成中...');
 
     try {
-      const result = await generateThumbnail(geminiApiKey, currentTalk.title, thumbnailCharacter || undefined);
+      // 最初のキャラクターを使用（将来的にはキャラ選択機能を追加予定）
+      const character = thumbnailCharacters.length > 0 ? thumbnailCharacters[0] : undefined;
+      const result = await generateThumbnail(geminiApiKey, currentTalk.title, character);
 
       if (!result.success || !result.imageBase64) {
         throw new Error(result.error || '画像生成に失敗しました');
