@@ -54,9 +54,9 @@ function sanitizeSensitiveContent(text: string): string {
 }
 
 /**
- * 記事タイトルからプロンプトを生成
+ * 記事タイトルからプロンプトを生成（すたくらくん同等の詳細プロンプト）
  */
-function generatePromptFromTitle(title: string, characterDescription?: string, sanitize = false): string {
+function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, sanitize = false): string {
   // タイトルから装飾を除去
   let cleanTitle = title.replace(/【.*?】|§\s*/g, '').trim();
 
@@ -64,50 +64,116 @@ function generatePromptFromTitle(title: string, characterDescription?: string, s
     cleanTitle = sanitizeSensitiveContent(cleanTitle);
   }
 
-  // キャラクター設定があれば追加
-  const characterSection = characterDescription ? `
-🎭 CHARACTER (IMPORTANT - must appear in the image):
-- Include this character in the thumbnail: "${characterDescription}"
-- The character should be the main visual element
-- Character should react to or interact with the article topic
-- Maintain consistent character design and style
-- Character expression should match the article mood
-` : '';
+  // キャラクターの外見説明
+  const characterAppearance = character?.description
+    ? `- EXACT hair style and color: ${character.description}`
+    : '- Same hair style and color from reference';
 
-  return `You are a PROFESSIONAL THUMBNAIL DESIGNER creating eye-catching blog thumbnails.
+  // プロフェッショナルなペルソナ
+  const professionalPersona = `You are a PROFESSIONAL THUMBNAIL DESIGNER with years of experience creating high-CTR (Click-Through Rate) thumbnails for viral content.
 
-Create a visually striking thumbnail image for this article:
-"${cleanTitle}"
-${characterSection}
-🎨 STYLE REQUIREMENTS:
-- Modern, clean design with bold colors
-- Professional illustration or graphic design style
-- Eye-catching composition that grabs attention
-- Suitable for a Japanese blog/news site
+【Your Expertise】
+✅ Visual Psychology: You understand what makes people click - eye contact, emotion, contrast, curiosity gaps
+✅ Composition Mastery: Perfect balance of character, emotion, and background to tell a story at a glance
+✅ Color Theory: Strategic use of vibrant, complementary colors that stand out in feeds
+✅ Emotional Impact: Ability to convey the article's emotion instantly through character expression and pose
+✅ Trend Awareness: Knowledge of current visual trends in Japanese web media and social platforms
+✅ Character Consistency: Maintaining recognizable character designs while adapting to different scenarios
 
-🖼️ COMPOSITION:
-- Use symbolic imagery that represents the article topic
-- Bold, simple shapes that read well at small sizes
-- Strong focal point
-- Good contrast between elements
+Your thumbnails have generated millions of clicks. Create another masterpiece.
 
-💡 VISUAL APPROACH:
-- Analyze the article title and create relevant imagery
-- Use metaphors and visual symbols
-- Create emotional impact through color and composition
-- Make it clickable and interesting
+`;
 
-📐 TECHNICAL:
-- 1:1 square aspect ratio
-- High contrast, vibrant colors
-- Clean edges, professional quality
+  return `${professionalPersona}Create a MASTERPIECE, eye-catching high-quality scene with the SAME CHARACTER from the reference image(s) above.
 
-🚫 TEXT RULES (CRITICAL):
-- NO text in the image whatsoever
-- NO Japanese characters
-- NO English text
-- Use ONLY visual imagery
-- The title is for understanding the concept only`;
+Article Title: "${cleanTitle}"
+
+🎯 CHARACTER CONSISTENCY (CRITICALLY IMPORTANT):
+ANALYZE the reference image(s) carefully and replicate:
+${characterAppearance}
+- EXACT face structure: same eye shape, eye color, iris details, nose style, mouth shape
+- EXACT hair: color, length, texture, styling, bangs, volume
+- Body proportions and body type must match perfectly
+- ALL accessories: glasses (if present), cat ears (if present), ribbon (if present), hair clips, earrings
+- Accessory details: exact position, color, size, shape
+- Keep the IDENTICAL art style, line work, and coloring technique
+- Only modify: pose, facial expression, outfit (if scene requires), background
+
+💫 EMOTION AND EXPRESSION:
+Analyze the article's emotional tone and reflect it:
+- Happy/Joyful article → Bright smile, sparkling eyes, energetic pose, warm colors
+- Sad/Disappointed → Downcast eyes, slumped shoulders, subdued expression, cooler tones
+- Surprised/Shocked → Wide eyes, open mouth, raised eyebrows, dynamic motion
+- Excited/Enthusiastic → Big smile, raised arms, jumping or bouncing pose
+- Calm/Peaceful → Gentle smile, relaxed posture, soft serene expression
+- Worried/Anxious → Furrowed brow, tense posture, nervous expression
+
+🎨 ART STYLE REQUIREMENTS:
+- Modern Japanese anime/manga style (like high-quality light novel illustrations)
+- Clean, crisp line art with consistent line weight
+- Cel shading with soft gradients and smooth transitions
+- Vibrant but balanced color palette with proper color harmony
+- Professional-grade rendering quality
+- Smooth anti-aliasing on all edges
+- Rich detail in hair, eyes, and clothing
+
+🖼️ COMPOSITION AND FRAMING:
+- Use rule of thirds or golden ratio for character placement
+- Appropriate framing based on scene:
+  * Emotional scenes: Medium close-up (chest and above)
+  * Action scenes: Full body or dynamic angle
+  * Calm scenes: Medium shot with breathing space
+- Proper head room and negative space
+- Dynamic angles when appropriate for the theme
+- Character as clear focal point
+
+🌟 BACKGROUND QUALITY:
+- HIGH DETAIL background with atmospheric depth
+- Proper perspective with foreground/midground/background layers
+- Environmental storytelling matching article theme:
+  * Indoor scenes: Detailed room elements, furniture, decorations
+  * Outdoor scenes: Sky, clouds, buildings, nature elements
+  * Abstract scenes: Thematic patterns, colors, symbolic elements
+- Appropriate depth of field (slight background blur to emphasize character)
+- Environmental props and details that enhance the story
+
+💡 LIGHTING AND ATMOSPHERE:
+- Professional lighting setup matching the mood:
+  * Happy scenes: Bright, warm lighting with soft highlights
+  * Dramatic scenes: Strong contrast, rim lighting, dynamic shadows
+  * Calm scenes: Soft, diffused lighting with gentle gradients
+- Realistic light sources and shadow directions
+- Atmospheric effects: Light rays, ambient glow, particles
+- Color grading that enhances emotional tone
+
+✨ VISUAL EFFECTS (use appropriately):
+- Sparkles and light particles for magical or happy moments
+- Soft glow and bloom for dreamy or romantic scenes
+- Motion lines for dynamic action
+- Cherry blossom petals for spring or romantic themes
+- Lens flare for bright, hopeful scenes
+- Subtle texture overlay for depth (fabric, hair, background)
+
+📐 TECHNICAL SPECIFICATIONS:
+- 1:1 square aspect ratio (perfect for thumbnails)
+- High resolution with sharp details
+- Proper color balance and saturation
+- Professional composition with visual flow
+- Clean edges and smooth gradients
+
+🚫🚫🚫 TEXT RULES (ABSOLUTELY CRITICAL) 🚫🚫🚫
+ZERO TEXT ALLOWED IN THE IMAGE!
+- NO Japanese characters (hiragana, katakana, kanji) - rendering quality is extremely poor
+- NO English text overlays or captions
+- NO speech bubbles with any text
+- NO signs, labels, or UI elements with text
+- NO watermarks, signatures, or artist names
+- NO sound effects written as text (like "ドキドキ" or "キラキラ")
+- Use ONLY visual storytelling: expressions, body language, visual symbols, colors
+
+The article title is for understanding the SCENE CONCEPT only.
+DO NOT write any part of the title as text in the image.
+Use visual metaphors and imagery instead.`;
 }
 
 export interface ThumbnailGenerationResult {
@@ -156,16 +222,16 @@ export async function generateThumbnail(
   character?: ThumbnailCharacter,
   sanitize = false
 ): Promise<ThumbnailGenerationResult> {
-  const prompt = generatePromptFromTitle(title, character?.description, sanitize);
-
-  // リクエストパーツを構築
+  // リクエストパーツを構築（参考画像を先に、テキストを後に）
   type TextPart = { text: string };
   type ImagePart = { inlineData: { mimeType: string; data: string } };
   const parts: (TextPart | ImagePart)[] = [];
 
-  // 参考画像がある場合は追加（最大3枚）
+  // 参考画像がある場合は先頭に追加（最大3枚）
+  let hasReferenceImages = false;
   if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
+    console.log('📷 参考画像を読み込み中...', imagesToUse.length, '枚');
 
     for (const imageUrl of imagesToUse) {
       const imageData = await fetchImageAsBase64(imageUrl);
@@ -177,19 +243,24 @@ export async function generateThumbnail(
           }
         };
         parts.push(imagePart);
+        console.log('✓ 参考画像を追加しました:', imageUrl);
+        hasReferenceImages = true;
+      } else {
+        console.warn('⚠️ 参考画像の読み込みに失敗:', imageUrl);
       }
     }
+  }
 
-    // 参考画像がある場合はプロンプトに追記
-    if (parts.length > 0) {
-      const textPart: TextPart = {
-        text: `The above image(s) show the reference character "${character.name}". Create a new thumbnail image featuring this SAME character with consistent appearance, style, and design.\n\n${prompt}`
-      };
-      parts.push(textPart);
-    } else {
-      parts.push({ text: prompt });
-    }
+  // プロンプトを生成して追加
+  const prompt = generatePromptFromTitle(title, character, sanitize);
+
+  if (hasReferenceImages) {
+    // 参考画像がある場合は説明を追加
+    parts.push({
+      text: `The above image(s) show the reference character "${character?.name || 'キャラクター'}". Create a new thumbnail image featuring this SAME character with consistent appearance, style, and design.\n\n${prompt}`
+    });
   } else {
+    // 参考画像がない場合はプロンプトのみ
     parts.push({ text: prompt });
   }
 
@@ -198,11 +269,38 @@ export async function generateThumbnail(
       parts: parts
     }],
     generationConfig: {
-      responseModalities: ['TEXT', 'IMAGE']
-    }
+      responseModalities: ['IMAGE'],
+      imageConfig: {
+        aspectRatio: '1:1'
+      },
+      // 品質向上のための設定（すたくらくんと同じ）
+      temperature: 0.9,
+      topP: 0.95,
+      topK: 40
+    },
+    // 安全フィルター設定（最も寛容に）
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_NONE'
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE'
+      }
+    ]
   };
 
   try {
+    // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ）
     const response: Response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${apiKey}`,
       {
@@ -283,8 +381,8 @@ export async function generateThumbnail(
       };
     }
 
-    const parts = data.candidates[0].content.parts;
-    const imagePart = parts.find((part: { inlineData?: { data: string; mimeType: string } }) => part.inlineData);
+    const responseParts = data.candidates[0].content.parts;
+    const imagePart = responseParts.find((part: { inlineData?: { data: string; mimeType: string } }) => part.inlineData);
 
     if (!imagePart?.inlineData?.data) {
       return {
