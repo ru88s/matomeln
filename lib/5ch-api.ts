@@ -53,6 +53,20 @@ export function normalize5chUrl(url: string): string {
   return url;
 }
 
+// スレタイから不要な末尾を除去
+function cleanThreadTitle(title: string): string {
+  return title
+    // [数字のみ] - ワッチョイ等のID
+    .replace(/\s*\[\d+\]\s*$/, '')
+    // [無断転載禁止] 等のテキスト
+    .replace(/\s*\[無断転載禁止\]\s*/g, '')
+    .replace(/\s*\[転載禁止\]\s*/g, '')
+    // ©2ch.net, ©bbspink.com 等の著作権表記
+    .replace(/\s*©[a-z0-9.]+\s*/gi, '')
+    // 末尾の余分な空白
+    .trim();
+}
+
 // 5chのDATファイルをパースしてComment[]に変換
 export function parseDatFile(
   datContent: string,
@@ -74,7 +88,7 @@ export function parseDatFile(
 
     // 1レス目のみスレタイがある
     if (index === 0 && parts[4]) {
-      threadTitle = parts[4].trim();
+      threadTitle = cleanThreadTitle(parts[4].trim());
     }
 
     // 日付とIDをパース
@@ -246,7 +260,7 @@ export function parse2chscDatFile(
 
     // 1レス目のみスレタイがある
     if (index === 0 && parts[4]) {
-      threadTitle = parts[4].trim();
+      threadTitle = cleanThreadTitle(parts[4].trim());
     }
 
     // 日付とIDをパース
@@ -336,7 +350,7 @@ export function parseOpen2chDatFile(
 
     // 1レス目のみスレタイがある
     if (index === 0 && parts[4]) {
-      threadTitle = parts[4].trim();
+      threadTitle = cleanThreadTitle(parts[4].trim());
     }
 
     // 日付とIDをパース
