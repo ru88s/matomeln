@@ -781,11 +781,11 @@ export default function SettingsModal({
                 <textarea
                   value={characterForm.description}
                   onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })}
-                  placeholder="例: blonde bob cut hair with a ribbon, cheerful expression, anime style illustration"
+                  placeholder="例: 金髪ボブカットにリボン、明るい表情、アニメ風イラスト"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 h-20 resize-none"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  英語推奨。キャラの見た目や雰囲気を記述
+                  日本語OK。キャラの見た目や雰囲気を記述
                 </p>
               </div>
 
