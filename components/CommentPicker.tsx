@@ -217,24 +217,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
         <div className="flex-1 pr-10 relative">
           <div className="mb-2">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* ドラッグハンドル */}
-              {isSelected && !isFirstSelected && (
-                <div
-                  className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-gray-100 rounded"
-                  draggable={true}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    e.dataTransfer.setData('text/plain', comment.id);
-                    e.dataTransfer.effectAllowed = 'move';
-                    onDragHandleStart?.(e);
-                  }}
-                  title="ドラッグして並べ替え"
-                >
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                  </svg>
-                </div>
-              )}
               <span className="text-sm font-medium text-gray-500">{comment.res_id}.</span>
               <span
                 className="text-sm"
@@ -268,7 +250,25 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
             )}
             {/* 移動メニュー */}
             {!isFirstSelected && (
-              <div className="absolute top-0 right-0" data-move-menu>
+              <div className="absolute top-0 right-0 flex items-center gap-1" data-move-menu>
+                {/* ドラッグハンドル */}
+                {isSelected && (
+                  <div
+                    className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+                    draggable={true}
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      e.dataTransfer.setData('text/plain', comment.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      onDragHandleStart?.(e);
+                    }}
+                    title="ドラッグして並べ替え"
+                  >
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                    </svg>
+                  </div>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -338,7 +338,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       </button>
                     </div>
                     <div className="border-t border-gray-200 px-3 py-2">
-                      <p className="text-xs text-gray-500 mb-1">番号指定</p>
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
@@ -359,10 +358,11 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                             }
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 px-2 py-1 text-sm border border-gray-300 rounded"
+                          className="w-14 px-2 py-1 text-sm border border-gray-300 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           placeholder="番号"
                           min="1"
                         />
+                        <span className="text-xs text-gray-500">の下へ</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
