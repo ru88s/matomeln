@@ -769,6 +769,8 @@ export default function Home() {
                   selectedBlogName={selectedBlog?.name}
                   showIdInHtml={showIdInHtml}
                   isDevMode={isDevMode}
+                  blogs={blogs}
+                  selectedBlogId={selectedBlogId || ''}
                 />
               </div>
             </div>
