@@ -200,6 +200,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           // 登録失敗でもエラーにはしない（ブログ投稿は成功しているため）
         }
       }
+
+      // 投稿成功後、少し待ってからモーダルを閉じる
+      setTimeout(() => {
+        onClose?.();
+      }, 1500);
     } catch (error) {
       toast.error('ブログ投稿中にエラーが発生しました');
     } finally {

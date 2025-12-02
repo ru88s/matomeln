@@ -15,6 +15,7 @@ interface TalkLoaderProps {
   onThumbnailUrlChange?: (url: string) => void;
   apiSettings?: { blogUrl: string; apiKey: string };
   isDevMode?: boolean;
+  clearInputOnLoad?: boolean;
 }
 
 export default function TalkLoader({
@@ -24,7 +25,8 @@ export default function TalkLoader({
   thumbnailUrl = '',
   onThumbnailUrlChange,
   apiSettings = { blogUrl: '', apiKey: '' },
-  isDevMode = false
+  isDevMode = false,
+  clearInputOnLoad = false
 }: TalkLoaderProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
@@ -49,6 +51,13 @@ export default function TalkLoader({
       }
     }
   }, []);
+
+  // スレッド読み込み成功後にURL入力欄をクリア
+  useEffect(() => {
+    if (currentTalk && clearInputOnLoad) {
+      setInput('');
+    }
+  }, [currentTalk, clearInputOnLoad]);
 
   // サムネイル画像をアップロード
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

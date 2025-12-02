@@ -733,15 +733,20 @@ export default function CommentPicker({
   const [dragOverCommentId, setDragOverCommentId] = useState<string | null>(null);
   // 選択済みコメントの位置を全コメント中のインデックスで管理
   const [commentPositions, setCommentPositions] = useState<Record<string, number>>({});
+  // 表示するコメント件数（遅延ローディング用）
+  const INITIAL_DISPLAY_COUNT = 100;
+  const LOAD_MORE_COUNT = 100;
+  const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
 
   // クライアントサイドでのみ実行
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // コメントが変更されたら位置情報をリセット
+  // コメントが変更されたら位置情報と表示件数をリセット
   useEffect(() => {
     setCommentPositions({});
+    setDisplayCount(INITIAL_DISPLAY_COUNT);
   }, [comments]);
 
   // toggleComment関数を先に定義（useCallbackでメモ化）
@@ -931,7 +936,7 @@ export default function CommentPicker({
             // sortKeyでソートして返す
             return result.sort((a, b) => a.sortKey - b.sortKey);
           }
-        })().map(comment => {
+        })().slice(0, showOnlySelected ? undefined : displayCount).map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body
@@ -1184,6 +1189,18 @@ export default function CommentPicker({
           );
         })}
       </div>
+
+      {/* もっと見るボタン（全表示モードで、まだ表示していないコメントがある場合） */}
+      {!showOnlySelected && comments.length > displayCount && (
+        <div className="text-center py-4">
+          <button
+            onClick={() => setDisplayCount(prev => prev + LOAD_MORE_COUNT)}
+            className="px-6 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors cursor-pointer font-bold"
+          >
+            もっと見る（残り{comments.length - displayCount}件）
+          </button>
+        </div>
+      )}
 
       {comments.length === 0 && (
         <div className="text-center py-8 text-gray-500">
