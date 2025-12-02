@@ -5,10 +5,11 @@ import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
+import SettingsModal from '@/components/SettingsModal';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
-import { callClaudeAPI, AISummarizeResponse } from '@/lib/ai-summarize';
+import { callClaudeAPI } from '@/lib/ai-summarize';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
     maxHistorySize: 30
   });
   const [showHTMLModal, setShowHTMLModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc'; originalUrl: string } | null>(null);
   const [customName, setCustomName] = useState('');
@@ -232,6 +234,16 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHTMLModal, openHTMLModal]);
+
+  // Headerからの設定モーダルを開くイベントをリッスン
+  useEffect(() => {
+    const handleOpenSettingsModal = () => {
+      setShowSettingsModal(true);
+    };
+
+    window.addEventListener('openSettingsModal', handleOpenSettingsModal);
+    return () => window.removeEventListener('openSettingsModal', handleOpenSettingsModal);
+  }, []);
 
   // AIまとめ機能
   const handleAISummarize = async () => {
@@ -506,12 +518,6 @@ export default function Home() {
 
       {/* サイドバー */}
       <SettingsSidebar
-        customName={customName}
-        onCustomNameChange={setCustomName}
-        customNameBold={customNameBold}
-        onCustomNameBoldChange={setCustomNameBold}
-        customNameColor={customNameColor}
-        onCustomNameColorChange={setCustomNameColor}
         comments={comments}
         onSelectFirstPoster={selectFirstPoster}
         onChangeFirstPosterColor={changeFirstPosterColor}
@@ -525,14 +531,26 @@ export default function Home() {
         onShowOnlySelectedChange={setShowOnlySelected}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
+      />
+
+      {/* 設定モーダル */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        isDevMode={isDevMode}
+        onDevModeChange={setIsDevMode}
+        customName={customName}
+        onCustomNameChange={setCustomName}
+        customNameBold={customNameBold}
+        onCustomNameBoldChange={setCustomNameBold}
+        customNameColor={customNameColor}
+        onCustomNameColorChange={setCustomNameColor}
+        showIdInHtml={showIdInHtml}
+        onShowIdInHtmlChange={handleShowIdInHtmlChange}
         blogs={blogs}
         selectedBlogId={selectedBlogId}
         onBlogsChange={handleBlogsChange}
         onSelectedBlogIdChange={handleSelectedBlogIdChange}
-        showIdInHtml={showIdInHtml}
-        onShowIdInHtmlChange={handleShowIdInHtmlChange}
-        isDevMode={isDevMode}
-        onDevModeChange={setIsDevMode}
       />
     </div>
   );

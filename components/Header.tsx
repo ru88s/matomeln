@@ -1,33 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Logo } from '@/components/ui/Logo';
 import HelpModal from '@/components/HelpModal';
-import SettingsModal from '@/components/SettingsModal';
 
 export default function Header() {
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
 
-  // 開発者モードを読み込み
-  useEffect(() => {
-    const savedDevMode = localStorage.getItem('matomeln_dev_mode');
-    if (savedDevMode === 'true') {
-      setIsDevMode(true);
-    }
-  }, []);
-
-  // 開発者モード変更時にlocalStorageを更新
-  const handleDevModeChange = (enabled: boolean) => {
-    setIsDevMode(enabled);
-    if (enabled) {
-      localStorage.setItem('matomeln_dev_mode', 'true');
-    } else {
-      localStorage.removeItem('matomeln_dev_mode');
-    }
-    // ページ全体に開発者モードの変更を通知
-    window.dispatchEvent(new CustomEvent('devModeChange', { detail: enabled }));
+  // 設定モーダルを開くイベントを発火
+  const openSettingsModal = () => {
+    window.dispatchEvent(new CustomEvent('openSettingsModal'));
   };
 
   return (
@@ -56,7 +38,7 @@ export default function Header() {
                 <span>使い方</span>
               </button>
               <button
-                onClick={() => setShowSettingsModal(true)}
+                onClick={openSettingsModal}
                 className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <span>⚙️</span>
@@ -67,14 +49,8 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* モーダル */}
+      {/* 使い方モーダル */}
       <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        isDevMode={isDevMode}
-        onDevModeChange={handleDevModeChange}
-      />
     </>
   );
 }
