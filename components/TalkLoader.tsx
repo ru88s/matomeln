@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
 import { Talk } from '@/lib/types';
 import { generateThumbnail } from '@/lib/ai-thumbnail';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 interface TalkLoaderProps {
@@ -241,31 +242,28 @@ export default function TalkLoader({
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              {thumbnailUrl ? (
-                <div className="relative group">
-                  <img
-                    src={thumbnailUrl}
-                    alt="サムネイル"
-                    className="w-20 h-20 object-cover rounded-lg border-2 border-orange-300 cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                  />
-                  <button
-                    onClick={() => onThumbnailUrlChange?.('')}
-                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  >
-                    ×
-                  </button>
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                      <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1">
+                {thumbnailUrl ? (
+                  <div className="relative group">
+                    <img
+                      src={thumbnailUrl}
+                      alt="サムネイル"
+                      className="w-20 h-20 object-cover rounded-lg border-2 border-orange-300 cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    />
+                    <button
+                      onClick={() => onThumbnailUrlChange?.('')}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      ×
+                    </button>
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                        <LoadingSpinner size="md" color="white" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading || isGeneratingAI || !apiSettings.blogUrl || !apiSettings.apiKey}
@@ -277,10 +275,7 @@ export default function TalkLoader({
                     title={!apiSettings.blogUrl || !apiSettings.apiKey ? '設定画面でブログ設定後に使用可能' : 'サムネイルをアップロード'}
                   >
                     {isUploading ? (
-                      <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
+                      <LoadingSpinner size="md" color="orange" />
                     ) : (
                       <>
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,33 +285,30 @@ export default function TalkLoader({
                       </>
                     )}
                   </button>
-                  {/* AIサムネイル生成ボタン（開発者モード時のみ） */}
-                  {isDevMode && geminiApiKey && (
-                    <button
-                      onClick={handleGenerateAIThumbnail}
-                      disabled={isGeneratingAI || isUploading || !apiSettings.blogUrl || !apiSettings.apiKey}
-                      className={`w-20 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
-                        isGeneratingAI || isUploading || !apiSettings.blogUrl || !apiSettings.apiKey
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
-                      }`}
-                      title="AIでサムネイルを自動生成"
-                    >
-                      {isGeneratingAI ? (
-                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                      )}
-                      AI生成
-                    </button>
-                  )}
-                </div>
-              )}
+                )}
+                {/* AIサムネイル生成ボタン（開発者モード時のみ） */}
+                {isDevMode && geminiApiKey && (
+                  <button
+                    onClick={handleGenerateAIThumbnail}
+                    disabled={isGeneratingAI || isUploading || !apiSettings.blogUrl || !apiSettings.apiKey}
+                    className={`w-20 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                      isGeneratingAI || isUploading || !apiSettings.blogUrl || !apiSettings.apiKey
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                    }`}
+                    title="AIでサムネイルを自動生成"
+                  >
+                    {isGeneratingAI ? (
+                      <LoadingSpinner size="sm" color="white" />
+                    ) : (
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    )}
+                    AI生成
+                  </button>
+                )}
+              </div>
             </div>
             {/* タイトルとコメント数 */}
             <div className="flex-1 min-w-0">

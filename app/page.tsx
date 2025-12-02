@@ -6,6 +6,7 @@ import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
 import SettingsModal from '@/components/SettingsModal';
+import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/LoadingSpinner';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
@@ -375,8 +376,8 @@ export default function Home() {
             isDevMode={isDevMode}
           />
           {loading && (
-            <div className="absolute inset-0 bg-white/90 rounded-lg flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+            <div className="absolute inset-0 bg-white/90 rounded-2xl flex items-center justify-center z-10">
+              <ThreadLoadingIndicator />
             </div>
           )}
         </div>
@@ -391,10 +392,7 @@ export default function Home() {
                 className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
               >
                 {generatingAI ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    AIが分析中...
-                  </>
+                  <AILoadingIndicator text="AIが分析中" className="text-white" />
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

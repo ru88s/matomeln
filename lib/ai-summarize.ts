@@ -15,8 +15,21 @@ export interface AISummarizeResponse {
 // プロンプト生成
 export function buildAISummarizePrompt(title: string, comments: Comment[]): string {
   const totalPosts = comments.length;
+
+  // スレ主のレス番号を特定
+  const ownerPostNumbers: number[] = [];
+  comments.forEach((comment, index) => {
+    if (comment.is_talk_owner) {
+      ownerPostNumbers.push(index + 1);
+    }
+  });
+
   const postsText = comments
-    .map((comment, index) => `[${index + 1}] ${comment.body}`)
+    .map((comment, index) => {
+      const postNum = index + 1;
+      const ownerMark = comment.is_talk_owner ? ' [スレ主]' : '';
+      return `[${postNum}]${ownerMark} ${comment.body}`;
+    })
     .join('\n\n');
 
   return `あなたは5chスレッドのまとめ記事を作成するアシスタントです。
@@ -34,6 +47,10 @@ ${postsText}
 
 【選択基準】
 - **レス1（スレ立て）は含めない**（自動的に追加されます）
+- **🔥 最重要：スレ主（[スレ主]マーク付き）のレスは優先的に選択してください 🔥**
+  - スレ主のレスはストーリーの核心であり、省略すると話の流れが分からなくなります
+  - スレ主のレス番号: ${ownerPostNumbers.length > 0 ? ownerPostNumbers.join(', ') : 'なし'}
+  - スレ主のレスは特別な理由がない限り全て選択してください
 - ストーリーの流れが分かるレス
 - 面白い・インパクトのあるレス
 - オチやツッコミになるレス
