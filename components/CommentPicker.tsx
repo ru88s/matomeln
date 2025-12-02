@@ -15,6 +15,8 @@ interface CommentPickerProps {
   customNameBold?: boolean;
   customNameColor?: string;
   showOnlySelected?: boolean;
+  commentSizes?: Record<string, number>;
+  onCommentSizesChange?: (sizes: Record<string, number>) => void;
 }
 
 function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveUp, onMoveDown, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
@@ -714,9 +716,14 @@ export default function CommentPicker({
   customNameBold = true,
   customNameColor = '#ff69b4',
   showOnlySelected = false,
+  commentSizes: externalCommentSizes,
+  onCommentSizesChange,
 }: CommentPickerProps) {
   const [commentColors, setCommentColors] = useState<Record<string, string>>({});
-  const [commentSizes, setCommentSizes] = useState<Record<string, number>>({});
+  const [internalCommentSizes, setInternalCommentSizes] = useState<Record<string, number>>({});
+  // 外部から渡された場合はそれを使用、なければ内部ステートを使用
+  const commentSizes = externalCommentSizes ?? internalCommentSizes;
+  const setCommentSizes = onCommentSizesChange ?? setInternalCommentSizes;
   const [editedComments, setEditedComments] = useState<Record<string, string>>({});
   const [lastHoveredCommentId, setLastHoveredCommentId] = useState<string | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -814,7 +821,7 @@ export default function CommentPicker({
     const fontSizeValue = sizeMap[size];
 
     // サイズ情報を保存
-    setCommentSizes(prev => ({ ...prev, [commentId]: fontSizeValue }));
+    setCommentSizes({ ...commentSizes, [commentId]: fontSizeValue });
 
     // 選択済みコメントのサイズを更新
     const updated = selectedComments.map(c =>

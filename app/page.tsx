@@ -675,6 +675,8 @@ export default function Home() {
               customNameBold={customNameBold}
               customNameColor={customNameColor}
               showOnlySelected={showOnlySelected}
+              commentSizes={commentSizes}
+              onCommentSizesChange={setCommentSizes}
             />
 
             {/* HTML生成ボタン */}

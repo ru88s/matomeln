@@ -363,70 +363,7 @@ export function enhanceAIResponse(
   // 連続した同じ色を修正
   fixConsecutiveColors(selectedPosts, comments);
 
-  // 文字サイズのメリハリを強制（最低10%はlargeに）
-  ensureSizeVariety(selectedPosts, comments);
-
   return { selected_posts: selectedPosts };
-}
-
-// 文字サイズのメリハリを強制する（AIが全部「中」にしてしまう問題への対策）
-function ensureSizeVariety(
-  selectedPosts: AISummarizeResponse['selected_posts'],
-  comments: Comment[]
-): void {
-  // 色付きのレス（AIが重要と判断したレス）のみを対象
-  const coloredPosts = selectedPosts.filter(p => p.decorations.color !== null);
-
-  // largeが設定されているレスの数をカウント
-  const largeCount = selectedPosts.filter(p => p.decorations.size_boost === 'large').length;
-
-  // 最低10%はlargeにする（色付きレスから優先的に選択）
-  const targetLargeCount = Math.max(2, Math.ceil(selectedPosts.length * 0.1));
-
-  if (largeCount < targetLargeCount) {
-    const needLarge = targetLargeCount - largeCount;
-
-    // largeにする候補を選定（色付きで、まだlargeでないレス）
-    const candidates = coloredPosts
-      .filter(p => p.decorations.size_boost !== 'large')
-      .filter(p => {
-        // レス1と最後のレスは除外（自動設定される）
-        const isFirst = p.post_number === 1;
-        const isLast = p.post_number === comments.length;
-        return !isFirst && !isLast;
-      });
-
-    // 候補が足りない場合は色なしレスからも選択
-    if (candidates.length < needLarge) {
-      const additionalCandidates = selectedPosts
-        .filter(p => p.decorations.color === null)
-        .filter(p => p.decorations.size_boost !== 'large')
-        .filter(p => {
-          const isFirst = p.post_number === 1;
-          const isLast = p.post_number === comments.length;
-          return !isFirst && !isLast;
-        });
-      candidates.push(...additionalCandidates);
-    }
-
-    // 短いコメント（ツッコミやオチの可能性が高い）を優先
-    candidates.sort((a, b) => {
-      const aBody = comments[a.post_number - 1]?.body || '';
-      const bBody = comments[b.post_number - 1]?.body || '';
-      return aBody.length - bBody.length;
-    });
-
-    // 必要な数だけlargeに変更
-    for (let i = 0; i < Math.min(needLarge, candidates.length); i++) {
-      candidates[i].decorations.size_boost = 'large';
-    }
-  }
-
-  // 最後のレスは落ちコメントなのでlargeに
-  const lastPost = selectedPosts.find(p => p.post_number === comments.length);
-  if (lastPost) {
-    lastPost.decorations.size_boost = 'large';
-  }
 }
 
 // 連続した同じ色を修正する（null連続はOK、色付き連続はNG）
