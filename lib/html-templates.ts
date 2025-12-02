@@ -117,25 +117,31 @@ async function generateSimpleHTML(
   // タイトル部分
   const titleHTML = escapeHtml(talk.title);
 
-  // コメントをHTML化する関数
+  // コメントをHTML化する関数（まとめくす風フォーマット）
   const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
+    // line-heightはfont-sizeの1.5倍（まとめくす風）
+    const lineHeight = comment.fontSize === 'small' ? '21px' : comment.fontSize === 'large' ? '33px' : '27px';
     // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
     const displayName = customName || comment.name || '匿名';
-    const nameColor = customName ? (customNameColor || '#ff69b4') : '#ff69b4';
+    const nameColor = customName ? (customNameColor || 'pink') : 'pink';
     const nameBold = customName ? (customNameBold !== false) : true;
-    const nameDisplay = `<span style="color:${nameColor};${nameBold ? 'font-weight:bold;' : ''}">${escapeHtml(displayName)}</span>`;
+    const nameDisplay = `<span style="font-weight: bold; color: ${nameColor};">${escapeHtml(displayName)}</span>`;
 
     const timestamp = includeTimestamp
-      ? `<span style="color:silver;">${formatDateForMatome(comment.created_at)}</span>`
+      ? formatDateForMatome(comment.created_at)
       : '';
 
     // ID表示
     const idDisplay = showIdInHtml && comment.name_id
-      ? `<span style="color:silver;">ID:${escapeHtml(comment.name_id)}</span>`
+      ? `ID:${escapeHtml(comment.name_id)}`
       : '';
+
+    // ヘッダー情報を組み立て（timestampとIDをまとめてsilver色に）
+    const headerInfo = [timestamp, idDisplay].filter(Boolean).join(' ');
+    const headerInfoHTML = headerInfo ? `<span style="color: silver;">${headerInfo}</span>` : '';
 
     // 画像の処理 - 200pxに縮小
     let imageHTML = '';
@@ -146,23 +152,31 @@ async function generateSimpleHTML(
       }).join('');
     }
 
-    // ヘッダー情報を組み立て
-    const headerParts = [timestamp, idDisplay].filter(Boolean).join(' ');
-
     // アンカーを含むコメントかどうか判定
     const hasAnchor = />>?\d+/.test(comment.body);
     const headerClass = hasAnchor ? 't_h t_i' : 't_h';
     const bodyClass = hasAnchor ? 't_b t_i' : 't_b';
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
-    const commentStyle = `${options.commentStyle.bold ? 'font-weight:bold;' : ''}font-size:${individualFontSize};line-height:27px;color:${individualColor};${indentStyle}margin-top:10px;`;
+    // まとめくす風のスタイル（font-weight:bold;font-size:18px;line-height:27px;color:#0000cd;margin-top:10px;）
+    const commentStyle = `font-weight:bold;font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
     const formattedBody = await formatCommentBodyForMatome(comment.body);
-    return `<div class="res_div">
-<div${hasAnchor ? ` style="${indentStyle}"` : ''} class="${headerClass}">${comment.res_id}: ${nameDisplay}${headerParts ? ' ' + headerParts : ''}</div>
-<div style="${commentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}
-</div>
-<br /><br />`;
+
+    // 整形されたHTMLを生成（まとめくす風フォーマット）
+    if (hasAnchor) {
+      return `<div class="res_div"><div style="${indentStyle}" class="${headerClass}">
+${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
+<div style="${commentStyle}${indentStyle}" class="${bodyClass}">
+${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
+<br /></div>`;
+    } else {
+      return `<div class="res_div"><div class="${headerClass}">
+${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
+<div style="${commentStyle}" class="${bodyClass}">
+${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
+<br /></div>`;
+    }
   };
 
   // 本文（サムネイル + 最初のコメント）
@@ -238,26 +252,33 @@ async function generateRichHTML(
 
   const titleHTML = escapeHtml(talk.title);
 
-  // コメントをHTML化する関数
+  // コメントをHTML化する関数（まとめくす風フォーマット）
   const formatComment = async (comment: CommentWithStyle) => {
     const individualColor = comment.color || '#000000';
     // 個別のコメントのサイズを適用（小:14px, 中:18px, 大:22px）
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
-    const commentStyle = `color:${individualColor};${options.commentStyle.bold ? 'font-weight:bold;' : ''}font-size:${individualFontSize};`;
+    // line-heightはfont-sizeの1.5倍（まとめくす風）
+    const lineHeight = comment.fontSize === 'small' ? '21px' : comment.fontSize === 'large' ? '33px' : '27px';
+    // まとめくす風のスタイル
+    const commentStyle = `font-weight:bold;font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
     // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
     const displayName = escapeHtml(customName || comment.name || '匿名');
-    const nameColor = customName ? (customNameColor || '#ff69b4') : '#ff69b4';
+    const nameColor = customName ? (customNameColor || 'pink') : 'pink';
     const nameBold = customName ? (customNameBold !== false) : true;
 
     const timestamp = includeTimestamp
-      ? `<span style="color:#999;font-size:12px;margin-left:10px;">${formatDateForMatome(comment.created_at)}</span>`
+      ? formatDateForMatome(comment.created_at)
       : '';
 
     // ID表示
     const idDisplay = showIdInHtml && comment.name_id
-      ? `<span style="color:#999;font-size:12px;margin-left:10px;">ID:${escapeHtml(comment.name_id)}</span>`
+      ? `ID:${escapeHtml(comment.name_id)}`
       : '';
+
+    // ヘッダー情報を組み立て（timestampとIDをまとめてsilver色に）
+    const headerInfo = [timestamp, idDisplay].filter(Boolean).join(' ');
+    const headerInfoHTML = headerInfo ? `<span style="color: silver;">${headerInfo}</span>` : '';
 
     let imageHTML = '';
     if (includeImages && comment.images && comment.images.length > 0) {
@@ -267,12 +288,25 @@ async function generateRichHTML(
       }).join('');
     }
 
+    // アンカーを含むコメントかどうか判定
+    const hasAnchor = />>?\d+/.test(comment.body);
+    const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
+
     const formattedBody = await formatRichCommentBody(comment.body);
-    return `<div class="res_div">
-<div class="t_h">${comment.res_id}: <span style="color:${nameColor};${nameBold ? 'font-weight:bold;' : ''}">${displayName}</span>${timestamp}${idDisplay}</div>
-<div class="t_b" style="${commentStyle}">${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div>
-</div>
-<br /><br />`;
+
+    if (hasAnchor) {
+      return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">
+${comment.res_id}: <span style="font-weight: bold; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+<div style="${commentStyle}${indentStyle}" class="t_b t_i">
+${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
+<br /></div>`;
+    } else {
+      return `<div class="res_div"><div class="t_h">
+${comment.res_id}: <span style="font-weight: bold; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+<div style="${commentStyle}" class="t_b">
+${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
+<br /></div>`;
+    }
   };
 
   // 本文（スタイル + サムネイル + 最初のコメント）
