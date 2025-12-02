@@ -360,9 +360,8 @@ function fixConsecutiveColors(
   selectedPosts: AISummarizeResponse['selected_posts'],
   comments: Comment[]
 ): void {
-  // 使用可能な色（紫以外）
+  // 使用可能な色（紫以外、バリエーション用にシャッフル的に使用）
   const availableColors = [
-    '#ef4444', // 赤
     '#3b82f6', // 青
     '#22c55e', // 緑
     '#ec4899', // ピンク
@@ -373,6 +372,8 @@ function fixConsecutiveColors(
     '#000000', // 黒
   ];
 
+  let colorIndex = 0;
+
   for (let i = 1; i < selectedPosts.length; i++) {
     const currentPost = selectedPosts[i];
     const prevPost = selectedPosts[i - 1];
@@ -380,13 +381,13 @@ function fixConsecutiveColors(
     const currentColor = currentPost.decorations.color;
     const prevColor = prevPost.decorations.color;
 
-    // null連続はOK（色なし連続は許容）
-    if (currentColor === null || prevColor === null) {
+    // 両方nullなら問題なし（色なし連続は許容）
+    if (currentColor === null && prevColor === null) {
       continue;
     }
 
     // 現在の色と前の色が同じ場合（両方とも色付き）
-    if (currentColor === prevColor) {
+    if (currentColor !== null && prevColor !== null && currentColor === prevColor) {
       // スレ主のレスは紫色を維持する必要がある
       const comment = comments[currentPost.post_number - 1];
       if (comment?.is_talk_owner) {
@@ -402,8 +403,16 @@ function fixConsecutiveColors(
         // 前もスレ主なら紫の連続は許容（稀なケース）
       } else {
         // 通常のレスの場合は現在の色を変更
-        // 前の色と異なる色を選ぶ
-        const newColor = availableColors.find(c => c !== prevColor);
+        // 前の色と異なる色を選ぶ（ローテーションで選択）
+        let newColor: string | null = null;
+        for (let j = 0; j < availableColors.length; j++) {
+          const candidate = availableColors[(colorIndex + j) % availableColors.length];
+          if (candidate !== prevColor && candidate !== '#a855f7') {
+            newColor = candidate;
+            colorIndex = (colorIndex + j + 1) % availableColors.length;
+            break;
+          }
+        }
         if (newColor) {
           currentPost.decorations.color = newColor;
         }
