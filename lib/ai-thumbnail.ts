@@ -117,22 +117,29 @@ export interface ThumbnailGenerationResult {
 }
 
 /**
- * 画像URLをBase64に変換
+ * 画像URLをBase64に変換（プロキシAPI経由）
  */
 async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
   try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) return null;
+    // プロキシAPI経由で画像を取得（CORS回避）
+    const proxyUrl = `/api/proxy/fetchImage?url=${encodeURIComponent(imageUrl)}`;
+    const response = await fetch(proxyUrl);
 
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(
-      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
+    if (!response.ok) {
+      console.warn('Proxy fetch failed:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+
+    if (result.error) {
+      console.warn('Proxy error:', result.error);
+      return null;
+    }
 
     return {
-      data: base64,
-      mimeType: blob.type || 'image/png'
+      data: result.data,
+      mimeType: result.mimeType || 'image/png'
     };
   } catch (error) {
     console.warn('Failed to fetch reference image:', imageUrl, error);
