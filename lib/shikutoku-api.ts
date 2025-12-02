@@ -146,7 +146,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
   // シクトクの場合
   const talkId = extractTalkIdFromUrl(input);
   if (!talkId) {
-    throw new Error('有効なURLまたはトークIDを入力してください');
+    throw new Error('有効なURLを入力してください');
   }
 
   const talk = await fetchTalk(talkId);

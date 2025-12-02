@@ -182,7 +182,7 @@ export default function TalkLoader({
 
     const trimmedInput = input.trim();
     if (!trimmedInput) {
-      setError('URLまたはトークIDを入力してください');
+      setError('URLを入力してください');
       return;
     }
 
@@ -197,7 +197,7 @@ export default function TalkLoader({
     if (sourceType === 'shikutoku') {
       const talkId = extractTalkIdFromUrl(trimmedInput);
       if (!talkId) {
-        setError('有効なShikutoku URLまたはトークIDを入力してください');
+        setError('有効なShikutoku URLを入力してください');
         return;
       }
     }
