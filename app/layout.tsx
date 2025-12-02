@@ -129,15 +129,17 @@ export default function RootLayout({
               <div className="flex items-center gap-4">
                 <a
                   href="/about"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
                 >
-                  使い方
+                  <span>💡</span>
+                  <span>使い方</span>
                 </a>
                 <a
                   href="/settings"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
                 >
-                  設定
+                  <span>⚙️</span>
+                  <span>設定</span>
                 </a>
               </div>
             </div>
