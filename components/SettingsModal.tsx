@@ -61,6 +61,9 @@ export default function SettingsModal({
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
   const [characterForm, setCharacterForm] = useState({ name: '', description: '', imageUrl: '' });
+  // 他のブログにも投稿設定
+  const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
+  const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
 
   // 設定を読み込み
   useEffect(() => {
@@ -79,6 +82,17 @@ export default function SettingsModal({
           setThumbnailCharacters(JSON.parse(savedCharacters));
         } catch {
           setThumbnailCharacters([]);
+        }
+      }
+      // 他のブログにも投稿設定を読み込み
+      const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
+      if (savedOtherBlogsSettings) {
+        try {
+          const settings = JSON.parse(savedOtherBlogsSettings);
+          setPostToOtherBlogs(settings.postToOtherBlogs || false);
+          setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
+        } catch {
+          // パースエラーは無視
         }
       }
     }
@@ -129,6 +143,19 @@ export default function SettingsModal({
       toast.success('Gemini APIキーを削除しました');
     }
   };
+
+  // 他のブログにも投稿設定を保存
+  const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
+    setPostToOtherBlogs(newPostToOtherBlogs);
+    setSelectedOtherBlogIds(newSelectedOtherBlogIds);
+    localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
+      postToOtherBlogs: newPostToOtherBlogs,
+      selectedOtherBlogIds: newSelectedOtherBlogIds,
+    }));
+  };
+
+  // 他のブログ一覧（選択中のブログを除く）
+  const otherBlogs = blogs.filter(b => b.id !== selectedBlogId);
 
   // キャラクター追加モーダルを開く
   const openAddCharacterModal = () => {
@@ -645,6 +672,60 @@ export default function SettingsModal({
 
                   <p className="text-xs text-blue-600">
                     記事タイトルからサムネイル画像を自動生成
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 複数ブログ同時投稿（DEVモード & 2つ以上のブログがある場合のみ） */}
+            {isDevMode && blogs.length > 1 && (
+              <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-bold text-gray-800">複数ブログ同時投稿</h3>
+                  <span className="text-[10px] bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">開発者専用</span>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={postToOtherBlogs}
+                      onChange={(e) => {
+                        const newValue = e.target.checked;
+                        if (!newValue) {
+                          saveOtherBlogsSettings(false, []);
+                        } else {
+                          saveOtherBlogsSettings(true, selectedOtherBlogIds);
+                        }
+                      }}
+                      className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded cursor-pointer"
+                    />
+                    <span className="text-sm font-bold text-purple-700">他のブログにも同時投稿する</span>
+                  </label>
+
+                  {postToOtherBlogs && otherBlogs.length > 0 && (
+                    <div className="space-y-2 pl-6">
+                      {otherBlogs.map(blog => (
+                        <label key={blog.id} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedOtherBlogIds.includes(blog.id)}
+                            onChange={(e) => {
+                              const newIds = e.target.checked
+                                ? [...selectedOtherBlogIds, blog.id]
+                                : selectedOtherBlogIds.filter(id => id !== blog.id);
+                              saveOtherBlogsSettings(true, newIds);
+                            }}
+                            className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-700">{blog.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-purple-600">
+                    投稿時に選択したブログにも同じ内容が投稿されます
                   </p>
                 </div>
               </div>
