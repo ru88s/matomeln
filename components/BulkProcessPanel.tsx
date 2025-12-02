@@ -25,7 +25,7 @@ export default function BulkProcessPanel({
     const toastId = toast.loading('未まとめURLを取得中...');
 
     try {
-      const result = await fetchUnsummarizedUrls({ limit: 100 });
+      const result = await fetchUnsummarizedUrls({ limit: 1000 });
       setUrls(result.urls.join('\n'));
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
