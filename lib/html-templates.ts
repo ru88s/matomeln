@@ -159,7 +159,9 @@ async function generateSimpleHTML(
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
     // まとめくす風のスタイル（font-weight:bold;font-size:18px;line-height:27px;color:#0000cd;margin-top:10px;）
-    const commentStyle = `font-weight:bold;font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
+    // options.commentStyle.boldの設定を反映
+    const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
+    const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
     const formattedBody = await formatCommentBodyForMatome(comment.body);
 
@@ -259,8 +261,9 @@ async function generateRichHTML(
     const individualFontSize = comment.fontSize === 'small' ? '14px' : comment.fontSize === 'large' ? '22px' : '18px';
     // line-heightはfont-sizeの1.5倍（まとめくす風）
     const lineHeight = comment.fontSize === 'small' ? '21px' : comment.fontSize === 'large' ? '33px' : '27px';
-    // まとめくす風のスタイル
-    const commentStyle = `font-weight:bold;font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
+    // まとめくす風のスタイル（options.commentStyle.boldの設定を反映）
+    const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
+    const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
     // 名前の表示 - カスタム名が設定されていればそれを使用、なければ元のコメントの名前
     const displayName = escapeHtml(customName || comment.name || '匿名');
