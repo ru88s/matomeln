@@ -299,50 +299,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               </div>
             ) : null}
 
-            {/* 他のブログにも投稿（DEVモード専用） */}
-            {isDevMode && blogs.length > 1 && apiSettings.blogUrl && (
-              <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={postToOtherBlogs}
-                    onChange={(e) => {
-                      setPostToOtherBlogs(e.target.checked);
-                      if (!e.target.checked) {
-                        setSelectedOtherBlogIds([]);
-                      }
-                    }}
-                    className="w-4 h-4 accent-purple-500"
-                  />
-                  <span className="text-sm font-bold text-purple-700">他のブログにも投稿</span>
-                </label>
-
-                {postToOtherBlogs && (
-                  <div className="mt-3 space-y-2">
-                    {blogs
-                      .filter(blog => blog.blogId !== apiSettings.blogUrl)
-                      .map(blog => (
-                        <label key={blog.id} className="flex items-center gap-2 cursor-pointer pl-6">
-                          <input
-                            type="checkbox"
-                            checked={selectedOtherBlogIds.includes(blog.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedOtherBlogIds([...selectedOtherBlogIds, blog.id]);
-                              } else {
-                                setSelectedOtherBlogIds(selectedOtherBlogIds.filter(id => id !== blog.id));
-                              }
-                            }}
-                            className="w-4 h-4 accent-purple-500"
-                          />
-                          <span className="text-sm text-gray-700">{blog.name}</span>
-                        </label>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             <button
               onClick={handleBlogPost}
               disabled={!apiSettings.blogUrl || !apiSettings.apiKey || isPosting}
