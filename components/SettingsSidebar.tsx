@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { Comment, BlogSettings } from '@/lib/types';
 import toast from 'react-hot-toast';
 
-// 開発者モードのパスワード（環境変数から取得、フォールバックあり）
-const DEV_MODE_PASSWORD = 'matomeln2024';
+// 開発者モードのパスワード
+const DEV_MODE_PASSWORD = 'matomeln2025';
 
 interface SettingsSidebarProps {
   customName: string;
