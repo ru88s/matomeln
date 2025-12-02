@@ -31,13 +31,18 @@ export default function TalkLoader({
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [thumbnailCharacter, setThumbnailCharacter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gemini APIキーを読み込み
+  // Gemini APIキーと参考キャラクターを読み込み
   useEffect(() => {
     const savedKey = localStorage.getItem('matomeln_gemini_api_key');
     if (savedKey) {
       setGeminiApiKey(savedKey);
+    }
+    const savedCharacter = localStorage.getItem('matomeln_thumbnail_character');
+    if (savedCharacter) {
+      setThumbnailCharacter(savedCharacter);
     }
   }, []);
 
@@ -118,7 +123,7 @@ export default function TalkLoader({
     const toastId = toast.loading('AIサムネイルを生成中...');
 
     try {
-      const result = await generateThumbnail(geminiApiKey, currentTalk.title);
+      const result = await generateThumbnail(geminiApiKey, currentTalk.title, thumbnailCharacter || undefined);
 
       if (!result.success || !result.imageBase64) {
         throw new Error(result.error || '画像生成に失敗しました');

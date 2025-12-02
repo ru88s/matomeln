@@ -54,7 +54,7 @@ function sanitizeSensitiveContent(text: string): string {
 /**
  * 記事タイトルからプロンプトを生成
  */
-function generatePromptFromTitle(title: string, sanitize = false): string {
+function generatePromptFromTitle(title: string, characterDescription?: string, sanitize = false): string {
   // タイトルから装飾を除去
   let cleanTitle = title.replace(/【.*?】|§\s*/g, '').trim();
 
@@ -62,11 +62,21 @@ function generatePromptFromTitle(title: string, sanitize = false): string {
     cleanTitle = sanitizeSensitiveContent(cleanTitle);
   }
 
+  // キャラクター設定があれば追加
+  const characterSection = characterDescription ? `
+🎭 CHARACTER (IMPORTANT - must appear in the image):
+- Include this character in the thumbnail: "${characterDescription}"
+- The character should be the main visual element
+- Character should react to or interact with the article topic
+- Maintain consistent character design and style
+- Character expression should match the article mood
+` : '';
+
   return `You are a PROFESSIONAL THUMBNAIL DESIGNER creating eye-catching blog thumbnails.
 
 Create a visually striking thumbnail image for this article:
 "${cleanTitle}"
-
+${characterSection}
 🎨 STYLE REQUIREMENTS:
 - Modern, clean design with bold colors
 - Professional illustration or graphic design style
@@ -110,9 +120,10 @@ export interface ThumbnailGenerationResult {
 export async function generateThumbnail(
   apiKey: string,
   title: string,
+  characterDescription?: string,
   sanitize = false
 ): Promise<ThumbnailGenerationResult> {
-  const prompt = generatePromptFromTitle(title, sanitize);
+  const prompt = generatePromptFromTitle(title, characterDescription, sanitize);
 
   try {
     const response = await fetch(
@@ -161,7 +172,7 @@ export async function generateThumbnail(
         // サニタイズしていない場合は再試行
         if (!sanitize) {
           console.log('センシティブコンテンツとして検出。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, true);
+          return generateThumbnail(apiKey, title, characterDescription, true);
         }
         return {
           success: false,
@@ -185,7 +196,7 @@ export async function generateThumbnail(
       if (finishReason === 'SAFETY' || finishReason === 'IMAGE_SAFETY') {
         if (!sanitize) {
           console.log('安全フィルターでブロック。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, true);
+          return generateThumbnail(apiKey, title, characterDescription, true);
         }
         return {
           success: false,

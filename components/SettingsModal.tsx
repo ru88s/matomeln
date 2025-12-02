@@ -57,6 +57,7 @@ export default function SettingsModal({
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
+  const [thumbnailCharacter, setThumbnailCharacter] = useState('');
 
   // 設定を読み込み
   useEffect(() => {
@@ -68,6 +69,10 @@ export default function SettingsModal({
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
+      }
+      const savedThumbnailCharacter = localStorage.getItem('matomeln_thumbnail_character');
+      if (savedThumbnailCharacter) {
+        setThumbnailCharacter(savedThumbnailCharacter);
       }
     }
   }, [isOpen]);
@@ -111,6 +116,17 @@ export default function SettingsModal({
     } else {
       localStorage.removeItem('matomeln_gemini_api_key');
       toast.success('Gemini APIキーを削除しました');
+    }
+  };
+
+  // サムネイルキャラクターを保存
+  const saveThumbnailCharacter = () => {
+    if (thumbnailCharacter.trim()) {
+      localStorage.setItem('matomeln_thumbnail_character', thumbnailCharacter.trim());
+      toast.success('参考キャラクターを保存しました');
+    } else {
+      localStorage.removeItem('matomeln_thumbnail_character');
+      toast.success('参考キャラクターをリセットしました');
     }
   };
 
@@ -474,6 +490,30 @@ export default function SettingsModal({
                         保存
                       </button>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      参考キャラクター（オプション）
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={thumbnailCharacter}
+                        onChange={(e) => setThumbnailCharacter(e.target.value)}
+                        placeholder="例: nano banana, 猫耳少女, ゆるキャラ..."
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      <button
+                        onClick={saveThumbnailCharacter}
+                        className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                      >
+                        保存
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      キャラの一貫性を維持するための参考情報
+                    </p>
                   </div>
 
                   <p className="text-xs text-blue-600">
