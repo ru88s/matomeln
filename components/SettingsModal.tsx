@@ -345,17 +345,12 @@ export default function SettingsModal({
                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-2">
-                        AIまとめ機能など追加機能が利用できます。
-                      </p>
-                      <button
-                        onClick={() => setShowDevModeInput(true)}
-                        className="text-sm bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                      >
-                        有効にする
-                      </button>
-                    </div>
+                    <button
+                    onClick={() => setShowDevModeInput(true)}
+                    className="text-sm bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                  >
+                    有効にする
+                  </button>
                   )}
                 </div>
               )}
