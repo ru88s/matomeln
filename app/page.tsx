@@ -55,10 +55,7 @@ export default function Home() {
       setCustomNameBold(settings.bold !== false);
       setCustomNameColor(settings.color || '#ff69b4');
     }
-    const savedThumbnail = localStorage.getItem('matomeThumbnailUrl');
-    if (savedThumbnail) {
-      setThumbnailUrl(savedThumbnail);
-    }
+    // サムネイルはリロード時に初期化（localStorageから復元しない）
     // ID表示設定を読み込み
     const savedShowIdInHtml = localStorage.getItem('showIdInHtml');
     if (savedShowIdInHtml !== null) {
@@ -203,10 +200,9 @@ export default function Home() {
     setSelectedComments([]);
   }, [setSelectedComments]);
 
-  // サムネイルURL変更
+  // サムネイルURL変更（リロード時に初期化されるため保存しない）
   const handleThumbnailUrlChange = useCallback((url: string) => {
     setThumbnailUrl(url);
-    localStorage.setItem('matomeThumbnailUrl', url);
   }, []);
 
   // HTMLモーダルを開く際に自動生成
