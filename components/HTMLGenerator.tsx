@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
+import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -112,6 +113,17 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       }
 
       toast.success('ブログに投稿しました！');
+
+      // スレメモくんにまとめ済み登録
+      if (sourceInfo?.originalUrl) {
+        try {
+          await markThreadAsSummarized(sourceInfo.originalUrl);
+          console.log('スレメモくんに登録完了');
+        } catch (memoError) {
+          console.warn('スレメモくん登録失敗:', memoError);
+          // 登録失敗でもエラーにはしない（ブログ投稿は成功しているため）
+        }
+      }
     } catch (error) {
       toast.error('ブログ投稿中にエラーが発生しました');
     } finally {
