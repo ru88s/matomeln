@@ -122,6 +122,7 @@ export default function RootLayout({
                   <span className="text-xl font-bold text-gray-900">
                     まとめるん
                   </span>
+                  <span className="text-[10px] text-gray-400 font-normal ml-1">Beta</span>
                 </a>
               </div>
 
