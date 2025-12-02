@@ -372,6 +372,7 @@ export default function Home() {
             thumbnailUrl={thumbnailUrl}
             onThumbnailUrlChange={handleThumbnailUrlChange}
             apiSettings={apiSettings}
+            isDevMode={isDevMode}
           />
           {loading && (
             <div className="absolute inset-0 bg-white/90 rounded-lg flex items-center justify-center">

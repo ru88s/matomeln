@@ -51,7 +51,9 @@ export default function SettingsModal({
   const [showDevModeInput, setShowDevModeInput] = useState(false);
   const [devModePassword, setDevModePassword] = useState('');
   const [claudeApiKey, setClaudeApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
@@ -59,9 +61,13 @@ export default function SettingsModal({
   // 設定を読み込み
   useEffect(() => {
     if (isOpen) {
-      const savedApiKey = localStorage.getItem('matomeln_claude_api_key');
-      if (savedApiKey) {
-        setClaudeApiKey(savedApiKey);
+      const savedClaudeApiKey = localStorage.getItem('matomeln_claude_api_key');
+      if (savedClaudeApiKey) {
+        setClaudeApiKey(savedClaudeApiKey);
+      }
+      const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
+      if (savedGeminiApiKey) {
+        setGeminiApiKey(savedGeminiApiKey);
       }
     }
   }, [isOpen]);
@@ -90,10 +96,21 @@ export default function SettingsModal({
   const saveClaudeApiKey = () => {
     if (claudeApiKey.trim()) {
       localStorage.setItem('matomeln_claude_api_key', claudeApiKey.trim());
-      toast.success('APIキーを保存しました');
+      toast.success('Claude APIキーを保存しました');
     } else {
       localStorage.removeItem('matomeln_claude_api_key');
-      toast.success('APIキーを削除しました');
+      toast.success('Claude APIキーを削除しました');
+    }
+  };
+
+  // Gemini APIキーを保存
+  const saveGeminiApiKey = () => {
+    if (geminiApiKey.trim()) {
+      localStorage.setItem('matomeln_gemini_api_key', geminiApiKey.trim());
+      toast.success('Gemini APIキーを保存しました');
+    } else {
+      localStorage.removeItem('matomeln_gemini_api_key');
+      toast.success('Gemini APIキーを削除しました');
     }
   };
 
@@ -361,7 +378,7 @@ export default function SettingsModal({
               <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">Claude API</h3>
-                  <span className="text-[10px] bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">開発者専用</span>
+                  <span className="text-[10px] bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">AIまとめ</span>
                 </div>
 
                 <div className="space-y-3">
@@ -372,7 +389,7 @@ export default function SettingsModal({
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
                         <input
-                          type={showApiKey ? 'text' : 'password'}
+                          type={showClaudeApiKey ? 'text' : 'password'}
                           value={claudeApiKey}
                           onChange={(e) => setClaudeApiKey(e.target.value)}
                           placeholder="sk-ant-api03-..."
@@ -380,10 +397,10 @@ export default function SettingsModal({
                         />
                         <button
                           type="button"
-                          onClick={() => setShowApiKey(!showApiKey)}
+                          onClick={() => setShowClaudeApiKey(!showClaudeApiKey)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                         >
-                          {showApiKey ? (
+                          {showClaudeApiKey ? (
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                             </svg>
@@ -404,14 +421,64 @@ export default function SettingsModal({
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg p-3 border border-purple-100">
-                    <p className="text-xs font-bold text-purple-800 mb-1">AIまとめ機能</p>
-                    <ul className="text-xs text-purple-700 space-y-0.5">
-                      <li>• Claude Haiku 4.5でレスを自動選択</li>
-                      <li>• 色とサイズを自動設定</li>
-                      <li>• 1回あたり約¥1-3程度</li>
-                    </ul>
+                  <p className="text-xs text-purple-600">
+                    レスを自動選択・色付けするAIまとめ機能に使用
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Gemini API設定（開発者モード時のみ） */}
+            {isDevMode && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-bold text-gray-800">Gemini API</h3>
+                  <span className="text-[10px] bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">AIサムネイル</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      APIキー
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type={showGeminiApiKey ? 'text' : 'password'}
+                          value={geminiApiKey}
+                          onChange={(e) => setGeminiApiKey(e.target.value)}
+                          placeholder="AIza..."
+                          className="w-full px-3 py-2 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                        >
+                          {showGeminiApiKey ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                      <button
+                        onClick={saveGeminiApiKey}
+                        className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                      >
+                        保存
+                      </button>
+                    </div>
                   </div>
+
+                  <p className="text-xs text-blue-600">
+                    記事タイトルからサムネイル画像を自動生成
+                  </p>
                 </div>
               </div>
             )}
