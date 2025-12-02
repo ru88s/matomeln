@@ -1,24 +1,23 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { fetchUnsummarizedUrls, markThreadAsSummarized, BulkProcessStatus, getInitialBulkStatus } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
 interface BulkProcessPanelProps {
-  onLoadUrl: (url: string) => Promise<void>;
-  onAISummarize: () => Promise<void>;
+  onBulkProcess: (url: string) => Promise<void>;
   isProcessingAI: boolean;
 }
 
 export default function BulkProcessPanel({
-  onLoadUrl,
-  onAISummarize,
+  onBulkProcess,
   isProcessingAI,
 }: BulkProcessPanelProps) {
   const [urls, setUrls] = useState<string>('');
   const [status, setStatus] = useState<BulkProcessStatus>(getInitialBulkStatus());
   const [isFetching, setIsFetching] = useState(false);
-  const [shouldStop, setShouldStop] = useState(false);
+  // useRefで停止フラグを管理（クロージャ問題を回避）
+  const shouldStopRef = useRef(false);
 
   // 未まとめURL取得
   const handleFetchUrls = useCallback(async () => {
@@ -49,8 +48,9 @@ export default function BulkProcessPanel({
       return;
     }
 
-    setShouldStop(false);
-    setStatus({
+    shouldStopRef.current = false;
+
+    const initialStatus: BulkProcessStatus = {
       isProcessing: true,
       currentIndex: 0,
       totalCount: urlList.length,
@@ -58,11 +58,16 @@ export default function BulkProcessPanel({
       completedUrls: [],
       failedUrls: [],
       startTime: Date.now(),
-    });
+    };
+    setStatus(initialStatus);
+
+    let completedCount = 0;
+    let failedCount = 0;
+    const failedUrlsList: { url: string; error: string }[] = [];
 
     for (let i = 0; i < urlList.length; i++) {
-      // 停止チェック
-      if (shouldStop) {
+      // 停止チェック（refを使うことでリアルタイムの値を取得）
+      if (shouldStopRef.current) {
         toast('処理を停止しました', { icon: '⏹️' });
         break;
       }
@@ -75,24 +80,24 @@ export default function BulkProcessPanel({
       }));
 
       try {
-        // 1. スレッドを読み込む
-        toast.loading(`(${i + 1}/${urlList.length}) スレッドを読み込み中...`, { id: 'bulk-progress' });
-        await onLoadUrl(url);
+        // スレッドを読み込んでAIまとめを実行
+        toast.loading(`(${i + 1}/${urlList.length}) 処理中...`, { id: 'bulk-progress' });
+        await onBulkProcess(url);
 
-        // 少し待機（DOM更新のため）
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 停止チェック
+        if (shouldStopRef.current) {
+          toast('処理を停止しました', { icon: '⏹️' });
+          break;
+        }
 
-        // 2. AIまとめを実行
-        toast.loading(`(${i + 1}/${urlList.length}) AIがまとめ中...`, { id: 'bulk-progress' });
-        await onAISummarize();
-
-        // 3. まとめ済みとして登録
+        // まとめ済みとして登録
         try {
           await markThreadAsSummarized(url);
         } catch (markError) {
           console.warn('まとめ済み登録に失敗:', markError);
         }
 
+        completedCount++;
         setStatus(prev => ({
           ...prev,
           completedUrls: [...prev.completedUrls, url],
@@ -106,11 +111,14 @@ export default function BulkProcessPanel({
         }
       } catch (error) {
         console.error('Bulk process error:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        failedCount++;
+        failedUrlsList.push({ url, error: errorMsg });
         setStatus(prev => ({
           ...prev,
-          failedUrls: [...prev.failedUrls, { url, error: error instanceof Error ? error.message : 'Unknown error' }],
+          failedUrls: [...prev.failedUrls, { url, error: errorMsg }],
         }));
-        toast.error(`(${i + 1}/${urlList.length}) エラー: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: 'bulk-progress' });
+        toast.error(`(${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
 
         // エラーでも次に進む
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -124,13 +132,13 @@ export default function BulkProcessPanel({
       currentUrl: null,
     }));
 
-    const finalStatus = status;
-    toast.success(`一括処理完了: ${finalStatus.completedUrls.length + 1}件成功, ${finalStatus.failedUrls.length}件失敗`, { id: 'bulk-progress' });
-  }, [urls, shouldStop, onLoadUrl, onAISummarize, status]);
+    toast.success(`一括処理完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+  }, [urls, onBulkProcess]);
 
   // 停止
   const handleStop = useCallback(() => {
-    setShouldStop(true);
+    shouldStopRef.current = true;
+    toast('停止処理中...', { icon: '⏳' });
   }, []);
 
   const isProcessing = status.isProcessing || isProcessingAI;

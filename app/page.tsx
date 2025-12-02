@@ -375,10 +375,98 @@ export default function Home() {
     }
   };
 
-  // 一括処理用のURL読み込み（Promiseを返す）
-  const handleLoadUrl = useCallback(async (url: string) => {
-    await handleLoadThread(url);
-  }, []);
+  // 一括処理用のURL読み込みとAIまとめ（Promiseを返す）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleBulkProcess = useCallback(async (url: string) => {
+    // 1. スレッド読み込み
+    setLoading(true);
+    setComments([]); // 既存のコメントをクリア
+    resetHistory(); // 履歴もリセット
+
+    const { talk, comments: loadedComments, source } = await fetchThreadData(url);
+
+    setCurrentTalk(talk);
+    setComments(loadedComments);
+    setSourceInfo({ source, originalUrl: url });
+    setLoading(false);
+
+    const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : 'Shikutoku';
+    toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
+
+    // 2. AIまとめを実行（読み込んだデータを直接使用）
+    const apiKey = localStorage.getItem('matomeln_claude_api_key');
+    if (!apiKey) {
+      throw new Error('Claude APIキーが設定されていません');
+    }
+
+    setGeneratingAI(true);
+    const toastId = toast.loading('AIがレスを分析中...');
+
+    try {
+      const aiResponse = await callClaudeAPI(apiKey, talk.title, loadedComments);
+
+      // 後方互換性のためのカラーマップ
+      const colorMap: Record<string, string> = {
+        red: '#ef4444',
+        blue: '#3b82f6',
+        green: '#22c55e'
+      };
+
+      const newSelectedComments: CommentWithStyle[] = [];
+      const newCommentColors: Record<string, string> = {};
+      const newCommentSizes: Record<string, number> = {};
+
+      for (const post of aiResponse.selected_posts) {
+        const comment = loadedComments[post.post_number - 1];
+        if (!comment) continue;
+
+        let color = '#000000';
+        if (post.decorations.color) {
+          if (post.decorations.color.startsWith('#')) {
+            color = post.decorations.color;
+          } else if (colorMap[post.decorations.color]) {
+            color = colorMap[post.decorations.color];
+          }
+        }
+        newCommentColors[comment.id] = color;
+
+        let size = 18;
+        if (post.decorations.size_boost === 'large') {
+          size = 22;
+        } else if (post.decorations.size_boost === 'small') {
+          size = 14;
+        }
+        newCommentSizes[comment.id] = size;
+
+        const fontSize: 'small' | 'medium' | 'large' =
+          size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
+        newSelectedComments.push({
+          ...comment,
+          body: comment.body,
+          color,
+          fontSize
+        });
+      }
+
+      newSelectedComments.sort((a, b) => {
+        const aNum = parseInt(a.res_id);
+        const bNum = parseInt(b.res_id);
+        return aNum - bNum;
+      });
+
+      setCommentColors(newCommentColors);
+      setCommentSizes(newCommentSizes);
+      setSelectedComments(newSelectedComments);
+
+      toast.success(`${newSelectedComments.length}件のレスを選択しました`, { id: toastId });
+    } catch (error) {
+      console.error('AI summarize error:', error);
+      toast.error(error instanceof Error ? error.message : 'AIまとめに失敗しました', { id: toastId });
+      throw error;
+    } finally {
+      setGeneratingAI(false);
+    }
+  }, [resetHistory, setSelectedComments]);
 
   return (
     <div className="flex gap-6">
@@ -406,8 +494,7 @@ export default function Home() {
           <>
             {/* 一括AIまとめパネル */}
             <BulkProcessPanel
-              onLoadUrl={handleLoadUrl}
-              onAISummarize={handleAISummarize}
+              onBulkProcess={handleBulkProcess}
               isProcessingAI={generatingAI}
             />
 
