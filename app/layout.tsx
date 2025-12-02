@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
-import { Logo } from '@/components/ui/Logo';
+import Header from '@/components/Header';
 
 export const metadata: Metadata = {
   title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
@@ -111,40 +111,7 @@ export default function RootLayout({
             },
           }}
         />
-        <nav className="bg-white border-b border-gray-200">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center gap-3">
-                <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                  <div className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
-                    <Logo />
-                  </div>
-                  <span className="text-xl font-bold text-gray-900">
-                    まとめるん
-                  </span>
-                  <span className="text-[10px] text-gray-400 font-normal ml-1">Beta</span>
-                </a>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <a
-                  href="/about"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-                >
-                  <span>💡</span>
-                  <span>使い方</span>
-                </a>
-                <a
-                  href="/settings"
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
-                >
-                  <span>⚙️</span>
-                  <span>設定</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </nav>
+        <Header />
 
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}
