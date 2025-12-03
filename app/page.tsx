@@ -50,6 +50,8 @@ export default function Home() {
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理用のコメントデータ（直接HTMLGeneratorに渡す）
   const [bulkProcessComments, setBulkProcessComments] = useState<CommentWithStyle[] | null>(null);
+  // 一括処理後にモーダルを開くフラグ
+  const [shouldOpenModalForBulk, setShouldOpenModalForBulk] = useState(false);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -140,6 +142,15 @@ export default function Home() {
     setShowIdInHtml(show);
     localStorage.setItem('showIdInHtml', String(show));
   }, []);
+
+  // 一括処理用コメントがセットされたらモーダルを開く
+  useEffect(() => {
+    if (shouldOpenModalForBulk && bulkProcessComments && bulkProcessComments.length > 0) {
+      console.log('🔓 モーダルを開く（bulkProcessComments確定）:', bulkProcessComments.map(c => `${c.res_id}`).join(', '));
+      setShouldOpenModalForBulk(false);
+      setShowHTMLModal(true);
+    }
+  }, [shouldOpenModalForBulk, bulkProcessComments]);
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -562,12 +573,12 @@ export default function Home() {
     // =====================
     // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
     // =====================
-    // 一括処理用コメントを直接セットしてモーダルを開く
-    // （React状態の同期問題を回避）
+    // 一括処理用コメントをセットし、useEffectでモーダルを開く
+    // （bulkProcessCommentsが確実にセットされてから開く）
     console.log('🚀 一括処理コメントをセット:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
-    setBulkProcessComments(newSelectedComments);
     toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
-    setShowHTMLModal(true);
+    setBulkProcessComments(newSelectedComments);
+    setShouldOpenModalForBulk(true);
 
   }, [resetHistory, setSelectedComments]);
 
