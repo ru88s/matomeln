@@ -12,10 +12,8 @@ import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { callClaudeAPI } from '@/lib/ai-summarize';
-import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
-import { generateMatomeHTML, SourceInfo } from '@/lib/html-templates';
-import { ThumbnailCharacter, MatomeOptions } from '@/lib/types';
-import { markThreadAsSummarized } from '@/lib/bulk-processing';
+import { generateThumbnail } from '@/lib/ai-thumbnail';
+import { ThumbnailCharacter } from '@/lib/types';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -487,11 +485,7 @@ export default function Home() {
       });
     }
 
-    newSelectedComments.sort((a, b) => {
-      const aNum = parseInt(a.res_id);
-      const bNum = parseInt(b.res_id);
-      return aNum - bNum;
-    });
+    // AIが返した順番をそのまま使用（ソートしない）
 
     setCommentColors(newCommentColors);
     setCommentSizes(newCommentSizes);
@@ -554,83 +548,10 @@ export default function Home() {
     }
 
     // =====================
-    // 4. HTMLタグ生成
+    // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
     // =====================
-    toast.loading('HTMLタグを生成中...', { id: 'bulk-step' });
-
-    const matomeOptions: MatomeOptions = {
-      includeImages: true,
-      style: 'simple',
-      includeTimestamp: true,
-      includeName: false,
-      commentStyle: {
-        bold: true,
-        fontSize: 'large',
-        color: '#000000',
-      },
-    };
-
-    const sourceInfoObj: SourceInfo = { source, originalUrl: url };
-    const generatedHTML = await generateMatomeHTML(
-      talk,
-      newSelectedComments,
-      matomeOptions,
-      sourceInfoObj,
-      customNameSettings.name,
-      customNameSettings.bold,
-      customNameSettings.color,
-      generatedThumbnailUrl,
-      true, // showIdInHtml
-      true, // isDevMode
-      true  // skipOgp - 一括処理ではOGP取得をスキップ
-    );
-
-    // =====================
-    // 5. ブログに投稿
-    // =====================
-    toast.loading('ブログに投稿中...', { id: 'bulk-step' });
-
-    const fullBody = generatedHTML.footer
-      ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
-      : generatedHTML.body;
-
-    // タイトルの先頭に「§」を追加（ストック記事の目印）
-    // すでに§で始まっている場合は追加しない
-    const stockTitle = generatedHTML.title.startsWith('§')
-      ? generatedHTML.title
-      : `§${generatedHTML.title}`;
-
-    const postResponse = await fetch('/api/proxy/postBlog', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        blogId: blogSettings.blogId,
-        apiKey: blogSettings.apiKey,
-        title: stockTitle,
-        body: fullBody,
-      }),
-    });
-
-    if (!postResponse.ok) {
-      const errorData = await postResponse.json();
-      throw new Error(errorData.error || 'ブログ投稿に失敗しました');
-    }
-
-    const postResult = await postResponse.json();
-    toast.success(`ブログ投稿完了: ${postResult.url || '成功'}`, { id: 'bulk-step' });
-
-    // =====================
-    // 6. スレメモくんにまとめ済み登録
-    // =====================
-    try {
-      await markThreadAsSummarized(url);
-      toast.success('スレメモくんに登録完了', { id: 'bulk-memo' });
-    } catch (memoError) {
-      console.warn('スレメモくん登録失敗:', memoError);
-      // 登録失敗でもエラーにはしない（ブログ投稿は成功しているため）
-    }
+    toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
+    setShowHTMLModal(true);
 
   }, [resetHistory, setSelectedComments]);
 
