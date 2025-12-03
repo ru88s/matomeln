@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter } from '@/lib/types';
+import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
 
 // 開発者モードのパスワード
 const DEV_MODE_PASSWORD = 'matomeln2025';
@@ -64,6 +65,11 @@ export default function SettingsModal({
   // 他のブログにも投稿設定
   const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  // テスト生成関連
+  const [testGenerating, setTestGenerating] = useState<string | null>(null); // 生成中のキャラID
+  const [testPreviewImage, setTestPreviewImage] = useState<string | null>(null);
+  const [testPreviewCharacter, setTestPreviewCharacter] = useState<ThumbnailCharacter | null>(null);
+  const [testTitle, setTestTitle] = useState('');
 
   // 設定を読み込み
   useEffect(() => {
@@ -156,6 +162,48 @@ export default function SettingsModal({
 
   // 他のブログ一覧（選択中のブログを除く）
   const otherBlogs = blogs.filter(b => b.id !== selectedBlogId);
+
+  // サンプルタイトル一覧
+  const sampleTitles = [
+    '【悲報】ワイ、彼女にフラれる',
+    '【朗報】新作ゲームが神ゲーだと話題に',
+    '【速報】有名YouTuberが結婚を発表',
+    '【悲報】今日の晩ご飯がカレーじゃなかった',
+    '【朗報】夏休みが来週から始まる',
+  ];
+
+  // テスト生成を実行
+  const handleTestGenerate = async (character: ThumbnailCharacter, title: string) => {
+    if (!geminiApiKey) {
+      toast.error('Gemini APIキーを設定してください');
+      return;
+    }
+
+    if (!title.trim()) {
+      toast.error('タイトルを入力してください');
+      return;
+    }
+
+    setTestGenerating(character.id);
+    setTestPreviewImage(null);
+    setTestPreviewCharacter(character);
+    const toastId = toast.loading(`${character.name}でテスト生成中...`);
+
+    try {
+      const result = await generateThumbnail(geminiApiKey, title, character);
+
+      if (result.success && result.imageBase64) {
+        setTestPreviewImage(base64ToDataUrl(result.imageBase64));
+        toast.success('テスト生成完了', { id: toastId });
+      } else {
+        toast.error(result.error || '生成に失敗しました', { id: toastId });
+      }
+    } catch (error) {
+      toast.error('生成中にエラーが発生しました', { id: toastId });
+    } finally {
+      setTestGenerating(null);
+    }
+  };
 
   // キャラクター追加モーダルを開く
   const openAddCharacterModal = () => {
@@ -636,21 +684,21 @@ export default function SettingsModal({
                         {thumbnailCharacters.map((char) => (
                           <div
                             key={char.id}
-                            className="bg-white rounded-lg p-2 border border-blue-100 cursor-pointer hover:border-blue-300 transition-colors"
-                            onClick={() => openEditCharacterModal(char)}
+                            className="bg-white rounded-lg p-2 border border-blue-100 hover:border-blue-300 transition-colors"
                           >
                             <div className="flex items-center gap-2">
                               {char.referenceImageUrls[0] && (
                                 <img
                                   src={char.referenceImageUrls[0]}
                                   alt={char.name}
-                                  className="w-10 h-10 object-cover rounded"
+                                  className="w-10 h-10 object-cover rounded cursor-pointer"
+                                  onClick={() => openEditCharacterModal(char)}
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
                                   }}
                                 />
                               )}
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEditCharacterModal(char)}>
                                 <div className="font-bold text-sm text-gray-800 truncate">{char.name}</div>
                                 {char.description && (
                                   <div className="text-xs text-gray-500 truncate">{char.description}</div>
@@ -659,9 +707,89 @@ export default function SettingsModal({
                                   {char.referenceImageUrls.length}枚の参考画像
                                 </div>
                               </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTestPreviewCharacter(char);
+                                  setTestPreviewImage(null);
+                                  setTestTitle(sampleTitles[Math.floor(Math.random() * sampleTitles.length)]);
+                                }}
+                                disabled={testGenerating !== null}
+                                className="text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-1 rounded font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                テスト
+                              </button>
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* テスト生成パネル */}
+                    {testPreviewCharacter && (
+                      <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-green-700">
+                            {testPreviewCharacter.name} でテスト生成
+                          </span>
+                          <button
+                            onClick={() => {
+                              setTestPreviewCharacter(null);
+                              setTestPreviewImage(null);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={testTitle}
+                            onChange={(e) => setTestTitle(e.target.value)}
+                            placeholder="テスト用タイトルを入力..."
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
+                          />
+                          <div className="flex gap-1 flex-wrap">
+                            {sampleTitles.slice(0, 3).map((title, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setTestTitle(title)}
+                                className="text-[10px] bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded cursor-pointer transition-colors truncate max-w-[120px]"
+                              >
+                                {title}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => handleTestGenerate(testPreviewCharacter, testTitle)}
+                            disabled={testGenerating !== null || !testTitle.trim()}
+                            className="w-full text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {testGenerating === testPreviewCharacter.id ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                生成中...
+                              </>
+                            ) : (
+                              'サムネイルを生成'
+                            )}
+                          </button>
+                          {testPreviewImage && (
+                            <div className="mt-2">
+                              <img
+                                src={testPreviewImage}
+                                alt="テスト生成結果"
+                                className="w-full rounded-lg border border-gray-200"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
