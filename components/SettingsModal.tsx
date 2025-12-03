@@ -218,7 +218,7 @@ export default function SettingsModal({
     setCharacterForm({
       name: character.name,
       description: character.description,
-      imageUrl: character.referenceImageUrls[0] || ''
+      imageUrl: '' // 追加欄は空にしておく
     });
     setShowCharacterModal(true);
   };
@@ -296,6 +296,13 @@ export default function SettingsModal({
     );
     setThumbnailCharacters(updatedCharacters);
     localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    // 編集中のキャラクターも更新（リアルタイム反映）
+    if (editingCharacter && editingCharacter.id === characterId) {
+      const updated = updatedCharacters.find(c => c.id === characterId);
+      if (updated) {
+        setEditingCharacter(updated);
+      }
+    }
     toast.success('参考画像を削除しました');
   };
 
