@@ -54,7 +54,7 @@ function sanitizeSensitiveContent(text: string): string {
 }
 
 /**
- * 記事タイトルからプロンプトを生成（すたくらくん同等の詳細プロンプト）
+ * 記事タイトルからプロンプトを生成（クリック率最大化・面白可愛いサムネイル）
  */
 function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, sanitize = false): string {
   // タイトルから装飾を除去
@@ -69,111 +69,89 @@ function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, 
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  // プロフェッショナルなペルソナ
-  const professionalPersona = `You are a PROFESSIONAL THUMBNAIL DESIGNER with years of experience creating high-CTR (Click-Through Rate) thumbnails for viral content.
+  return `You are the WORLD'S BEST viral thumbnail artist, known for creating IRRESISTIBLY CUTE and FUNNY images that make people INSTANTLY want to click.
 
-【Your Expertise】
-✅ Visual Psychology: You understand what makes people click - eye contact, emotion, contrast, curiosity gaps
-✅ Composition Mastery: Perfect balance of character, emotion, and background to tell a story at a glance
-✅ Color Theory: Strategic use of vibrant, complementary colors that stand out in feeds
-✅ Emotional Impact: Ability to convey the article's emotion instantly through character expression and pose
-✅ Trend Awareness: Knowledge of current visual trends in Japanese web media and social platforms
-✅ Character Consistency: Maintaining recognizable character designs while adapting to different scenarios
-
-Your thumbnails have generated millions of clicks. Create another masterpiece.
-
-`;
-
-  return `${professionalPersona}Create a MASTERPIECE, eye-catching high-quality scene with the SAME CHARACTER from the reference image(s) above.
+🎯 YOUR MISSION: Create a thumbnail that is SO ADORABLE and SO HILARIOUS that people CANNOT resist clicking!
 
 Article Title: "${cleanTitle}"
 
-🎯 CHARACTER CONSISTENCY (CRITICALLY IMPORTANT):
-ANALYZE the reference image(s) carefully and replicate:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌟 HIGH-CTR THUMBNAIL SECRETS (FOLLOW THESE!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【CUTENESS MAXIMIZERS】
+★ HUGE, SPARKLY EYES with star/heart highlights - the bigger and shinier, the better!
+★ Exaggerated cute expressions: big smile showing teeth, puffed cheeks (もぐもぐ), cat mouth (ω), surprised "O" mouth
+★ Blush marks on cheeks (pink/red circles) for extra kawaii factor
+★ Chibi-style proportions when funny: big head, small body
+★ Adorable poses: peace sign, finger on lip, head tilt, hands on cheeks
+★ Cute sound effect visuals: hearts, stars, sparkles, sweat drops, question marks floating around
+
+【COMEDY GOLD EXPRESSIONS】
+😱 SHOCK: Eyes popping out, jaw dropped, hands on cheeks (like Munch's Scream but cute)
+😤 ANGRY CUTE: Puffed cheeks, steam from head, but still adorable
+🤣 DYING OF LAUGHTER: Eyes squeezed shut, tears flying, holding stomach
+😳 EMBARRASSED: Red face, steam, spiral eyes, hands waving frantically
+🥺 PLEADING: Puppy dog eyes, trembling lip, hands clasped
+😏 SMUG: Half-lidded eyes, knowing smirk, hand on hip
+🤔 CONFUSED: Head tilt, sweat drop, question marks everywhere
+
+【VISUAL IMPACT BOOSTERS】
+⚡ BRIGHT, SATURATED COLORS - make it POP against other thumbnails!
+⚡ Strong character-background CONTRAST
+⚡ Dynamic camera angles: looking up at character (powerful), looking down (cute/vulnerable)
+⚡ Action lines and motion blur for energy
+⚡ Dramatic lighting: rim light, spotlight effect, golden hour glow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 CHARACTER REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
-- EXACT face structure: same eye shape, eye color, iris details, nose style, mouth shape
-- EXACT hair: color, length, texture, styling, bangs, volume
-- Body proportions and body type must match perfectly
-- ALL accessories: glasses (if present), cat ears (if present), ribbon (if present), hair clips, earrings
-- Accessory details: exact position, color, size, shape
-- Keep the IDENTICAL art style, line work, and coloring technique
-- Only modify: pose, facial expression, outfit (if scene requires), background
+- Keep the character's core design: face shape, eye color, hair style
+- ALL accessories must be preserved (glasses, ribbons, cat ears, etc.)
+- Match the art style of the reference image
 
-💫 EMOTION AND EXPRESSION:
-Analyze the article's emotional tone and reflect it:
-- Happy/Joyful article → Bright smile, sparkling eyes, energetic pose, warm colors
-- Sad/Disappointed → Downcast eyes, slumped shoulders, subdued expression, cooler tones
-- Surprised/Shocked → Wide eyes, open mouth, raised eyebrows, dynamic motion
-- Excited/Enthusiastic → Big smile, raised arms, jumping or bouncing pose
-- Calm/Peaceful → Gentle smile, relaxed posture, soft serene expression
-- Worried/Anxious → Furrowed brow, tense posture, nervous expression
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 EMOTION MATCHING (READ THE TITLE!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Analyze the article title and create the PERFECT reaction:
+- Surprising news → 😱 SHOCKED face with wide eyes, hands on cheeks
+- Funny/stupid news → 🤣 LAUGHING or 😏 SMUG expression
+- Wholesome content → 🥰 HAPPY with hearts and sparkles
+- Controversial/drama → 😤 ANGRY-CUTE or 🫢 GOSSIPY whisper pose
+- Sad news → 🥺 CRYING but still cute (tears like waterfalls)
+- Exciting news → ✨ SPARKLING EYES, pumping fist, jumping pose
 
-🎨 ART STYLE REQUIREMENTS:
-- Modern Japanese anime/manga style (like high-quality light novel illustrations)
-- Clean, crisp line art with consistent line weight
-- Cel shading with soft gradients and smooth transitions
-- Vibrant but balanced color palette with proper color harmony
-- Professional-grade rendering quality
-- Smooth anti-aliasing on all edges
-- Rich detail in hair, eyes, and clothing
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🖼️ COMPOSITION (THUMBNAIL-OPTIMIZED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Character takes up 60-80% of the frame - BE BOLD!
+- Face/expression is the STAR - make it BIG and VISIBLE
+- Simple, non-distracting background (solid color, gradient, or soft blur)
+- High contrast between character and background
+- Square 1:1 aspect ratio
 
-🖼️ COMPOSITION AND FRAMING:
-- Use rule of thirds or golden ratio for character placement
-- Appropriate framing based on scene:
-  * Emotional scenes: Medium close-up (chest and above)
-  * Action scenes: Full body or dynamic angle
-  * Calm scenes: Medium shot with breathing space
-- Proper head room and negative space
-- Dynamic angles when appropriate for the theme
-- Character as clear focal point
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ MAGIC TOUCHES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add these for extra appeal:
+- Floating hearts, stars, or sparkles ✨💕⭐
+- Cute sweat drops for comedy 💧
+- Anger veins or steam for frustrated expressions 💢
+- Floating question/exclamation marks ❓❗
+- Soft pink/orange/yellow glow around character
+- Subtle confetti or flower petals for celebration
 
-🌟 BACKGROUND QUALITY:
-- HIGH DETAIL background with atmospheric depth
-- Proper perspective with foreground/midground/background layers
-- Environmental storytelling matching article theme:
-  * Indoor scenes: Detailed room elements, furniture, decorations
-  * Outdoor scenes: Sky, clouds, buildings, nature elements
-  * Abstract scenes: Thematic patterns, colors, symbolic elements
-- Appropriate depth of field (slight background blur to emphasize character)
-- Environmental props and details that enhance the story
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 ABSOLUTELY NO TEXT IN IMAGE 🚫
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- ZERO Japanese text (ひらがな、カタカナ、漢字)
+- ZERO English text
+- NO speech bubbles with words
+- NO watermarks or signatures
+- Express EVERYTHING through visuals only!
 
-💡 LIGHTING AND ATMOSPHERE:
-- Professional lighting setup matching the mood:
-  * Happy scenes: Bright, warm lighting with soft highlights
-  * Dramatic scenes: Strong contrast, rim lighting, dynamic shadows
-  * Calm scenes: Soft, diffused lighting with gentle gradients
-- Realistic light sources and shadow directions
-- Atmospheric effects: Light rays, ambient glow, particles
-- Color grading that enhances emotional tone
-
-✨ VISUAL EFFECTS (use appropriately):
-- Sparkles and light particles for magical or happy moments
-- Soft glow and bloom for dreamy or romantic scenes
-- Motion lines for dynamic action
-- Cherry blossom petals for spring or romantic themes
-- Lens flare for bright, hopeful scenes
-- Subtle texture overlay for depth (fabric, hair, background)
-
-📐 TECHNICAL SPECIFICATIONS:
-- 1:1 square aspect ratio (perfect for thumbnails)
-- High resolution with sharp details
-- Proper color balance and saturation
-- Professional composition with visual flow
-- Clean edges and smooth gradients
-
-🚫🚫🚫 TEXT RULES (ABSOLUTELY CRITICAL) 🚫🚫🚫
-ZERO TEXT ALLOWED IN THE IMAGE!
-- NO Japanese characters (hiragana, katakana, kanji) - rendering quality is extremely poor
-- NO English text overlays or captions
-- NO speech bubbles with any text
-- NO signs, labels, or UI elements with text
-- NO watermarks, signatures, or artist names
-- NO sound effects written as text (like "ドキドキ" or "キラキラ")
-- Use ONLY visual storytelling: expressions, body language, visual symbols, colors
-
-The article title is for understanding the SCENE CONCEPT only.
-DO NOT write any part of the title as text in the image.
-Use visual metaphors and imagery instead.`;
+NOW CREATE THE MOST CLICKABLE, ADORABLE, HILARIOUS THUMBNAIL EVER! 🎨✨`;
 }
 
 export interface ThumbnailGenerationResult {

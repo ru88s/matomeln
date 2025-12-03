@@ -558,7 +558,9 @@ export default function Home() {
       customNameSettings.bold,
       customNameSettings.color,
       generatedThumbnailUrl,
-      true // showIdInHtml
+      true, // showIdInHtml
+      true, // isDevMode
+      true  // skipOgp - 一括処理ではOGP取得をスキップ
     );
 
     // =====================

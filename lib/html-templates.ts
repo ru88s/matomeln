@@ -21,15 +21,16 @@ export async function generateMatomeHTML(
   customNameColor?: string,
   thumbnailUrl?: string,
   showIdInHtml?: boolean,
-  isDevMode?: boolean
+  isDevMode?: boolean,
+  skipOgp?: boolean
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
   let result: GeneratedHTML;
   if (style === 'rich') {
-    result = await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+    result = await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp);
   } else {
-    result = await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml);
+    result = await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp);
   }
 
   // DEVモードの場合はタイトルの頭に§を追加（ストック記事とわかるように）
@@ -110,7 +111,8 @@ async function generateSimpleHTML(
   customNameBold?: boolean,
   customNameColor?: string,
   thumbnailUrl?: string,
-  showIdInHtml?: boolean
+  showIdInHtml?: boolean,
+  skipOgp?: boolean
 ): Promise<GeneratedHTML> {
   const { includeTimestamp, includeName, includeImages } = options;
 
@@ -163,7 +165,7 @@ async function generateSimpleHTML(
     const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
     const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
-    const formattedBody = await formatCommentBodyForMatome(comment.body);
+    const formattedBody = await formatCommentBodyForMatome(comment.body, skipOgp);
 
     // 整形されたHTMLを生成
     if (hasAnchor) {
@@ -220,7 +222,8 @@ async function generateRichHTML(
   customNameBold?: boolean,
   customNameColor?: string,
   thumbnailUrl?: string,
-  showIdInHtml?: boolean
+  showIdInHtml?: boolean,
+  skipOgp?: boolean
 ): Promise<GeneratedHTML> {
   const { includeImages, includeTimestamp, includeName } = options;
 
@@ -295,7 +298,7 @@ async function generateRichHTML(
     const hasAnchor = />>?\d+/.test(comment.body);
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
-    const formattedBody = await formatRichCommentBody(comment.body);
+    const formattedBody = await formatRichCommentBody(comment.body, skipOgp);
 
     if (hasAnchor) {
       return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">
@@ -376,7 +379,8 @@ async function fetchTwitterOEmbed(url: string): Promise<string | null> {
 }
 
 // URLをリンクカードに変換する関数（OGP情報付き）
-async function linkifyUrlsToCards(text: string): Promise<string> {
+// skipOgp=trueの場合はOGP取得をスキップしてシンプルなリンクに変換
+async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<string> {
   // URLパターンにマッチする正規表現（日本語括弧や句読点で終了）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
   const urls: string[] = [];
@@ -399,6 +403,13 @@ async function linkifyUrlsToCards(text: string): Promise<string> {
 
     // 5ch、open2ch、2ch.sc、shikutokuのスレッドURL - シンプルなテキストリンクに変換
     if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(url)) {
+      const textLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
+      result = result.replace(url, textLink);
+      continue;
+    }
+
+    // OGPスキップが有効な場合はシンプルなリンクに変換
+    if (skipOgp) {
       const textLink = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
       result = result.replace(url, textLink);
       continue;
@@ -429,7 +440,7 @@ function linkifyUrls(text: string): string {
 }
 
 // まとめくす風の本文フォーマット
-async function formatCommentBodyForMatome(body: string): Promise<string> {
+async function formatCommentBodyForMatome(body: string, skipOgp?: boolean): Promise<string> {
   // 改行を<br />に変換
   let formatted = escapeHtml(body).replace(/\n/g, '<br />\n');
 
@@ -439,12 +450,12 @@ async function formatCommentBodyForMatome(body: string): Promise<string> {
   });
 
   // URLをリンクカードに変換
-  formatted = await linkifyUrlsToCards(formatted);
+  formatted = await linkifyUrlsToCards(formatted, skipOgp);
 
   return formatted;
 }
 
-async function formatRichCommentBody(body: string): Promise<string> {
+async function formatRichCommentBody(body: string, skipOgp?: boolean): Promise<string> {
   let lines = body.split('\n');
   let formatted: string[] = [];
 
@@ -453,7 +464,7 @@ async function formatRichCommentBody(body: string): Promise<string> {
     if (line.startsWith('>')) {
       let escapedLine = escapeHtml(line);
       // URLをリンクカードに変換（引用行でも）
-      escapedLine = await linkifyUrlsToCards(escapedLine);
+      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
       formatted.push(`<div class="quote_line">${escapedLine}</div>`);
     } else {
       // 通常の行
@@ -463,7 +474,7 @@ async function formatRichCommentBody(body: string): Promise<string> {
         return `<a href="#${num}" class="anchor_link">&gt;&gt;${num}</a>`;
       });
       // URLをリンクカードに変換
-      escapedLine = await linkifyUrlsToCards(escapedLine);
+      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
       formatted.push(escapedLine);
     }
   }
