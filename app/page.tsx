@@ -402,13 +402,15 @@ export default function Home() {
       throw new Error('ブログ設定がありません');
     }
 
-    // サムネイルキャラクター設定を取得
+    // サムネイルキャラクター設定を取得（最初のキャラクターを使用）
     let thumbnailCharacter: ThumbnailCharacter | undefined;
     const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
-    const savedSelectedCharId = localStorage.getItem('matomeln_selected_character_id');
-    if (savedCharacters && savedSelectedCharId) {
+    if (savedCharacters) {
       const characters: ThumbnailCharacter[] = JSON.parse(savedCharacters);
-      thumbnailCharacter = characters.find(c => c.id === savedSelectedCharId);
+      if (characters.length > 0) {
+        thumbnailCharacter = characters[0];
+        console.log('📷 使用するキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+      }
     }
 
     // レス名設定を取得
