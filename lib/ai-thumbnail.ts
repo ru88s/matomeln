@@ -113,13 +113,16 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 "炎上した発言..." → News studio or social media visual metaphor (fire effects stylized)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 CHARACTER REQUIREMENTS
+🎨 CHARACTER REQUIREMENTS (HIGHEST PRIORITY!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
-- Keep the character's core design: face shape, eye color, hair style
-- ALL accessories must be preserved (glasses, ribbons, cat ears, etc.)
-- Match the art style of the reference image
-- OUTFIT can change to match the scene (school uniform, casual, formal, costume)
+⚠️ CRITICAL - The character MUST match the reference image EXACTLY:
+- SAME art style (if anime → anime, if illustration → illustration)
+- SAME face shape, eye shape, eye color
+- SAME hair color, hair style, hair length
+- SAME accessories (glasses, ribbons, cat ears, hair clips, earrings)
+- DO NOT make anime characters look realistic/photorealistic
+- OUTFIT can change to match the scene, but character identity must be preserved
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 😊 EXPRESSION & POSE (MATCH THE MOOD!)
@@ -244,9 +247,31 @@ export async function generateThumbnail(
   const prompt = generatePromptFromTitle(title, character, sanitize);
 
   if (hasReferenceImages) {
-    // 参考画像がある場合は説明を追加
+    // 参考画像がある場合は強力なキャラクター指定を追加
     parts.push({
-      text: `The above image(s) show the reference character "${character?.name || 'キャラクター'}". Create a new thumbnail image featuring this SAME character with consistent appearance, style, and design.\n\n${prompt}`
+      text: `⚠️ CRITICAL CHARACTER CONSISTENCY INSTRUCTION ⚠️
+
+The above reference image(s) show the EXACT character "${character?.name || 'キャラクター'}" that MUST appear in the thumbnail.
+
+🔒 ABSOLUTE REQUIREMENTS - DO NOT DEVIATE:
+1. COPY the EXACT art style (anime/illustration/realistic) from reference
+2. COPY the EXACT face features, hair color, hair style from reference
+3. COPY ALL accessories (glasses, ribbons, hair clips, cat ears, etc.)
+4. The character in output MUST be recognizable as the SAME character
+5. If reference is anime-style → output MUST be anime-style
+6. If reference is illustration → output MUST be illustration
+7. NEVER change the character to realistic/photorealistic style unless reference is realistic
+
+❌ FORBIDDEN:
+- Creating a different character
+- Changing art style (anime → realistic is FORBIDDEN)
+- Changing hair color or style
+- Removing or changing accessories
+- Making the character look like a real person if reference is anime
+
+Now create a thumbnail following these rules:
+
+${prompt}`
     });
   } else {
     // 参考画像がない場合はプロンプトのみ
