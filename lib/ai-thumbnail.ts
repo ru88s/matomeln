@@ -54,7 +54,7 @@ function sanitizeSensitiveContent(text: string): string {
 }
 
 /**
- * 記事タイトルからプロンプトを生成（クリック率最大化・面白可愛いサムネイル）
+ * 記事タイトルからプロンプトを生成（クリック率最大化・シーンマッチング・面白可愛いサムネイル）
  */
 function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, sanitize = false): string {
   // タイトルから装飾を除去
@@ -69,39 +69,48 @@ function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, 
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  return `You are the WORLD'S BEST viral thumbnail artist, known for creating IRRESISTIBLY CUTE and FUNNY images that make people INSTANTLY want to click.
+  return `You are the WORLD'S BEST viral thumbnail artist who creates STORY-DRIVEN thumbnails. Your images tell a story at a glance with perfect scene composition, matching backgrounds, and expressive characters.
 
-🎯 YOUR MISSION: Create a thumbnail that is SO ADORABLE and SO HILARIOUS that people CANNOT resist clicking!
+🎯 YOUR MISSION: Create a thumbnail that TELLS THE STORY of the article through visuals!
 
 Article Title: "${cleanTitle}"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌟 HIGH-CTR THUMBNAIL SECRETS (FOLLOW THESE!)
+🌍 SCENE & BACKGROUND (MOST IMPORTANT!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+READ the article title carefully and CREATE A MATCHING SCENE:
 
-【CUTENESS MAXIMIZERS】
-★ HUGE, SPARKLY EYES with star/heart highlights - the bigger and shinier, the better!
-★ Exaggerated cute expressions: big smile showing teeth, puffed cheeks (もぐもぐ), cat mouth (ω), surprised "O" mouth
-★ Blush marks on cheeks (pink/red circles) for extra kawaii factor
-★ Chibi-style proportions when funny: big head, small body
-★ Adorable poses: peace sign, finger on lip, head tilt, hands on cheeks
-★ Cute sound effect visuals: hearts, stars, sparkles, sweat drops, question marks floating around
+【ANALYZE THE TITLE FOR CONTEXT】
+Extract: WHO, WHAT, WHERE, WHEN from the title
+- Celebrity/Entertainment → Stage, TV studio, red carpet, concert venue, interview set
+- Sports → Stadium, field, gym, podium, locker room
+- Politics/News → Government building, press conference, office
+- Food/Restaurant → Kitchen, dining table, cafe, restaurant interior
+- Travel/Places → Landmark, street scene, nature, famous locations
+- Technology → Modern office, computer setup, futuristic setting
+- School/Education → Classroom, campus, graduation ceremony
+- Romance/Dating → Park, cafe date, sunset beach, cherry blossoms
+- Money/Business → Office, stock market screens, luxury items
+- Crime/Incident → Dark alley (stylized), police tape, courtroom
+- Health/Medical → Hospital, pharmacy, gym (for fitness)
+- Fashion → Runway, boutique, mirror, closet
+- Gaming/Anime → Game-like background, fantasy world
+- Music → Concert stage, recording studio, instruments
+- Weather/Season → Matching sky, rain, snow, autumn leaves, summer beach
 
-【COMEDY GOLD EXPRESSIONS】
-😱 SHOCK: Eyes popping out, jaw dropped, hands on cheeks (like Munch's Scream but cute)
-😤 ANGRY CUTE: Puffed cheeks, steam from head, but still adorable
-🤣 DYING OF LAUGHTER: Eyes squeezed shut, tears flying, holding stomach
-😳 EMBARRASSED: Red face, steam, spiral eyes, hands waving frantically
-🥺 PLEADING: Puppy dog eyes, trembling lip, hands clasped
-😏 SMUG: Half-lidded eyes, knowing smirk, hand on hip
-🤔 CONFUSED: Head tilt, sweat drop, question marks everywhere
+【BACKGROUND DETAIL LEVELS】
+★ HIGH DETAIL backgrounds that MATCH the story:
+- Real locations: Recognizable landmarks, cityscapes, interiors
+- Atmospheric elements: Time of day lighting, weather effects
+- Props and objects: Items related to the topic (microphones, food, sports equipment)
+- Depth and perspective: Foreground, midground, background layers
 
-【VISUAL IMPACT BOOSTERS】
-⚡ BRIGHT, SATURATED COLORS - make it POP against other thumbnails!
-⚡ Strong character-background CONTRAST
-⚡ Dynamic camera angles: looking up at character (powerful), looking down (cute/vulnerable)
-⚡ Action lines and motion blur for energy
-⚡ Dramatic lighting: rim light, spotlight effect, golden hour glow
+【EXAMPLE SCENE MATCHING】
+"芸能人がレストランで..." → Character in fancy restaurant interior, tables, chandeliers
+"サッカー選手が優勝..." → Stadium background with crowd, confetti, trophy
+"新商品が発売..." → Store/product display background, shopping atmosphere
+"結婚を発表..." → Romantic setting, flowers, soft lighting, hearts
+"炎上した発言..." → News studio or social media visual metaphor (fire effects stylized)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎨 CHARACTER REQUIREMENTS
@@ -110,37 +119,39 @@ ${characterAppearance}
 - Keep the character's core design: face shape, eye color, hair style
 - ALL accessories must be preserved (glasses, ribbons, cat ears, etc.)
 - Match the art style of the reference image
+- OUTFIT can change to match the scene (school uniform, casual, formal, costume)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎭 EMOTION MATCHING (READ THE TITLE!)
+😊 EXPRESSION & POSE (MATCH THE MOOD!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Analyze the article title and create the PERFECT reaction:
-- Surprising news → 😱 SHOCKED face with wide eyes, hands on cheeks
-- Funny/stupid news → 🤣 LAUGHING or 😏 SMUG expression
-- Wholesome content → 🥰 HAPPY with hearts and sparkles
-- Controversial/drama → 😤 ANGRY-CUTE or 🫢 GOSSIPY whisper pose
-- Sad news → 🥺 CRYING but still cute (tears like waterfalls)
-- Exciting news → ✨ SPARKLING EYES, pumping fist, jumping pose
+Character's reaction should match the article's emotional tone:
+
+【POSITIVE NEWS】 → 😄 Big smile, sparkling eyes, peace sign, jumping, hearts floating
+【SHOCKING NEWS】 → 😱 Wide eyes, hands on cheeks, jaw dropped, sweat drops
+【FUNNY/SILLY】 → 🤣 Laughing with tears, holding stomach, pointing and laughing
+【CONTROVERSIAL】 → 😏 Smug face, arms crossed, raised eyebrow, knowing look
+【SAD/TRAGIC】 → 🥺 Tears (cute style), downcast eyes, holding tissue
+【ANGRY/OUTRAGE】 → 😤 Puffed cheeks, steam, clenched fists, but still cute!
+【CONFUSED】 → 🤔 Head tilt, question marks, sweat drop, finger on chin
+【EXCITED】 → ✨ Sparkling eyes, raised fists, energetic pose, stars around
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🖼️ COMPOSITION (THUMBNAIL-OPTIMIZED)
+🖼️ COMPOSITION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Character takes up 60-80% of the frame - BE BOLD!
-- Face/expression is the STAR - make it BIG and VISIBLE
-- Simple, non-distracting background (solid color, gradient, or soft blur)
-- High contrast between character and background
+- Character: 50-70% of frame (leave room for background!)
+- Position: Slightly off-center for dynamic composition
+- Background: VISIBLE and DETAILED (not just solid color!)
+- Depth: Slight blur on far background, sharp character
+- Camera angle: Match the mood (low angle = powerful, high angle = cute)
 - Square 1:1 aspect ratio
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✨ MAGIC TOUCHES
+✨ VISUAL ENHANCEMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Add these for extra appeal:
-- Floating hearts, stars, or sparkles ✨💕⭐
-- Cute sweat drops for comedy 💧
-- Anger veins or steam for frustrated expressions 💢
-- Floating question/exclamation marks ❓❗
-- Soft pink/orange/yellow glow around character
-- Subtle confetti or flower petals for celebration
+- Lighting that matches the scene (stage lights, sunset, neon, etc.)
+- Atmospheric effects: Sparkles, confetti, petals, snow, rain drops
+- Emotion indicators: Hearts, stars, sweat drops, anger marks, question marks
+- Color grading: Warm for happy, cool for sad, vibrant for exciting
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 ABSOLUTELY NO TEXT IN IMAGE 🚫
@@ -149,9 +160,9 @@ Add these for extra appeal:
 - ZERO English text
 - NO speech bubbles with words
 - NO watermarks or signatures
-- Express EVERYTHING through visuals only!
+- Tell the story through VISUALS ONLY!
 
-NOW CREATE THE MOST CLICKABLE, ADORABLE, HILARIOUS THUMBNAIL EVER! 🎨✨`;
+CREATE A THUMBNAIL WHERE THE BACKGROUND AND SCENE TELL THE STORY! 🎨✨`;
 }
 
 export interface ThumbnailGenerationResult {
