@@ -505,10 +505,10 @@ export default function Home() {
     toast.success(`${newSelectedComments.length}件のレスを選択`, { id: 'bulk-step' });
 
     // =====================
-    // 3. AIサムネ生成
+    // 3. AIサムネ生成 & アップロード
     // =====================
     let generatedThumbnailUrl = '';
-    if (geminiApiKey) {
+    if (geminiApiKey && blogSettings) {
       toast.loading('AIサムネイルを生成中...', { id: 'bulk-step' });
       try {
         const thumbnailResult = await generateThumbnail(
@@ -518,9 +518,35 @@ export default function Home() {
         );
 
         if (thumbnailResult.success && thumbnailResult.imageBase64) {
-          generatedThumbnailUrl = base64ToDataUrl(thumbnailResult.imageBase64);
-          setThumbnailUrl(generatedThumbnailUrl);
-          toast.success('サムネイル生成完了', { id: 'bulk-step' });
+          // Base64画像をBlobに変換してアップロード
+          toast.loading('サムネイルをアップロード中...', { id: 'bulk-step' });
+          const binary = atob(thumbnailResult.imageBase64);
+          const array = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            array[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([array], { type: 'image/png' });
+
+          const formData = new FormData();
+          formData.append('blogId', blogSettings.blogId);
+          formData.append('apiKey', blogSettings.apiKey);
+          formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
+
+          const uploadResponse = await fetch('/api/proxy/uploadImage', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            if (uploadData.url) {
+              generatedThumbnailUrl = uploadData.url;
+              setThumbnailUrl(generatedThumbnailUrl);
+              toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+            }
+          } else {
+            console.warn('サムネイルアップロード失敗');
+          }
         } else {
           console.warn('サムネイル生成失敗:', thumbnailResult.error);
           toast.error(`サムネイル生成失敗: ${thumbnailResult.error}`, { id: 'bulk-step' });
