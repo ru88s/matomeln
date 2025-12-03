@@ -302,7 +302,30 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                   サイドバーの「ブログ設定」からブログを追加してください
                 </p>
               </div>
-            ) : null}
+            ) : (
+              /* 投稿先ブログを表示 */
+              <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-xs font-bold text-orange-700 mb-2">投稿先:</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                    {selectedBlogName || apiSettings.blogUrl}
+                  </div>
+                  {isDevMode && postToOtherBlogs && selectedOtherBlogIds.length > 0 && (
+                    <>
+                      {blogs
+                        .filter(b => selectedOtherBlogIds.includes(b.id))
+                        .map(blog => (
+                          <div key={blog.id} className="flex items-center gap-2 text-sm text-gray-700">
+                            <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                            {blog.name}
+                          </div>
+                        ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleBlogPost}
