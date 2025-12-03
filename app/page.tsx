@@ -48,6 +48,8 @@ export default function Home() {
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [showIdInHtml, setShowIdInHtml] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
+  // 一括処理でモーダルを開くためのフラグ（selectedComments更新後に開く）
+  const [pendingOpenModal, setPendingOpenModal] = useState(false);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -138,6 +140,14 @@ export default function Home() {
     setShowIdInHtml(show);
     localStorage.setItem('showIdInHtml', String(show));
   }, []);
+
+  // 一括処理後、selectedCommentsが更新されたらモーダルを開く
+  useEffect(() => {
+    if (pendingOpenModal && selectedComments.length > 0) {
+      setPendingOpenModal(false);
+      setShowHTMLModal(true);
+    }
+  }, [pendingOpenModal, selectedComments]);
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -558,8 +568,10 @@ export default function Home() {
     // =====================
     // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
     // =====================
+    // selectedCommentsの状態更新が反映されてからモーダルを開く
+    // （useEffectでpendingOpenModalとselectedCommentsを監視）
     toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
-    setShowHTMLModal(true);
+    setPendingOpenModal(true);
 
   }, [resetHistory, setSelectedComments]);
 
