@@ -12,7 +12,7 @@ import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { callClaudeAPI } from '@/lib/ai-summarize';
-import { generateThumbnail } from '@/lib/ai-thumbnail';
+import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { ThumbnailCharacter } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -402,15 +402,12 @@ export default function Home() {
       throw new Error('ブログ設定がありません');
     }
 
-    // サムネイルキャラクター設定を取得（最初のキャラクターを使用）
+    // サムネイルキャラクター設定を取得（AIが記事に合うキャラを選択）
     let thumbnailCharacter: ThumbnailCharacter | undefined;
     const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
+    let allCharacters: ThumbnailCharacter[] = [];
     if (savedCharacters) {
-      const characters: ThumbnailCharacter[] = JSON.parse(savedCharacters);
-      if (characters.length > 0) {
-        thumbnailCharacter = characters[0];
-        console.log('📷 使用するキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
-      }
+      allCharacters = JSON.parse(savedCharacters);
     }
 
     // レス名設定を取得
@@ -501,6 +498,15 @@ export default function Home() {
     // =====================
     let generatedThumbnailUrl = '';
     if (geminiApiKey && blogSettings) {
+      // キャラクターが複数ある場合、AIが記事に合うキャラを選択
+      if (allCharacters.length > 0) {
+        toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
+        thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
+        if (thumbnailCharacter) {
+          console.log('📷 選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+        }
+      }
+
       toast.loading('AIサムネイルを生成中...', { id: 'bulk-step' });
       try {
         const thumbnailResult = await generateThumbnail(

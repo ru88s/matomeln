@@ -6,6 +6,82 @@
 import { ThumbnailCharacter } from './types';
 
 /**
+ * 記事タイトルに最適なキャラクターをAIで選択
+ */
+export async function selectCharacterForArticle(
+  apiKey: string,
+  title: string,
+  characters: ThumbnailCharacter[]
+): Promise<ThumbnailCharacter | undefined> {
+  if (characters.length === 0) {
+    return undefined;
+  }
+
+  if (characters.length === 1) {
+    return characters[0];
+  }
+
+  // キャラクター情報をプロンプト用にフォーマット
+  const characterList = characters.map((c, i) =>
+    `${i + 1}. "${c.name}": ${c.description || '説明なし'}`
+  ).join('\n');
+
+  const prompt = `あなたはまとめブログのサムネイル画像に使うキャラクターを選ぶアシスタントです。
+
+以下の記事タイトルに最も適したキャラクターを1つ選んでください。
+記事の内容、雰囲気、トーンに合うキャラクターを選んでください。
+
+【記事タイトル】
+${title}
+
+【キャラクター一覧】
+${characterList}
+
+回答は選んだキャラクターの番号のみを返してください（例: 1）`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 10
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('キャラクター選択API失敗、最初のキャラクターを使用');
+      return characters[0];
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    // 数字を抽出
+    const match = text.match(/\d+/);
+    if (match) {
+      const index = parseInt(match[0], 10) - 1;
+      if (index >= 0 && index < characters.length) {
+        console.log(`🎭 AIがキャラクター選択: ${characters[index].name}`);
+        return characters[index];
+      }
+    }
+
+    console.warn('キャラクター選択結果をパースできず、最初のキャラクターを使用:', text);
+    return characters[0];
+  } catch (error) {
+    console.warn('キャラクター選択エラー、最初のキャラクターを使用:', error);
+    return characters[0];
+  }
+}
+
+/**
  * センシティブなコンテンツをサニタイズ
  */
 function sanitizeSensitiveContent(text: string): string {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
 import { Talk, ThumbnailCharacter } from '@/lib/types';
-import { generateThumbnail } from '@/lib/ai-thumbnail';
+import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -136,8 +136,16 @@ export default function TalkLoader({
     const toastId = toast.loading('AIサムネイルを生成中...');
 
     try {
-      // 最初のキャラクターを使用（将来的にはキャラ選択機能を追加予定）
-      const character = thumbnailCharacters.length > 0 ? thumbnailCharacters[0] : undefined;
+      // AIが記事に合うキャラクターを選択
+      let character: ThumbnailCharacter | undefined;
+      if (thumbnailCharacters.length > 0) {
+        toast.loading('キャラクターを選択中...', { id: toastId });
+        character = await selectCharacterForArticle(geminiApiKey, currentTalk.title, thumbnailCharacters);
+        if (character) {
+          console.log('📷 選択されたキャラクター:', character.name);
+        }
+        toast.loading('AIサムネイルを生成中...', { id: toastId });
+      }
       const result = await generateThumbnail(geminiApiKey, currentTalk.title, character);
 
       if (!result.success || !result.imageBase64) {
