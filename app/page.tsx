@@ -322,12 +322,8 @@ export default function Home() {
         });
       }
 
-      // post_number順にソート
-      newSelectedComments.sort((a, b) => {
-        const aNum = parseInt(a.res_id);
-        const bNum = parseInt(b.res_id);
-        return aNum - bNum;
-      });
+      // AIが返した順番をそのまま使用（ソートしない）
+      // ユーザーは後からCommentPickerで並び替え可能
 
       // 状態を更新
       setCommentColors(newCommentColors);
