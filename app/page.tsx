@@ -48,8 +48,8 @@ export default function Home() {
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [showIdInHtml, setShowIdInHtml] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
-  // 一括処理でモーダルを開くためのフラグ（selectedComments更新後に開く）
-  const [pendingOpenModal, setPendingOpenModal] = useState(false);
+  // 一括処理用のコメントデータ（直接HTMLGeneratorに渡す）
+  const [bulkProcessComments, setBulkProcessComments] = useState<CommentWithStyle[] | null>(null);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -140,14 +140,6 @@ export default function Home() {
     setShowIdInHtml(show);
     localStorage.setItem('showIdInHtml', String(show));
   }, []);
-
-  // 一括処理後、selectedCommentsが更新されたらモーダルを開く
-  useEffect(() => {
-    if (pendingOpenModal && selectedComments.length > 0) {
-      setPendingOpenModal(false);
-      setShowHTMLModal(true);
-    }
-  }, [pendingOpenModal, selectedComments]);
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -495,6 +487,8 @@ export default function Home() {
     }
 
     // AIが返した順番をそのまま使用（ソートしない）
+    // デバッグ: AI選択結果を確認
+    console.log('🤖 AI選択結果:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
 
     setCommentColors(newCommentColors);
     setCommentSizes(newCommentSizes);
@@ -568,10 +562,12 @@ export default function Home() {
     // =====================
     // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
     // =====================
-    // selectedCommentsの状態更新が反映されてからモーダルを開く
-    // （useEffectでpendingOpenModalとselectedCommentsを監視）
+    // 一括処理用コメントを直接セットしてモーダルを開く
+    // （React状態の同期問題を回避）
+    console.log('🚀 一括処理コメントをセット:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
+    setBulkProcessComments(newSelectedComments);
     toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
-    setPendingOpenModal(true);
+    setShowHTMLModal(true);
 
   }, [resetHistory, setSelectedComments]);
 
@@ -704,7 +700,10 @@ export default function Home() {
                   タグ発行
                 </h2>
                 <button
-                  onClick={() => setShowHTMLModal(false)}
+                  onClick={() => {
+                    setShowHTMLModal(false);
+                    setBulkProcessComments(null);
+                  }}
                   className="p-2 hover:bg-orange-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
                   aria-label="閉じる"
                 >
@@ -716,9 +715,12 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={selectedComments}
+                  selectedComments={bulkProcessComments || selectedComments}
                   sourceInfo={sourceInfo}
-                  onClose={() => setShowHTMLModal(false)}
+                  onClose={() => {
+                    setShowHTMLModal(false);
+                    setBulkProcessComments(null);  // モーダルを閉じたらクリア
+                  }}
                   customName={customName}
                   customNameBold={customNameBold}
                   customNameColor={customNameColor}

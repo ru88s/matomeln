@@ -79,6 +79,8 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   // モーダルが開いたら自動でHTML生成
   useEffect(() => {
     if (talk && selectedComments.length > 0) {
+      // デバッグ: 渡されたコメントを確認
+      console.log('📝 HTMLGenerator: selectedComments順序:', selectedComments.map(c => `${c.res_id}`).join(', '));
       // 並べ替えた順番をそのまま使用（ソートしない）
       generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode).then(html => {
         setGeneratedHTML(html);
