@@ -48,10 +48,8 @@ export default function Home() {
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [showIdInHtml, setShowIdInHtml] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
-  // 一括処理用のコメントデータ（直接HTMLGeneratorに渡す）
-  const [bulkProcessComments, setBulkProcessComments] = useState<CommentWithStyle[] | null>(null);
-  // 一括処理後にモーダルを開くフラグ
-  const [shouldOpenModalForBulk, setShouldOpenModalForBulk] = useState(false);
+  // 一括処理後にモーダルを開くための期待するコメント数
+  const [pendingModalCommentCount, setPendingModalCommentCount] = useState<number | null>(null);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -143,14 +141,14 @@ export default function Home() {
     localStorage.setItem('showIdInHtml', String(show));
   }, []);
 
-  // 一括処理用コメントがセットされたらモーダルを開く
+  // 一括処理後、selectedCommentsが期待する件数に達したらモーダルを開く
   useEffect(() => {
-    if (shouldOpenModalForBulk && bulkProcessComments && bulkProcessComments.length > 0) {
-      console.log('🔓 モーダルを開く（bulkProcessComments確定）:', bulkProcessComments.map(c => `${c.res_id}`).join(', '));
-      setShouldOpenModalForBulk(false);
+    if (pendingModalCommentCount !== null && selectedComments.length === pendingModalCommentCount) {
+      console.log('🔓 モーダルを開く（selectedComments確定）:', selectedComments.map(c => `${c.res_id}`).join(', '));
+      setPendingModalCommentCount(null);
       setShowHTMLModal(true);
     }
-  }, [shouldOpenModalForBulk, bulkProcessComments]);
+  }, [pendingModalCommentCount, selectedComments]);
 
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
@@ -573,12 +571,11 @@ export default function Home() {
     // =====================
     // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
     // =====================
-    // 一括処理用コメントをセットし、useEffectでモーダルを開く
-    // （bulkProcessCommentsが確実にセットされてから開く）
-    console.log('🚀 一括処理コメントをセット:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
+    // selectedCommentsが更新されてからモーダルを開く
+    // （useEffectでselectedComments.lengthを監視）
+    console.log('🚀 selectedCommentsをセット:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
     toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
-    setBulkProcessComments(newSelectedComments);
-    setShouldOpenModalForBulk(true);
+    setPendingModalCommentCount(newSelectedComments.length);
 
   }, [resetHistory, setSelectedComments]);
 
@@ -711,10 +708,7 @@ export default function Home() {
                   タグ発行
                 </h2>
                 <button
-                  onClick={() => {
-                    setShowHTMLModal(false);
-                    setBulkProcessComments(null);
-                  }}
+                  onClick={() => setShowHTMLModal(false)}
                   className="p-2 hover:bg-orange-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
                   aria-label="閉じる"
                 >
@@ -726,12 +720,9 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={bulkProcessComments || selectedComments}
+                  selectedComments={selectedComments}
                   sourceInfo={sourceInfo}
-                  onClose={() => {
-                    setShowHTMLModal(false);
-                    setBulkProcessComments(null);  // モーダルを閉じたらクリア
-                  }}
+                  onClose={() => setShowHTMLModal(false)}
                   customName={customName}
                   customNameBold={customNameBold}
                   customNameColor={customNameColor}
