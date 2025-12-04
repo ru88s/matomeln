@@ -361,8 +361,13 @@ export function enhanceAIResponse(
     lastPost.decorations.color = '#ef4444';
   }
 
-  // ソートして返す
-  selectedPosts.sort((a, b) => a.post_number - b.post_number);
+  // AIが返した順番をそのまま維持（ソートしない）
+  // ただし、レス1（スレ立て）は必ず先頭に配置
+  const post1Index = selectedPosts.findIndex(p => p.post_number === 1);
+  if (post1Index > 0) {
+    const [post1] = selectedPosts.splice(post1Index, 1);
+    selectedPosts.unshift(post1);
+  }
 
   // スレ主のレスは紫色に強制変更
   for (const post of selectedPosts) {
