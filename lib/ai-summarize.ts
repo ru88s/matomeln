@@ -362,7 +362,9 @@ export function enhanceAIResponse(
   }
 
   // レス番号順にソート（画面表示と一致させる）
+  console.log('🔢 ソート前:', selectedPosts.map(p => p.post_number).join(', '));
   selectedPosts.sort((a, b) => a.post_number - b.post_number);
+  console.log('🔢 ソート後:', selectedPosts.map(p => p.post_number).join(', '));
 
   // スレ主のレスは紫色に強制変更
   for (const post of selectedPosts) {
