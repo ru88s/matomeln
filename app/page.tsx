@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
@@ -15,6 +15,63 @@ import { callClaudeAPI } from '@/lib/ai-summarize';
 import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { ThumbnailCharacter } from '@/lib/types';
 import toast from 'react-hot-toast';
+
+// アンカー（>>数字）から参照先のレス番号を抽出
+function extractAnchor(body: string): number | null {
+  const match = body.match(/^>>(\d+)/);
+  return match ? parseInt(match[1]) : null;
+}
+
+// 選択済みコメントをアンカー順に並び替え（画面表示と一致させる）
+function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithStyle[] {
+  if (selectedComments.length === 0) return [];
+
+  // res_idからコメントへのマップ
+  const resIdToComment = new Map<number, CommentWithStyle>();
+  selectedComments.forEach(c => {
+    resIdToComment.set(Number(c.res_id), c);
+  });
+
+  // アンカーを持つコメントをグループ化
+  const repliesMap = new Map<number, CommentWithStyle[]>(); // 親res_id -> 返信コメント配列
+  const commentsWithAnchor = new Set<string>();
+
+  selectedComments.forEach(comment => {
+    const anchorId = extractAnchor(comment.body);
+    if (anchorId !== null && resIdToComment.has(anchorId)) {
+      if (!repliesMap.has(anchorId)) {
+        repliesMap.set(anchorId, []);
+      }
+      repliesMap.get(anchorId)!.push(comment);
+      commentsWithAnchor.add(comment.id);
+    }
+  });
+
+  // 結果配列を構築（親コメントの後に返信を挿入）
+  const result: CommentWithStyle[] = [];
+
+  // レス番号順にソートした選択コメント
+  const sortedComments = [...selectedComments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
+
+  sortedComments.forEach(comment => {
+    // アンカーを持つコメントは親の後に挿入されるのでスキップ
+    if (commentsWithAnchor.has(comment.id)) {
+      return;
+    }
+
+    result.push(comment);
+
+    // このコメントへの返信を追加
+    const replies = repliesMap.get(Number(comment.res_id));
+    if (replies) {
+      // 返信をres_id順でソート
+      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+      result.push(...replies);
+    }
+  });
+
+  return result;
+}
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
@@ -720,7 +777,7 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={selectedComments}
+                  selectedComments={sortByAnchorOrder(selectedComments)}
                   sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
                   customName={customName}
