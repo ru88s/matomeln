@@ -592,7 +592,7 @@ export default function Home() {
             onThumbnailUrlChange={handleThumbnailUrlChange}
             apiSettings={apiSettings}
             isDevMode={isDevMode}
-            clearInputOnLoad={true}
+            clearInputOnLoad={false}
           />
           {loading && (
             <div className="absolute inset-0 bg-white/90 rounded-2xl flex items-center justify-center z-10">
