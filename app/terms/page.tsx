@@ -29,7 +29,7 @@ export default function Terms() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">第2条（サービスの内容）</h2>
           <p className="text-gray-700 mb-3">当サービスは以下の機能を提供します：</p>
           <ul className="list-disc pl-6 text-gray-700 space-y-2">
-            <li>5ch、open2ch、Shikutokuのスレッドからコメントを取得する機能</li>
+            <li>5ch、2ch.sc、open2ch、Shikutokuのスレッドからコメントを取得する機能</li>
             <li>取得したコメントを選択・編集・並べ替えする機能</li>
             <li>まとめ記事のHTMLタグを生成する機能</li>
             <li>ライブドアブログへの記事投稿支援機能</li>
@@ -67,7 +67,7 @@ export default function Terms() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">第5条（著作権）</h2>
           <div className="text-gray-700 space-y-3">
             <p>
-              1. 当サービスで生成されるまとめ記事に含まれるコンテンツの著作権は、元の投稿者および各掲示板（5ch、open2ch、Shikutoku等）に帰属します。
+              1. 当サービスで生成されるまとめ記事に含まれるコンテンツの著作権は、元の投稿者および各掲示板（5ch、2ch.sc、open2ch、Shikutoku等）に帰属します。
             </p>
             <p>
               2. ユーザーは、まとめ記事を作成・公開する際、著作権法その他の法令を遵守し、
@@ -95,7 +95,7 @@ export default function Terms() {
               3. 当サービス運営者は、ユーザーが作成・公開したまとめ記事の内容について一切の責任を負いません。
             </p>
             <p>
-              4. 外部サービス（5ch、open2ch、Shikutoku、ライブドアブログ等）の障害、仕様変更等により
+              4. 外部サービス（5ch、2ch.sc、open2ch、Shikutoku、ライブドアブログ等）の障害、仕様変更等により
               当サービスが利用できなくなった場合も、当サービス運営者は責任を負いません。
             </p>
           </div>
@@ -196,7 +196,7 @@ export default function Terms() {
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-500">
             制定日：2025年12月1日<br />
-            最終更新日：2025年12月1日
+            最終更新日：2025年12月6日
           </p>
         </div>
       </div>
