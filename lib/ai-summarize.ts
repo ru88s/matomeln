@@ -143,8 +143,11 @@ const COLOR_NAME_MAP: Record<string, string> = {
   'grey': '#64748b',
 };
 
-function normalizeColor(color: string | null): string | null {
-  if (!color) return null;
+function normalizeColor(color: string | null | undefined): string | null {
+  // null, undefined, 空文字列の場合はnullを返す
+  if (color === null || color === undefined || color === '') return null;
+  // 文字列でない場合もnullを返す
+  if (typeof color !== 'string') return null;
   // すでにカラーコードならそのまま
   if (color.startsWith('#')) return color;
   // 色名ならカラーコードに変換
