@@ -47,30 +47,35 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
     })
     .join('\n');
 
-  return `5chまとめ記事用レス選択。JSONのみ返答。
+  // 選択するレス数の目安
+  const minSelect = Math.max(10, Math.floor(totalPosts * 0.15));
+  const maxSelect = Math.min(50, Math.floor(totalPosts * 0.3));
+
+  return `5chまとめ記事用。面白いレスを厳選してJSON出力。
 
 【タイトル】${title}
-【レス数】${totalPosts}件
-【スレ主】${ownerPostNumbers.length > 0 ? ownerPostNumbers.join(',') : 'なし'}
+【総レス数】${totalPosts}件
+【スレ主レス番号】${ownerPostNumbers.length > 0 ? ownerPostNumbers.join(',') : 'なし'}
+
+【重要】必ず${minSelect}〜${maxSelect}件だけ選択すること。全レスを選ばないこと。
 
 【レス一覧】
 ${postsText}
 
-【選択ルール】
-- レス1は含めない（自動追加）
-- スレ主[主]のレスは優先選択
-- 面白い・重要・オチになるレスを選択
-- 30-50%程度に絞る（${Math.floor(totalPosts * 0.3)}-${Math.floor(totalPosts * 0.5)}件）
-- 短文スパム・無関係コピペ・荒らしは除外
+【選択基準】
+- 厳選して${minSelect}〜${maxSelect}件のみ選ぶ（絶対に${maxSelect}件を超えないこと）
+- レス1は含めない（後で自動追加）
+- スレ主[主]は優先
+- 面白い・重要・オチのレスのみ
+- スパム・荒らし・無関係レスは除外
 
-【装飾ルール】
-- color: "#ef4444"赤/"#3b82f6"青/"#a855f7"紫(スレ主専用)/"#22c55e"緑/"#ec4899"ピンク/"#f97316"オレンジ/"#eab308"黄/"#06b6d4"シアン/"#64748b"グレー/null
-- size_boost: "large"(オチ・ボケ・名言用、10-20%)/"small"(補足)/ null(通常)
-- 30-40%のみ色付け、残りはnull
-- 同じ色の連続を避ける
+【装飾】
+- color: "#a855f7"(スレ主専用)、"#ef4444"/"#3b82f6"/"#22c55e"/"#ec4899"/"#f97316"/"#eab308"/"#06b6d4"/"#64748b"/null
+- size_boost: "large"(10-20%)/"small"/null
+- 色は30-40%のみ、残りnull
 
-【出力形式】JSONのみ、説明不要
-{"selected_posts":[{"post_number":2,"decorations":{"color":"#3b82f6","size_boost":null},"reason":"理由"}]}`;
+【出力】JSONのみ
+{"selected_posts":[{"post_number":2,"decorations":{"color":null,"size_boost":null},"reason":"理由"}]}`;
 }
 
 // AIレスポンスを強化（レス1追加、アンカー先追加など）
