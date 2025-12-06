@@ -281,56 +281,15 @@ function fixConsecutiveColors(
   }
 }
 
-// コメントの本文を短くしてトークン数を削減
-function truncateCommentsForAPI(comments: Comment[], maxCharsPerComment: number = 300): { comment: Comment; truncated: boolean }[] {
-  return comments.map(comment => {
-    if (comment.body.length <= maxCharsPerComment) {
-      return { comment, truncated: false };
-    }
-    return {
-      comment: {
-        ...comment,
-        body: comment.body.slice(0, maxCharsPerComment) + '...'
-      },
-      truncated: true
-    };
-  });
-}
-
-// 推定トークン数を計算（日本語1文字≒2トークン、英数字1文字≒0.25トークン）
-function estimateTokens(text: string): number {
-  let tokens = 0;
-  for (const char of text) {
-    if (/[\u3000-\u9fff\uff00-\uffef]/.test(char)) {
-      tokens += 2; // 日本語
-    } else {
-      tokens += 0.25; // 英数字
-    }
-  }
-  return Math.ceil(tokens);
-}
-
 // Claude APIを呼び出し
 export async function callClaudeAPI(
   apiKey: string,
   title: string,
   comments: Comment[]
 ): Promise<AISummarizeResponse> {
-  // レス数の上限チェック（500件を超える場合はエラー）
-  const MAX_COMMENTS = 500;
-  if (comments.length > MAX_COMMENTS) {
-    throw new Error(`レスが多すぎます（${comments.length}件）。${MAX_COMMENTS}件以下のスレッドを選んでください。`);
-  }
-
-  // プロンプトを生成してトークン数を推定
+  // プロンプトを生成
   const prompt = buildAISummarizePrompt(title, comments);
-  const estimatedTokens = estimateTokens(prompt);
-  const MAX_TOKENS = 180000; // 200000の90%を安全マージンとして
-
-  // トークン数が多すぎる場合はエラー
-  if (estimatedTokens > MAX_TOKENS) {
-    throw new Error(`レスが多すぎます（${comments.length}件、推定${Math.floor(estimatedTokens / 1000)}kトークン）。内容が長いスレッドです。`);
-  }
+  console.log(`📊 プロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件`);
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -354,13 +313,20 @@ export async function callClaudeAPI(
 
   if (!response.ok) {
     const error = await response.json();
+    const errorMessage = error.error?.message || '';
+    console.error('Claude API Error:', error);
+
     if (response.status === 529) {
       throw new Error('APIが混雑しています。しばらく待ってから再試行してください。');
     }
     if (response.status === 401) {
       throw new Error('APIキーが無効です。設定ページで正しいAPIキーを入力してください。');
     }
-    throw new Error(error.error?.message || 'API呼び出しに失敗しました');
+    // トークン制限エラー
+    if (errorMessage.includes('too long') || errorMessage.includes('token')) {
+      throw new Error(`レスが多すぎます（${comments.length}件）。このスレッドはスキップされます。`);
+    }
+    throw new Error(errorMessage || 'API呼び出しに失敗しました');
   }
 
   const data = await response.json();
