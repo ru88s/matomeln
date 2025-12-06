@@ -164,15 +164,15 @@ export function enhanceAIResponse(
   const totalPosts = comments.length;
 
   // AIが全レスを選択した場合のみ制限（50%以上選択 = 全選択とみなす）
-  // これは明らかにAIの誤動作なので、25個に間引く
+  // 50%以下になるように間引く
   const selectionRatio = selectedPosts.length / totalPosts;
   if (selectionRatio > 0.5) {
-    const TARGET_COUNT = 25;
-    console.warn(`⚠️ AIが${selectedPosts.length}/${totalPosts}個（${Math.round(selectionRatio * 100)}%）選択 → ${TARGET_COUNT}個に間引き`);
+    const targetCount = Math.floor(totalPosts * 0.5);
+    console.warn(`⚠️ AIが${selectedPosts.length}/${totalPosts}個（${Math.round(selectionRatio * 100)}%）選択 → ${targetCount}個に間引き`);
     // 均等に間引く
-    const step = selectedPosts.length / TARGET_COUNT;
+    const step = selectedPosts.length / targetCount;
     const filtered: typeof selectedPosts = [];
-    for (let i = 0; i < TARGET_COUNT; i++) {
+    for (let i = 0; i < targetCount; i++) {
       const index = Math.min(Math.floor(i * step), selectedPosts.length - 1);
       if (!filtered.some(p => p.post_number === selectedPosts[index].post_number)) {
         filtered.push(selectedPosts[index]);
