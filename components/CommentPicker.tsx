@@ -568,7 +568,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
           {comment.images && comment.images.length > 0 && (
             <div className="mt-3">
               <div className="flex flex-wrap gap-2">
-                {comment.images.map((image, index) => {
+                {comment.images.filter(img => img && typeof img === 'string').map((image, index) => {
                   // 画像URLを適切に構築
                   let imageUrl = image;
                   if (!image.startsWith('http')) {
