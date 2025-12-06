@@ -38,12 +38,20 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
     }
   });
 
+  // レス数に応じて本文の最大文字数を調整
+  // 1000レス: 100文字、500レス: 200文字、100レス以下: 制限なし
+  const maxBodyLength = totalPosts > 500 ? 100 : totalPosts > 100 ? 200 : 1000;
+
   // コメント本文を簡潔に（レス番号と本文のみ、スレ主マーク付き）
   const postsText = comments
     .map((comment, index) => {
       const postNum = index + 1;
       const ownerMark = comment.is_talk_owner ? '[主]' : '';
-      return `${postNum}${ownerMark}: ${comment.body}`;
+      // 本文を切り詰め
+      const body = comment.body.length > maxBodyLength
+        ? comment.body.slice(0, maxBodyLength) + '…'
+        : comment.body;
+      return `${postNum}${ownerMark}: ${body}`;
     })
     .join('\n');
 
