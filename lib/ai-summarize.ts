@@ -104,7 +104,8 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
 ${postsText}
 
 【選択ルール】
-- 面白い、印象的、重要なレスを15〜25個選択してください
+- 必ず15〜25個のレスを選択してください（重要：全部選ばないでください）
+- 面白い、印象的、重要なレスのみを厳選してください
 - ストーリーの流れが分かるように選んでください
 - レス1は含めないでください（自動追加されます）
 - スレ主[主]のレスは優先的に選んでください
@@ -159,9 +160,27 @@ export function enhanceAIResponse(
   aiResponse: AISummarizeResponse,
   comments: Comment[]
 ): AISummarizeResponse {
-  const selectedPosts = [...aiResponse.selected_posts];
-  const selectedNumbers = new Set(selectedPosts.map(p => p.post_number));
+  let selectedPosts = [...aiResponse.selected_posts];
   const totalPosts = comments.length;
+
+  // AIが多すぎるレスを選択した場合、最大50個に制限
+  // （15〜25個指定なのに全レス選択されることがある）
+  const MAX_SELECTED = 50;
+  if (selectedPosts.length > MAX_SELECTED) {
+    console.warn(`⚠️ AIが${selectedPosts.length}個選択 → ${MAX_SELECTED}個に制限`);
+    // 均等に間引く（最初と最後は残す）
+    const step = selectedPosts.length / MAX_SELECTED;
+    const filtered: typeof selectedPosts = [];
+    for (let i = 0; i < MAX_SELECTED; i++) {
+      const index = Math.min(Math.floor(i * step), selectedPosts.length - 1);
+      if (!filtered.some(p => p.post_number === selectedPosts[index].post_number)) {
+        filtered.push(selectedPosts[index]);
+      }
+    }
+    selectedPosts = filtered;
+  }
+
+  const selectedNumbers = new Set(selectedPosts.map(p => p.post_number));
 
   // 色名をカラーコードに正規化
   for (const post of selectedPosts) {
