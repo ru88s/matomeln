@@ -206,6 +206,43 @@ const colorPalette = [
 
 ## HTML生成ルール
 
+### タグ発行時の並び順（重要）
+- **画面表示順とタグ発行順を一致させる**
+- `sortByAnchorOrder`関数でアンカー順に並び替えてからHTMLGeneratorに渡す
+- **アンカー順の定義**:
+  - レス番号順を基本とする
+  - アンカー（>>数字）を持つコメントは、参照先の親コメントの直後に配置
+  - 例: 1, 143(>>1), 2, 5... → レス143はレス1の直後に来る
+- **実装**:
+  ```typescript
+  // アンカー（>>数字）から参照先のレス番号を抽出
+  function extractAnchor(body: string): number | null {
+    const match = body.match(/^>>(\d+)/);
+    return match ? parseInt(match[1]) : null;
+  }
+
+  // 選択済みコメントをアンカー順に並び替え
+  function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithStyle[] {
+    // 1. res_idからコメントへのマップを作成
+    // 2. アンカーを持つコメントをグループ化（親res_id -> 返信配列）
+    // 3. レス番号順にソートした選択コメントをループ
+    // 4. 各コメントの後に、そのコメントへの返信を挿入
+    // 5. 結果を返す
+  }
+  ```
+- **HTMLGeneratorへの渡し方**:
+  ```typescript
+  <HTMLGenerator
+    selectedComments={sortByAnchorOrder(selectedComments)}
+    ...
+  />
+  ```
+
+### AIまとめ結果のソート
+- `enhanceAIResponse`でレス番号順にソート
+- AIが選択したレス + アンカー先自動追加 + 後方参照自動追加 → レス番号順にソート
+- これにより`selectedComments`の初期状態がレス番号順になる
+
 ### 並べ替え反映
 - HTMLGenerator内でのソート処理を削除
 - selectedCommentsの順番をそのまま使用
@@ -372,6 +409,68 @@ return result.sort((a, b) => a.sortKey - b.sortKey);
 - 構造化データ: WebApplicationスキーマ実装
 - OGP・Twitterカード設定済み
 - 本番ドメイン: https://matomeln.pages.dev
+
+## AIまとめ機能
+
+### レス選択基準
+- スレ主のレスは優先的に選択
+- ストーリーの流れが分かるレス
+- 面白い・インパクトのあるレス
+- オチやツッコミになるレス
+- 全体の30-50%程度に絞る
+
+### 除外基準（重要）
+- **スレッドテーマと無関係なレスは絶対に選択しない**
+- 統計データやランキング形式のコピペ
+- **無関係な長文コピペ**:
+  - 医療・健康に関する説明文（ADHD、発達障害、病気の解説など）
+  - ニュース記事やブログからの引用
+  - 政治・社会問題に関する長文
+  - 宗教・思想に関する説明文
+  - 「〜とは」「〜について」のような解説調の文章
+- スパム的な短文コメント（15文字未満）
+- 荒らしや煽りのみのレス
+
+### 自動処理
+- レス1（スレ立て）は自動追加（赤色）
+- アンカー先は再帰的に自動追加（最大3階層）
+- 後方参照（選択済みレスを参照しているレス）も自動追加
+- 最後のレス（落ちコメント）は赤色に設定
+- スレ主のレスは紫色に強制変更
+- 連続した同じ色は自動修正
+
+### 装飾ルール
+- 色をつけすぎない（全体の30-40%程度）
+- スレ主は紫色（#a855f7）固定
+- 文字サイズ: 大10-20%、中70-80%、小5-10%
+
+## 一括処理機能（DEVモード）
+
+### 処理フロー
+一括処理は以下の順序で**自動的に**実行される：
+1. **スレッド読み込み** - URLからスレッドデータを取得
+2. **AIまとめ** - Claude APIでレスを分析・選択
+3. **AIサムネイル生成** - Gemini APIでサムネイル画像を生成
+4. **サムネイルアップロード** - ライブドアブログにアップロード
+5. **ブログ投稿** - 直接ブログに投稿（タグ発行モーダルは開かない）
+6. **スレメモくん登録** - 投稿済みフラグをPOST
+
+### 重要なポイント
+- **タグ発行モーダルを開かない** - 直接`/api/proxy/postBlog`にPOSTする
+- **スレメモくん登録は必須** - `markThreadAsSummarized(url)`を投稿成功後に呼び出す
+- **エラーハンドリング** - サムネイル生成失敗でも投稿は続行する
+- **DEVモード限定** - `isDevMode`がtrueの場合のみ一括処理パネルを表示
+
+### 実装場所
+- `app/page.tsx` - `handleBulkProcess`関数
+- `lib/bulk-processing.ts` - `markThreadAsSummarized`関数
+- `functions/api/proxy/threadMemo/index.ts` - スレメモくんAPIプロキシ
+
+### スレメモくんAPI
+- **エンドポイント**: `https://thread-memo.w-yonamine.workers.dev/api/threads/mark-summarized`
+- **メソッド**: POST
+- **ボディ**: `{ url: string }`
+- **機能**: 投稿済みスレッドとして登録し、一括処理リストから除外
 
 ## 今後の方針
 - UIのシンプルさを最優先
