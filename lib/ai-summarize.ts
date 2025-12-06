@@ -77,6 +77,9 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
   // 1000レス: 100文字、500レス: 200文字、100レス以下: 制限なし
   const maxBodyLength = totalPosts > 500 ? 100 : totalPosts > 100 ? 200 : 1000;
 
+  // タイトルもサニタイズ
+  const sanitizedTitle = sanitizeText(title);
+
   // コメント本文を簡潔に（レス番号と本文のみ、スレ主マーク付き）
   const postsText = comments
     .map((comment, index) => {
@@ -91,9 +94,10 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
     })
     .join('\n');
 
-  return `以下のスレッドから、面白くまとめるために最適なレスを選択してください。
+  // プロンプト全体を生成
+  const rawPrompt = `以下のスレッドから、面白くまとめるために最適なレスを選択してください。
 
-タイトル: ${title}
+タイトル: ${sanitizedTitle}
 レス数: ${totalPosts}件
 
 【レス一覧】
@@ -120,6 +124,9 @@ ${postsText}
 {"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}]}
 
 JSONのみを返してください。説明文は不要です。`;
+
+  // 最終的にもう一度サニタイズして返す
+  return sanitizeText(rawPrompt);
 }
 
 // 色名をカラーコードに変換
