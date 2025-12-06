@@ -28,9 +28,37 @@ export interface AISummarizeResponse {
 
 // 不正なUnicode文字（孤立サロゲート）を除去
 function sanitizeText(text: string): string {
-  // 孤立したサロゲートペアを除去（U+D800-U+DFFF）
-  // 正しいサロゲートペアは残し、孤立したものだけ除去
-  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+  // 文字列を1文字ずつチェックして、孤立サロゲートを除去
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+
+    // 高サロゲート（U+D800-U+DBFF）
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      // 次の文字が低サロゲートかチェック
+      if (i + 1 < text.length) {
+        const nextCode = text.charCodeAt(i + 1);
+        if (nextCode >= 0xDC00 && nextCode <= 0xDFFF) {
+          // 正しいサロゲートペア - 両方追加
+          result += text[i] + text[i + 1];
+          i++; // 次の文字をスキップ
+          continue;
+        }
+      }
+      // 孤立した高サロゲート - スキップ
+      continue;
+    }
+
+    // 低サロゲート（U+DC00-U+DFFF）が単独で出現
+    if (code >= 0xDC00 && code <= 0xDFFF) {
+      // 孤立した低サロゲート - スキップ
+      continue;
+    }
+
+    // 通常の文字
+    result += text[i];
+  }
+  return result;
 }
 
 // プロンプト生成（軽量版：トークン削減のため簡潔に）
