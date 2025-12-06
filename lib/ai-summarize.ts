@@ -26,6 +26,13 @@ export interface AISummarizeResponse {
   }[];
 }
 
+// 不正なUnicode文字（孤立サロゲート）を除去
+function sanitizeText(text: string): string {
+  // 孤立したサロゲートペアを除去（U+D800-U+DFFF）
+  // 正しいサロゲートペアは残し、孤立したものだけ除去
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+}
+
 // プロンプト生成（軽量版：トークン削減のため簡潔に）
 export function buildAISummarizePrompt(title: string, comments: Comment[]): string {
   const totalPosts = comments.length;
@@ -47,10 +54,11 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
     .map((comment, index) => {
       const postNum = index + 1;
       const ownerMark = comment.is_talk_owner ? '[主]' : '';
-      // 本文を切り詰め
-      const body = comment.body.length > maxBodyLength
-        ? comment.body.slice(0, maxBodyLength) + '…'
-        : comment.body;
+      // 本文をサニタイズして切り詰め
+      const sanitized = sanitizeText(comment.body);
+      const body = sanitized.length > maxBodyLength
+        ? sanitized.slice(0, maxBodyLength) + '…'
+        : sanitized;
       return `${postNum}${ownerMark}: ${body}`;
     })
     .join('\n');
