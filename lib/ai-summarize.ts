@@ -167,7 +167,7 @@ export function enhanceAIResponse(
   // 50%以下になるように間引く
   const selectionRatio = selectedPosts.length / totalPosts;
   if (selectionRatio > 0.5) {
-    const targetCount = Math.floor(totalPosts * 0.5);
+    const targetCount = Math.floor(totalPosts * 0.49);
     console.warn(`⚠️ AIが${selectedPosts.length}/${totalPosts}個（${Math.round(selectionRatio * 100)}%）選択 → ${targetCount}個に間引き`);
     // 均等に間引く
     const step = selectedPosts.length / targetCount;
