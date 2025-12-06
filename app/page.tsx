@@ -446,257 +446,267 @@ export default function Home() {
   // 一括処理用のURL読み込み→AIまとめ→AIサムネ→ブログ投稿（Promiseを返す）
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleBulkProcess = useCallback(async (url: string) => {
-    // 設定を取得
-    const claudeApiKey = localStorage.getItem('matomeln_claude_api_key');
-    const geminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
-    const savedBlogs = localStorage.getItem('blogSettingsList');
-    const savedSelectedBlogId = localStorage.getItem('selectedBlogId');
+    try {
+      // 設定を取得
+      const claudeApiKey = localStorage.getItem('matomeln_claude_api_key');
+      const geminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
+      const savedBlogs = localStorage.getItem('blogSettingsList');
+      const savedSelectedBlogId = localStorage.getItem('selectedBlogId');
 
-    if (!claudeApiKey) {
-      throw new Error('Claude APIキーが設定されていません');
-    }
-
-    // ブログ設定を取得
-    let blogSettings: BlogSettings | null = null;
-    if (savedBlogs) {
-      const blogsList: BlogSettings[] = JSON.parse(savedBlogs);
-      if (savedSelectedBlogId) {
-        blogSettings = blogsList.find(b => b.id === savedSelectedBlogId) || null;
+      if (!claudeApiKey) {
+        throw new Error('Claude APIキーが設定されていません');
       }
-      if (!blogSettings && blogsList.length > 0) {
-        blogSettings = blogsList[0];
-      }
-    }
 
-    if (!blogSettings) {
-      throw new Error('ブログ設定がありません');
-    }
-
-    // サムネイルキャラクター設定を取得（AIが記事に合うキャラを選択）
-    let thumbnailCharacter: ThumbnailCharacter | undefined;
-    const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
-    let allCharacters: ThumbnailCharacter[] = [];
-    if (savedCharacters) {
-      allCharacters = JSON.parse(savedCharacters);
-    }
-
-    // レス名設定を取得
-    let customNameSettings = { name: '', bold: true, color: '#ff69b4' };
-    const savedNameSettings = localStorage.getItem('customNameSettings');
-    if (savedNameSettings) {
-      customNameSettings = JSON.parse(savedNameSettings);
-    }
-
-    // =====================
-    // 1. スレッド読み込み
-    // =====================
-    setLoading(true);
-    setComments([]);
-    resetHistory();
-
-    const { talk, comments: loadedComments, source } = await fetchThreadData(url);
-
-    setCurrentTalk(talk);
-    setComments(loadedComments);
-    setSourceInfo({ source, originalUrl: url });
-    setLoading(false);
-
-    const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : 'Shikutoku';
-    toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
-
-    // =====================
-    // 2. AIまとめを実行
-    // =====================
-    setGeneratingAI(true);
-    toast.loading('AIがレスを分析中...', { id: 'bulk-step' });
-
-    const aiResponse = await callClaudeAPI(claudeApiKey, talk.title, loadedComments);
-
-    const colorMap: Record<string, string> = {
-      red: '#ef4444',
-      blue: '#3b82f6',
-      green: '#22c55e'
-    };
-
-    const newSelectedComments: CommentWithStyle[] = [];
-    const newCommentColors: Record<string, string> = {};
-    const newCommentSizes: Record<string, number> = {};
-
-    for (const post of aiResponse.selected_posts) {
-      const comment = loadedComments[post.post_number - 1];
-      if (!comment) continue;
-
-      let color = '#000000';
-      if (post.decorations.color) {
-        if (post.decorations.color.startsWith('#')) {
-          color = post.decorations.color;
-        } else if (colorMap[post.decorations.color]) {
-          color = colorMap[post.decorations.color];
+      // ブログ設定を取得
+      let blogSettings: BlogSettings | null = null;
+      if (savedBlogs) {
+        const blogsList: BlogSettings[] = JSON.parse(savedBlogs);
+        if (savedSelectedBlogId) {
+          blogSettings = blogsList.find(b => b.id === savedSelectedBlogId) || null;
         }
-      }
-      newCommentColors[comment.id] = color;
-
-      let size = 18;
-      if (post.decorations.size_boost === 'large') {
-        size = 22;
-      } else if (post.decorations.size_boost === 'small') {
-        size = 14;
-      }
-      newCommentSizes[comment.id] = size;
-
-      const fontSize: 'small' | 'medium' | 'large' =
-        size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
-      newSelectedComments.push({
-        ...comment,
-        body: comment.body,
-        color,
-        fontSize
-      });
-    }
-
-    // AIが返した順番をそのまま使用（ソートしない）
-    // デバッグ: AI選択結果を確認
-    console.log('🤖 AI選択結果:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
-
-    setCommentColors(newCommentColors);
-    setCommentSizes(newCommentSizes);
-    setSelectedComments(newSelectedComments);
-    setGeneratingAI(false);
-
-    toast.success(`${newSelectedComments.length}件のレスを選択`, { id: 'bulk-step' });
-
-    // =====================
-    // 3. AIサムネ生成 & アップロード
-    // =====================
-    let generatedThumbnailUrl = '';
-    if (geminiApiKey && blogSettings) {
-      // キャラクターが複数ある場合、AIが記事に合うキャラを選択
-      if (allCharacters.length > 0) {
-        toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
-        thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
-        if (thumbnailCharacter) {
-          console.log('📷 選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+        if (!blogSettings && blogsList.length > 0) {
+          blogSettings = blogsList[0];
         }
       }
 
-      toast.loading('AIサムネイルを生成中...', { id: 'bulk-step' });
-      try {
-        const thumbnailResult = await generateThumbnail(
-          geminiApiKey,
-          talk.title,
-          thumbnailCharacter
-        );
+      if (!blogSettings) {
+        throw new Error('ブログ設定がありません');
+      }
 
-        if (thumbnailResult.success && thumbnailResult.imageBase64) {
-          // Base64画像をBlobに変換してアップロード
-          toast.loading('サムネイルをアップロード中...', { id: 'bulk-step' });
-          const binary = atob(thumbnailResult.imageBase64);
-          const array = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            array[i] = binary.charCodeAt(i);
+      // サムネイルキャラクター設定を取得（AIが記事に合うキャラを選択）
+      let thumbnailCharacter: ThumbnailCharacter | undefined;
+      const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
+      let allCharacters: ThumbnailCharacter[] = [];
+      if (savedCharacters) {
+        allCharacters = JSON.parse(savedCharacters);
+      }
+
+      // レス名設定を取得
+      let customNameSettings = { name: '', bold: true, color: '#ff69b4' };
+      const savedNameSettings = localStorage.getItem('customNameSettings');
+      if (savedNameSettings) {
+        customNameSettings = JSON.parse(savedNameSettings);
+      }
+
+      // =====================
+      // 1. スレッド読み込み
+      // =====================
+      setLoading(true);
+      setComments([]);
+      resetHistory();
+
+      const { talk, comments: loadedComments, source } = await fetchThreadData(url);
+
+      setCurrentTalk(talk);
+      setComments(loadedComments);
+      setSourceInfo({ source, originalUrl: url });
+      setLoading(false);
+
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : 'Shikutoku';
+      toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
+
+      // =====================
+      // 2. AIまとめを実行
+      // =====================
+      setGeneratingAI(true);
+      toast.loading('AIがレスを分析中...', { id: 'bulk-step' });
+
+      const aiResponse = await callClaudeAPI(claudeApiKey, talk.title, loadedComments);
+
+      const colorMap: Record<string, string> = {
+        red: '#ef4444',
+        blue: '#3b82f6',
+        green: '#22c55e'
+      };
+
+      const newSelectedComments: CommentWithStyle[] = [];
+      const newCommentColors: Record<string, string> = {};
+      const newCommentSizes: Record<string, number> = {};
+
+      for (const post of aiResponse.selected_posts) {
+        const comment = loadedComments[post.post_number - 1];
+        if (!comment) continue;
+
+        let color = '#000000';
+        if (post.decorations.color) {
+          if (post.decorations.color.startsWith('#')) {
+            color = post.decorations.color;
+          } else if (colorMap[post.decorations.color]) {
+            color = colorMap[post.decorations.color];
           }
-          const blob = new Blob([array], { type: 'image/png' });
+        }
+        newCommentColors[comment.id] = color;
 
-          const formData = new FormData();
-          formData.append('blogId', blogSettings.blogId);
-          formData.append('apiKey', blogSettings.apiKey);
-          formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
+        let size = 18;
+        if (post.decorations.size_boost === 'large') {
+          size = 22;
+        } else if (post.decorations.size_boost === 'small') {
+          size = 14;
+        }
+        newCommentSizes[comment.id] = size;
 
-          const uploadResponse = await fetch('/api/proxy/uploadImage', {
-            method: 'POST',
-            body: formData,
-          });
+        const fontSize: 'small' | 'medium' | 'large' =
+          size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
+        newSelectedComments.push({
+          ...comment,
+          body: comment.body,
+          color,
+          fontSize
+        });
+      }
 
-          if (uploadResponse.ok) {
-            const uploadData = await uploadResponse.json();
-            if (uploadData.url) {
-              generatedThumbnailUrl = uploadData.url;
-              setThumbnailUrl(generatedThumbnailUrl);
-              toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+      // AIが返した順番をそのまま使用（ソートしない）
+      // デバッグ: AI選択結果を確認
+      console.log('🤖 AI選択結果:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
+
+      setCommentColors(newCommentColors);
+      setCommentSizes(newCommentSizes);
+      setSelectedComments(newSelectedComments);
+      setGeneratingAI(false);
+
+      toast.success(`${newSelectedComments.length}件のレスを選択`, { id: 'bulk-step' });
+
+      // =====================
+      // 3. AIサムネ生成 & アップロード
+      // =====================
+      let generatedThumbnailUrl = '';
+      if (geminiApiKey && blogSettings) {
+        // キャラクターが複数ある場合、AIが記事に合うキャラを選択
+        if (allCharacters.length > 0) {
+          toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
+          thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
+          if (thumbnailCharacter) {
+            console.log('📷 選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+          }
+        }
+
+        toast.loading('AIサムネイルを生成中...', { id: 'bulk-step' });
+        try {
+          const thumbnailResult = await generateThumbnail(
+            geminiApiKey,
+            talk.title,
+            thumbnailCharacter
+          );
+
+          if (thumbnailResult.success && thumbnailResult.imageBase64) {
+            // Base64画像をBlobに変換してアップロード
+            toast.loading('サムネイルをアップロード中...', { id: 'bulk-step' });
+            const binary = atob(thumbnailResult.imageBase64);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              array[i] = binary.charCodeAt(i);
+            }
+            const blob = new Blob([array], { type: 'image/png' });
+
+            const formData = new FormData();
+            formData.append('blogId', blogSettings.blogId);
+            formData.append('apiKey', blogSettings.apiKey);
+            formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
+
+            const uploadResponse = await fetch('/api/proxy/uploadImage', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              if (uploadData.url) {
+                generatedThumbnailUrl = uploadData.url;
+                setThumbnailUrl(generatedThumbnailUrl);
+                toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+              }
+            } else {
+              console.warn('サムネイルアップロード失敗');
             }
           } else {
-            console.warn('サムネイルアップロード失敗');
+            console.warn('サムネイル生成失敗:', thumbnailResult.error);
+            toast.error(`サムネイル生成失敗: ${thumbnailResult.error}`, { id: 'bulk-step' });
           }
-        } else {
-          console.warn('サムネイル生成失敗:', thumbnailResult.error);
-          toast.error(`サムネイル生成失敗: ${thumbnailResult.error}`, { id: 'bulk-step' });
+        } catch (thumbnailError) {
+          console.warn('サムネイル生成エラー:', thumbnailError);
+          // サムネイル生成失敗でも続行
         }
-      } catch (thumbnailError) {
-        console.warn('サムネイル生成エラー:', thumbnailError);
-        // サムネイル生成失敗でも続行
       }
-    }
 
-    // =====================
-    // 4. ブログ投稿（HTMLGenerator経由ではなく直接投稿）
-    // =====================
-    toast.loading('ブログに投稿中...', { id: 'bulk-step' });
+      // =====================
+      // 4. ブログ投稿（HTMLGenerator経由ではなく直接投稿）
+      // =====================
+      toast.loading('ブログに投稿中...', { id: 'bulk-step' });
 
-    // アンカー順に並び替え
-    const sortedComments = sortByAnchorOrder(newSelectedComments);
+      // アンカー順に並び替え
+      const sortedComments = sortByAnchorOrder(newSelectedComments);
 
-    // HTML生成
-    const generatedHTML = await generateMatomeHTML(
-      talk,
-      sortedComments,
-      {
-        includeImages: true,
-        style: 'simple',
-        includeTimestamp: true,
-        includeName: false,
-        commentStyle: {
-          bold: true,
-          fontSize: 'large',
-          color: '#000000',
+      // HTML生成
+      const generatedHTML = await generateMatomeHTML(
+        talk,
+        sortedComments,
+        {
+          includeImages: true,
+          style: 'simple',
+          includeTimestamp: true,
+          includeName: false,
+          commentStyle: {
+            bold: true,
+            fontSize: 'large',
+            color: '#000000',
+          },
         },
-      },
-      { source, originalUrl: url },
-      customNameSettings.name,
-      customNameSettings.bold,
-      customNameSettings.color,
-      generatedThumbnailUrl,
-      true, // showIdInHtml
-      true  // isDevMode
-    );
+        { source, originalUrl: url },
+        customNameSettings.name,
+        customNameSettings.bold,
+        customNameSettings.color,
+        generatedThumbnailUrl,
+        true, // showIdInHtml
+        true  // isDevMode
+      );
 
-    // 本文と続きを読むを組み合わせてブログ記事の内容を作成
-    const fullBody = generatedHTML.footer
-      ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
-      : generatedHTML.body;
+      // 本文と続きを読むを組み合わせてブログ記事の内容を作成
+      const fullBody = generatedHTML.footer
+        ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
+        : generatedHTML.body;
 
-    // ブログ投稿
-    const postResponse = await fetch('/api/proxy/postBlog', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        blogId: blogSettings.blogId,
-        apiKey: blogSettings.apiKey,
-        title: generatedHTML.title,
-        body: fullBody,
-        draft: false,
-      }),
-    });
+      // ブログ投稿
+      const postResponse = await fetch('/api/proxy/postBlog', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          blogId: blogSettings.blogId,
+          apiKey: blogSettings.apiKey,
+          title: generatedHTML.title,
+          body: fullBody,
+          draft: false,
+        }),
+      });
 
-    if (!postResponse.ok) {
-      const errorData = await postResponse.json();
-      throw new Error(errorData.error || 'ブログ投稿に失敗しました');
+      if (!postResponse.ok) {
+        const errorData = await postResponse.json();
+        throw new Error(errorData.error || 'ブログ投稿に失敗しました');
+      }
+
+      // =====================
+      // 5. スレメモくんに投稿済みとして登録
+      // =====================
+      try {
+        await markThreadAsSummarized(url);
+        console.log('✅ スレメモくんに登録完了:', url);
+      } catch (memoError) {
+        console.warn('⚠️ スレメモくん登録失敗:', memoError);
+        // 登録失敗でもエラーにはしない
+      }
+
+      toast.success('ブログ投稿完了！', { id: 'bulk-step' });
+
+    } catch (error) {
+      console.error('一括処理エラー:', error);
+      // エラーを再スローして呼び出し元でキャッチできるようにする
+      throw error;
+    } finally {
+      // 処理完了後の状態をクリーンアップ
+      setGeneratingAI(false);
+      setLoading(false);
     }
-
-    // =====================
-    // 5. スレメモくんに投稿済みとして登録
-    // =====================
-    try {
-      await markThreadAsSummarized(url);
-      console.log('✅ スレメモくんに登録完了:', url);
-    } catch (memoError) {
-      console.warn('⚠️ スレメモくん登録失敗:', memoError);
-      // 登録失敗でもエラーにはしない
-    }
-
-    toast.success('ブログ投稿完了！', { id: 'bulk-step' });
-
   }, [resetHistory, setSelectedComments]);
 
   return (
