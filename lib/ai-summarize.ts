@@ -47,35 +47,57 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
     })
     .join('\n');
 
-  // 選択するレス数の目安
-  const minSelect = Math.max(10, Math.floor(totalPosts * 0.15));
-  const maxSelect = Math.min(50, Math.floor(totalPosts * 0.3));
+  return `以下のスレッドから、面白くまとめるために最適なレスを選択してください。
 
-  return `5chまとめ記事用。面白いレスを厳選してJSON出力。
-
-【タイトル】${title}
-【総レス数】${totalPosts}件
-【スレ主レス番号】${ownerPostNumbers.length > 0 ? ownerPostNumbers.join(',') : 'なし'}
-
-【重要】必ず${minSelect}〜${maxSelect}件だけ選択すること。全レスを選ばないこと。
+タイトル: ${title}
+レス数: ${totalPosts}件
 
 【レス一覧】
 ${postsText}
 
-【選択基準】
-- 厳選して${minSelect}〜${maxSelect}件のみ選ぶ（絶対に${maxSelect}件を超えないこと）
-- レス1は含めない（後で自動追加）
-- スレ主[主]は優先
-- 面白い・重要・オチのレスのみ
-- スパム・荒らし・無関係レスは除外
+【選択ルール】
+- 面白い、印象的、重要なレスを15〜25個選択してください
+- ストーリーの流れが分かるように選んでください
+- レス1は含めないでください（自動追加されます）
+- スレ主[主]のレスは優先的に選んでください
 
-【装飾】
-- color: "#a855f7"(スレ主専用)、"#ef4444"/"#3b82f6"/"#22c55e"/"#ec4899"/"#f97316"/"#eab308"/"#06b6d4"/"#64748b"/null
-- size_boost: "large"(10-20%)/"small"/null
-- 色は30-40%のみ、残りnull
+【色の使用ルール】
+- 使用できる色: "red", "blue", "green", "pink", "orange", "purple", null
+- 紫色(purple)はスレ主専用です
+- 連続するレスに同じ色を付けないでください
+- 色なし(null)を積極的に使ってください（50%程度）
 
-【出力】JSONのみ
-{"selected_posts":[{"post_number":2,"decorations":{"color":null,"size_boost":null},"reason":"理由"}]}`;
+【サイズルール】
+- "large": 特に重要・面白いレスのみ（2〜4個）
+- null: 通常（デフォルト）
+- "small": 補足的なレス
+
+以下のJSON形式で返答してください：
+{"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}]}
+
+JSONのみを返してください。説明文は不要です。`;
+}
+
+// 色名をカラーコードに変換
+const COLOR_NAME_MAP: Record<string, string> = {
+  'red': '#ef4444',
+  'blue': '#3b82f6',
+  'green': '#22c55e',
+  'purple': '#a855f7',
+  'pink': '#ec4899',
+  'orange': '#f97316',
+  'yellow': '#eab308',
+  'cyan': '#06b6d4',
+  'gray': '#64748b',
+  'grey': '#64748b',
+};
+
+function normalizeColor(color: string | null): string | null {
+  if (!color) return null;
+  // すでにカラーコードならそのまま
+  if (color.startsWith('#')) return color;
+  // 色名ならカラーコードに変換
+  return COLOR_NAME_MAP[color.toLowerCase()] || null;
 }
 
 // AIレスポンスを強化（レス1追加、アンカー先追加など）
@@ -86,6 +108,11 @@ export function enhanceAIResponse(
   const selectedPosts = [...aiResponse.selected_posts];
   const selectedNumbers = new Set(selectedPosts.map(p => p.post_number));
   const totalPosts = comments.length;
+
+  // 色名をカラーコードに正規化
+  for (const post of selectedPosts) {
+    post.decorations.color = normalizeColor(post.decorations.color);
+  }
 
   // レス1を追加（なければ）
   if (!selectedNumbers.has(1)) {
@@ -289,6 +316,12 @@ export async function callClaudeAPI(
   title: string,
   comments: Comment[]
 ): Promise<AISummarizeResponse> {
+  // レス数の上限チェック（500件を超える場合はエラー）
+  const MAX_COMMENTS = 500;
+  if (comments.length > MAX_COMMENTS) {
+    throw new Error(`レスが多すぎます（${comments.length}件）。${MAX_COMMENTS}件以下のスレッドを選んでください。`);
+  }
+
   // プロンプトを生成してトークン数を推定
   const prompt = buildAISummarizePrompt(title, comments);
   const estimatedTokens = estimateTokens(prompt);
@@ -296,7 +329,7 @@ export async function callClaudeAPI(
 
   // トークン数が多すぎる場合はエラー
   if (estimatedTokens > MAX_TOKENS) {
-    throw new Error(`レスが多すぎます（${comments.length}件、推定${Math.floor(estimatedTokens / 1000)}kトークン）。500件以下のスレッドを選んでください。`);
+    throw new Error(`レスが多すぎます（${comments.length}件、推定${Math.floor(estimatedTokens / 1000)}kトークン）。内容が長いスレッドです。`);
   }
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
