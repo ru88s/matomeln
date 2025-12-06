@@ -13,6 +13,8 @@ import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { callClaudeAPI } from '@/lib/ai-summarize';
 import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
+import { generateMatomeHTML } from '@/lib/html-templates';
+import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
 import toast from 'react-hot-toast';
 
@@ -626,13 +628,74 @@ export default function Home() {
     }
 
     // =====================
-    // 4. タグ発行モーダルを開く（HTMLGenerator経由で投稿）
+    // 4. ブログ投稿（HTMLGenerator経由ではなく直接投稿）
     // =====================
-    // selectedCommentsが更新されてからモーダルを開く
-    // （useEffectでselectedComments.lengthを監視）
-    console.log('🚀 selectedCommentsをセット:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
-    toast.success('タグ発行画面を開きます', { id: 'bulk-step' });
-    setPendingModalCommentCount(newSelectedComments.length);
+    toast.loading('ブログに投稿中...', { id: 'bulk-step' });
+
+    // アンカー順に並び替え
+    const sortedComments = sortByAnchorOrder(newSelectedComments);
+
+    // HTML生成
+    const generatedHTML = await generateMatomeHTML(
+      talk,
+      sortedComments,
+      {
+        includeImages: true,
+        style: 'simple',
+        includeTimestamp: true,
+        includeName: false,
+        commentStyle: {
+          bold: true,
+          fontSize: 'large',
+          color: '#000000',
+        },
+      },
+      { source, originalUrl: url },
+      customNameSettings.name,
+      customNameSettings.bold,
+      customNameSettings.color,
+      generatedThumbnailUrl,
+      true, // showIdInHtml
+      true  // isDevMode
+    );
+
+    // 本文と続きを読むを組み合わせてブログ記事の内容を作成
+    const fullBody = generatedHTML.footer
+      ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
+      : generatedHTML.body;
+
+    // ブログ投稿
+    const postResponse = await fetch('/api/proxy/postBlog', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        blogId: blogSettings.blogId,
+        apiKey: blogSettings.apiKey,
+        title: generatedHTML.title,
+        body: fullBody,
+        draft: false,
+      }),
+    });
+
+    if (!postResponse.ok) {
+      const errorData = await postResponse.json();
+      throw new Error(errorData.error || 'ブログ投稿に失敗しました');
+    }
+
+    // =====================
+    // 5. スレメモくんに投稿済みとして登録
+    // =====================
+    try {
+      await markThreadAsSummarized(url);
+      console.log('✅ スレメモくんに登録完了:', url);
+    } catch (memoError) {
+      console.warn('⚠️ スレメモくん登録失敗:', memoError);
+      // 登録失敗でもエラーにはしない
+    }
+
+    toast.success('ブログ投稿完了！', { id: 'bulk-step' });
 
   }, [resetHistory, setSelectedComments]);
 
