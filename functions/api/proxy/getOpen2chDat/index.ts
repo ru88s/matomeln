@@ -9,8 +9,9 @@ interface Open2chThreadInfo {
 
 function parseOpen2chUrl(url: string): Open2chThreadInfo | null {
   // https://hayabusa.open2ch.net/test/read.cgi/livejupiter/1732936890/
+  // https://hayabusa.open2ch.net/test/read.cgi/livejupiter/1732936890 (末尾/なし)
   // https://open2ch.net/test/read.cgi/livejupiter/1732936890/
-  const pattern = /https?:\/\/(?:([a-z0-9]+)\.)?open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
+  const pattern = /https?:\/\/(?:([a-z0-9]+)\.)?open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i;
   const match = url.match(pattern);
 
   if (match) {
