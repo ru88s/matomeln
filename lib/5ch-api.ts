@@ -481,19 +481,42 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
     const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(normalizedUrl)}`);
 
     if (!response.ok) {
-      const error = await response.json();
-      if (response.status === 403) {
-        throw new Error('5chサーバーからのアクセスが制限されています。しばらく時間をおいてから再度お試しください。');
-      }
-      throw new Error(error.error || 'スレッドの取得に失敗しました');
+      // Deno Deployが失敗した場合、Cloudflare Functions経由で2ch.scにフォールバック
+      console.log('5ch.net failed, trying 2ch.sc fallback via Cloudflare...');
+      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
     }
 
     const data = await response.json();
     return parseDatFile(data.content, threadInfo);
   } catch (error) {
-    console.error('Error fetching 5ch thread:', error);
-    throw error;
+    // ネットワークエラーなどの場合も2ch.scにフォールバック
+    console.log('5ch.net error, trying 2ch.sc fallback:', error);
+    try {
+      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+    } catch (fallbackError) {
+      console.error('2ch.sc fallback also failed:', fallbackError);
+      throw error; // 元のエラーを投げる
+    }
   }
+}
+
+// 5ch URLを使って2ch.scからDATを取得（フォールバック用）
+async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Promise<{ talk: Talk; comments: Comment[] }> {
+  const response = await fetch(`/api/proxy/get5chFallback?url=${encodeURIComponent(url)}`);
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      throw new Error('サーバーからのアクセスが制限されています。しばらく時間をおいてから再度お試しください。');
+    }
+    if (response.status === 404) {
+      throw new Error('スレッドが見つかりませんでした。URLが正しいか、またはスレッドが削除されていないか確認してください。');
+    }
+    throw new Error(error.error || 'スレッドの取得に失敗しました');
+  }
+
+  const data = await response.json();
+  return parseDatFile(data.content, threadInfo);
 }
 
 // open2chスレッドデータを取得

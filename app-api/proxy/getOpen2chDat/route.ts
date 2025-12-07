@@ -85,21 +85,40 @@ export async function GET(request: NextRequest) {
     const buffer = await response.arrayBuffer();
     const uint8Array = new Uint8Array(buffer);
 
-    // 文字コードを検出してUTF-8に変換
-    const detectedEncoding = Encoding.detect(uint8Array);
-    logger.log(`Detected encoding: ${detectedEncoding}`);
-
+    // open2chは基本UTF-8だが、一部古いスレッドでShift_JISの場合がある
+    // まずUTF-8でデコードを試み、文字化けがあればShift_JISを試す
     let content: string;
-    if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP') {
-      // Shift_JIS または EUC-JP をUTF-8に変換
-      const unicodeArray = Encoding.convert(uint8Array, {
-        to: 'UNICODE',
-        from: detectedEncoding,
-      });
-      content = Encoding.codeToString(unicodeArray);
+
+    // UTF-8でデコード
+    const utf8Content = new TextDecoder('utf-8').decode(uint8Array);
+
+    // UTF-8が正しくデコードされたか確認（置換文字や明らかな文字化けパターンをチェック）
+    const hasReplacementChar = utf8Content.includes('\uFFFD');
+    const hasGarbledPattern = /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(utf8Content);
+
+    if (hasReplacementChar || hasGarbledPattern) {
+      // UTF-8でデコードに問題がある場合、Shift_JISを試す
+      const detectedEncoding = Encoding.detect(uint8Array);
+      logger.log(`UTF-8 decode failed, detected encoding: ${detectedEncoding}`);
+      if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP') {
+        const unicodeArray = Encoding.convert(uint8Array, {
+          to: 'UNICODE',
+          from: detectedEncoding,
+        });
+        content = Encoding.codeToString(unicodeArray);
+      } else {
+        // 検出できない場合はShift_JISを強制
+        logger.log('Encoding detection failed, forcing Shift_JIS');
+        const unicodeArray = Encoding.convert(uint8Array, {
+          to: 'UNICODE',
+          from: 'SJIS',
+        });
+        content = Encoding.codeToString(unicodeArray);
+      }
     } else {
-      // UTF-8の場合はそのままデコード
-      content = new TextDecoder('utf-8').decode(uint8Array);
+      // UTF-8で正しくデコードできた
+      logger.log('UTF-8 decode successful');
+      content = utf8Content;
     }
 
     return NextResponse.json({
