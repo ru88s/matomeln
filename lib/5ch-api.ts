@@ -176,7 +176,7 @@ function parseDateString(dateStr: string): string {
 
 // DAT形式の本文をHTMLから通常テキストに変換
 function convertBodyFromDat(body: string): string {
-  return body
+  let result = body
     // <br>を改行に
     .replace(/<br\s*\/?>/gi, '\n')
     // &gt;をアンカー用に戻す
@@ -194,6 +194,29 @@ function convertBodyFromDat(body: string): string {
     .split('\n')
     .filter(line => !line.trim().startsWith('sssp://'))
     .join('\n')
+    .trim();
+
+  // ニュース記事本文の整形
+  result = formatNewsBody(result);
+
+  return result;
+}
+
+// ニュース記事本文を読みやすく整形
+function formatNewsBody(body: string): string {
+  return body
+    // 全角スペースを半角スペースに統一
+    .replace(/　/g, ' ')
+    // 行頭の連続するスペースを1つに
+    .replace(/^[ ]+/gm, ' ')
+    // 行末のスペースを削除
+    .replace(/[ ]+$/gm, '')
+    // 連続する空行を1つに
+    .replace(/\n{3,}/g, '\n\n')
+    // 「。」の後の改行がない場合は改行を追加（文章の区切りを明確に）
+    .replace(/。([^\n」』）】\)"])/g, '。\n$1')
+    // 連続するスペースを1つに
+    .replace(/  +/g, ' ')
     .trim();
 }
 
