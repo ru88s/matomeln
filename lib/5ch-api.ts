@@ -53,9 +53,26 @@ export function normalize5chUrl(url: string): string {
   return url;
 }
 
+// HTMLエンティティをデコード
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // 数値文字参照（10進数）
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    // 数値文字参照（16進数）
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 // スレタイから不要な末尾を除去
 function cleanThreadTitle(title: string): string {
-  return title
+  // まずHTMLエンティティをデコード
+  const decoded = decodeHtmlEntities(title);
+  return decoded
     // [数字のみ] - ワッチョイ等のID
     .replace(/\s*\[\d+\]\s*$/, '')
     // [無断転載禁止] 等のテキスト
