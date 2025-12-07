@@ -17,7 +17,8 @@ export function parse5chUrl(url: string): FiveChThreadInfo | null {
 
   const patterns = [
     // 標準形式: https://server.5ch.net/test/read.cgi/board/threadkey/
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // 末尾の/はあってもなくてもOK
+    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
     // DAT直接: https://server.5ch.net/board/dat/threadkey.dat
     /https?:\/\/([a-z0-9]+)\.5ch\.net\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
@@ -260,10 +261,12 @@ export interface TwoChScThreadInfo {
 
 // 2ch.sc URLのパターン
 // https://ai.2ch.sc/test/read.cgi/newsplus/1733123456/
+// https://ai.2ch.sc/test/read.cgi/newsplus/1733123456 (末尾/なし)
 export function parse2chscUrl(url: string): TwoChScThreadInfo | null {
   const patterns = [
     // 標準形式: https://server.2ch.sc/test/read.cgi/board/threadkey/
-    /https?:\/\/([a-z0-9]+)\.2ch\.sc\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // 末尾の/はあってもなくてもOK
+    /https?:\/\/([a-z0-9]+)\.2ch\.sc\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
     // DAT直接: https://server.2ch.sc/board/dat/threadkey.dat
     /https?:\/\/([a-z0-9]+)\.2ch\.sc\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
@@ -352,11 +355,13 @@ export interface Open2chThreadInfo {
 
 // open2ch URLのパターン
 // https://hayabusa.open2ch.net/test/read.cgi/livejupiter/1732936890/
+// https://hayabusa.open2ch.net/test/read.cgi/livejupiter/1732936890 (末尾/なし)
 // https://open2ch.net/test/read.cgi/livejupiter/1732936890/
 export function parseOpen2chUrl(url: string): Open2chThreadInfo | null {
   const patterns = [
     // サブドメイン付き: https://hayabusa.open2ch.net/test/read.cgi/livejupiter/1732936890/
-    /https?:\/\/([a-z0-9]+\.)?open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // 末尾の/はあってもなくてもOK
+    /https?:\/\/([a-z0-9]+\.)?open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
   ];
 
   for (const pattern of patterns) {
