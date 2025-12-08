@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,14 @@ export default function BulkProcessPanel({
   const [isFetching, setIsFetching] = useState(false);
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
+
+  // 定期実行機能
+  const [autoRunEnabled, setAutoRunEnabled] = useState(false);
+  const [autoRunInterval, setAutoRunInterval] = useState(30); // 分
+  const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
+  const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
+  const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isAutoRunningRef = useRef(false);
 
   // 未まとめURL取得
   const handleFetchUrls = useCallback(async () => {
@@ -135,6 +143,158 @@ export default function BulkProcessPanel({
     shouldStopRef.current = true;
     toast('停止処理中...', { icon: '⏳' });
   }, []);
+
+  // 定期実行: 1サイクル実行
+  const runAutoProcessCycle = useCallback(async () => {
+    if (isAutoRunningRef.current) return;
+    isAutoRunningRef.current = true;
+
+    try {
+      // 1. 未まとめURLを取得
+      toast.loading('定期実行: URL取得中...', { id: 'auto-run' });
+      const result = await fetchUnsummarizedUrls({ limit: 1000 });
+
+      if (result.urls.length === 0) {
+        toast.success('定期実行: 未まとめURLがありません', { id: 'auto-run' });
+        setLastRunTime(new Date());
+        isAutoRunningRef.current = false;
+        return;
+      }
+
+      // 2. URLをセット
+      setUrls(result.urls.join('\n'));
+      toast.success(`定期実行: ${result.count}件のURLを処理開始`, { id: 'auto-run' });
+
+      // 3. 一括処理を開始（handleStartBulkと同じロジック）
+      const urlList = result.urls;
+      shouldStopRef.current = false;
+
+      const initialStatus: BulkProcessStatus = {
+        isProcessing: true,
+        currentIndex: 0,
+        totalCount: urlList.length,
+        currentUrl: urlList[0],
+        completedUrls: [],
+        failedUrls: [],
+        startTime: Date.now(),
+      };
+      setStatus(initialStatus);
+
+      let completedCount = 0;
+      let failedCount = 0;
+
+      for (let i = 0; i < urlList.length; i++) {
+        if (shouldStopRef.current) {
+          toast('定期実行を停止しました', { icon: '⏹️' });
+          break;
+        }
+
+        const url = urlList[i];
+        setStatus(prev => ({
+          ...prev,
+          currentIndex: i,
+          currentUrl: url,
+        }));
+
+        try {
+          toast.loading(`定期実行 (${i + 1}/${urlList.length}) 処理中...`, { id: 'bulk-progress' });
+          await onBulkProcess(url);
+
+          if (shouldStopRef.current) break;
+
+          completedCount++;
+          setStatus(prev => ({
+            ...prev,
+            completedUrls: [...prev.completedUrls, url],
+          }));
+
+          toast.success(`定期実行 (${i + 1}/${urlList.length}) 完了`, { id: 'bulk-progress' });
+
+          if (i < urlList.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+        } catch (error) {
+          console.error('Auto run error:', error);
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          failedCount++;
+          setStatus(prev => ({
+            ...prev,
+            failedUrls: [...prev.failedUrls, { url, error: errorMsg }],
+          }));
+          toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー`, { id: 'bulk-progress' });
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+
+      setStatus(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentUrl: null,
+      }));
+
+      setLastRunTime(new Date());
+      toast.success(`定期実行完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+    } catch (error) {
+      console.error('Auto run cycle error:', error);
+      toast.error('定期実行エラー', { id: 'auto-run' });
+    } finally {
+      isAutoRunningRef.current = false;
+    }
+  }, [onBulkProcess]);
+
+  // 定期実行のタイマー管理
+  useEffect(() => {
+    if (autoRunEnabled) {
+      // 次回実行時刻を設定
+      const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
+      setNextRunTime(nextRun);
+
+      // タイマー設定
+      autoRunTimerRef.current = setInterval(() => {
+        runAutoProcessCycle();
+        // 次回実行時刻を更新
+        setNextRunTime(new Date(Date.now() + autoRunInterval * 60 * 1000));
+      }, autoRunInterval * 60 * 1000);
+
+      toast.success(`定期実行を開始しました（${autoRunInterval}分ごと）`);
+    } else {
+      // タイマー停止
+      if (autoRunTimerRef.current) {
+        clearInterval(autoRunTimerRef.current);
+        autoRunTimerRef.current = null;
+      }
+      setNextRunTime(null);
+    }
+
+    return () => {
+      if (autoRunTimerRef.current) {
+        clearInterval(autoRunTimerRef.current);
+      }
+    };
+  }, [autoRunEnabled, autoRunInterval, runAutoProcessCycle]);
+
+  // 次回実行までの残り時間を表示用にフォーマット
+  const formatTimeRemaining = (targetTime: Date): string => {
+    const now = new Date();
+    const diff = targetTime.getTime() - now.getTime();
+    if (diff <= 0) return '実行中...';
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return `${minutes}分${seconds}秒`;
+  };
+
+  // 1秒ごとに残り時間を更新
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!autoRunEnabled || !nextRunTime) return;
+
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [autoRunEnabled, nextRunTime]);
 
   const isProcessing = status.isProcessing || isProcessingAI;
 
@@ -258,6 +418,61 @@ export default function BulkProcessPanel({
           )}
         </div>
       )}
+
+      {/* 定期自動処理 */}
+      <div className="mt-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+        <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          定期自動処理
+        </h4>
+
+        <div className="flex items-center gap-4 mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRunEnabled}
+              onChange={(e) => setAutoRunEnabled(e.target.checked)}
+              className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+              disabled={isProcessing}
+            />
+            <span className="text-sm font-medium text-gray-700">
+              {autoRunInterval}分ごとに自動実行
+            </span>
+          </label>
+
+          <select
+            value={autoRunInterval}
+            onChange={(e) => setAutoRunInterval(Number(e.target.value))}
+            className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-green-500 focus:border-green-500"
+            disabled={autoRunEnabled || isProcessing}
+          >
+            <option value={10}>10分</option>
+            <option value={15}>15分</option>
+            <option value={30}>30分</option>
+            <option value={60}>60分</option>
+          </select>
+        </div>
+
+        {autoRunEnabled && (
+          <div className="bg-white rounded-lg p-3 border border-green-200 text-sm space-y-1">
+            <p className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                実行中
+              </span>
+              <span className="text-gray-600">
+                次回実行: {nextRunTime ? formatTimeRemaining(nextRunTime) : '計算中...'}
+              </span>
+            </p>
+            {lastRunTime && (
+              <p className="text-gray-500 text-xs">
+                前回実行: {lastRunTime.toLocaleTimeString('ja-JP')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
