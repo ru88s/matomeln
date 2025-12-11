@@ -26,6 +26,8 @@ export default function BulkProcessPanel({
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
+  const consecutiveErrorsRef = useRef(0); // 連続エラー回数
+  const MAX_CONSECUTIVE_ERRORS = 5; // 連続エラー上限
 
   // 未まとめURL取得
   const handleFetchUrls = useCallback(async () => {
@@ -144,9 +146,10 @@ export default function BulkProcessPanel({
     toast('停止処理中...', { icon: '⏳' });
   }, []);
 
-  // 定期実行: 1サイクル実行
-  const runAutoProcessCycle = useCallback(async () => {
-    if (isAutoRunningRef.current) return;
+  // 定期実行: 1サイクル実行（処理完了後に再度URL取得して続行）
+  const runAutoProcessCycle = useCallback(async (): Promise<boolean> => {
+    // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
+    if (isAutoRunningRef.current) return false;
     isAutoRunningRef.current = true;
 
     try {
@@ -155,17 +158,18 @@ export default function BulkProcessPanel({
       const result = await fetchUnsummarizedUrls({ limit: 1000 });
 
       if (result.urls.length === 0) {
-        toast.success('定期実行: 未まとめURLがありません', { id: 'auto-run' });
+        toast.success('定期実行: 未まとめURLがありません。待機中...', { id: 'auto-run' });
         setLastRunTime(new Date());
+        consecutiveErrorsRef.current = 0; // エラーカウントリセット
         isAutoRunningRef.current = false;
-        return;
+        return false; // URLがない
       }
 
       // 2. URLをセット
       setUrls(result.urls.join('\n'));
       toast.success(`定期実行: ${result.count}件のURLを処理開始`, { id: 'auto-run' });
 
-      // 3. 一括処理を開始（handleStartBulkと同じロジック）
+      // 3. 一括処理を開始
       const urlList = result.urls;
       shouldStopRef.current = false;
 
@@ -182,6 +186,7 @@ export default function BulkProcessPanel({
 
       let completedCount = 0;
       let failedCount = 0;
+      let consecutiveFailures = 0; // このサイクル内での連続失敗
 
       for (let i = 0; i < urlList.length; i++) {
         if (shouldStopRef.current) {
@@ -203,6 +208,8 @@ export default function BulkProcessPanel({
           if (shouldStopRef.current) break;
 
           completedCount++;
+          consecutiveFailures = 0; // 成功したらリセット
+          consecutiveErrorsRef.current = 0; // 全体のエラーカウントもリセット
           setStatus(prev => ({
             ...prev,
             completedUrls: [...prev.completedUrls, url],
@@ -217,11 +224,23 @@ export default function BulkProcessPanel({
           console.error('Auto run error:', error);
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
           failedCount++;
+          consecutiveFailures++;
+          consecutiveErrorsRef.current++;
+
           setStatus(prev => ({
             ...prev,
             failedUrls: [...prev.failedUrls, { url, error: errorMsg }],
           }));
-          toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー`, { id: 'bulk-progress' });
+          toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
+
+          // 連続エラーが上限に達したら停止
+          if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+            toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回エラーが発生したため、定期実行を停止します`, { duration: 5000 });
+            setAutoRunEnabled(false);
+            shouldStopRef.current = true;
+            break;
+          }
+
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
@@ -234,29 +253,62 @@ export default function BulkProcessPanel({
 
       setLastRunTime(new Date());
       toast.success(`定期実行完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+
+      // 停止されていなければ、まだURLがある可能性を返す
+      return !shouldStopRef.current;
     } catch (error) {
       console.error('Auto run cycle error:', error);
       toast.error('定期実行エラー', { id: 'auto-run' });
+      consecutiveErrorsRef.current++;
+
+      // 連続エラーが上限に達したら停止
+      if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+        toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回エラーが発生したため、定期実行を停止します`, { duration: 5000 });
+        setAutoRunEnabled(false);
+      }
+      return false;
     } finally {
       isAutoRunningRef.current = false;
     }
   }, [onBulkProcess]);
 
+  // 定期実行のメインループ（処理完了後に再チェック）
+  const startAutoRunLoop = useCallback(async () => {
+    if (!autoRunEnabled) return;
+
+    // 処理を実行
+    const hasMoreUrls = await runAutoProcessCycle();
+
+    if (!autoRunEnabled) return; // 途中で無効化された場合
+
+    if (hasMoreUrls) {
+      // まだURLがある可能性があるので、すぐに再チェック
+      toast('未まとめURLを再チェック中...', { icon: '🔄' });
+      await new Promise(resolve => setTimeout(resolve, 3000)); // 少し待ってから再チェック
+      startAutoRunLoop(); // 再帰的に呼び出し
+    } else {
+      // URLがないので、指定時間待機
+      const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
+      setNextRunTime(nextRun);
+    }
+  }, [autoRunEnabled, autoRunInterval, runAutoProcessCycle]);
+
   // 定期実行のタイマー管理
   useEffect(() => {
     if (autoRunEnabled) {
-      // 次回実行時刻を設定
-      const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
-      setNextRunTime(nextRun);
+      // エラーカウントをリセット
+      consecutiveErrorsRef.current = 0;
 
-      // タイマー設定
+      // すぐに1回目を実行開始
+      toast.success(`定期実行を開始しました（未まとめがなくなったら${autoRunInterval}分ごとに再チェック）`);
+      startAutoRunLoop();
+
+      // 指定間隔でも定期的に実行（バックアップ用）
       autoRunTimerRef.current = setInterval(() => {
-        runAutoProcessCycle();
-        // 次回実行時刻を更新
-        setNextRunTime(new Date(Date.now() + autoRunInterval * 60 * 1000));
+        if (!isAutoRunningRef.current) {
+          startAutoRunLoop();
+        }
       }, autoRunInterval * 60 * 1000);
-
-      toast.success(`定期実行を開始しました（${autoRunInterval}分ごと）`);
     } else {
       // タイマー停止
       if (autoRunTimerRef.current) {
@@ -264,6 +316,7 @@ export default function BulkProcessPanel({
         autoRunTimerRef.current = null;
       }
       setNextRunTime(null);
+      consecutiveErrorsRef.current = 0;
     }
 
     return () => {
@@ -271,7 +324,7 @@ export default function BulkProcessPanel({
         clearInterval(autoRunTimerRef.current);
       }
     };
-  }, [autoRunEnabled, autoRunInterval, runAutoProcessCycle]);
+  }, [autoRunEnabled, autoRunInterval, startAutoRunLoop]);
 
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
@@ -459,10 +512,14 @@ export default function BulkProcessPanel({
           <div className="bg-white rounded-lg p-3 border border-green-200 text-sm space-y-1">
             <p className="flex items-center gap-2">
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                実行中
+                {status.isProcessing ? '処理中' : '待機中'}
               </span>
               <span className="text-gray-600">
-                次回実行: {nextRunTime ? formatTimeRemaining(nextRunTime) : '計算中...'}
+                {status.isProcessing
+                  ? `${status.currentIndex + 1}/${status.totalCount}件を処理中...`
+                  : nextRunTime
+                    ? `次回チェック: ${formatTimeRemaining(nextRunTime)}`
+                    : '処理完了後に再チェックします'}
               </span>
             </p>
             {lastRunTime && (
