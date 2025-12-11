@@ -686,6 +686,54 @@ export default function Home() {
       }
 
       // =====================
+      // 4.5. 他のブログにも同時投稿（設定がある場合）
+      // =====================
+      try {
+        const otherBlogsSettingsStr = localStorage.getItem('matomeln_other_blogs_settings');
+        if (otherBlogsSettingsStr) {
+          const otherBlogsSettings = JSON.parse(otherBlogsSettingsStr);
+          if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds?.length > 0) {
+            const blogsStr = localStorage.getItem('matomeln_blogs');
+            if (blogsStr) {
+              const allBlogs = JSON.parse(blogsStr);
+              const otherBlogs = allBlogs.filter((b: { id: string }) =>
+                otherBlogsSettings.selectedOtherBlogIds.includes(b.id)
+              );
+
+              for (const blog of otherBlogs) {
+                try {
+                  const otherResponse = await fetch('/api/proxy/postBlog', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      blogId: blog.blogId,
+                      apiKey: blog.apiKey,
+                      title: generatedHTML.title,
+                      body: fullBody,
+                      draft: false,
+                    }),
+                  });
+
+                  if (otherResponse.ok) {
+                    console.log(`✅ ${blog.name}にも投稿完了`);
+                  } else {
+                    console.warn(`⚠️ ${blog.name}への投稿失敗`);
+                  }
+                } catch (otherError) {
+                  console.warn(`⚠️ ${blog.name}への投稿エラー:`, otherError);
+                }
+              }
+            }
+          }
+        }
+      } catch (otherBlogsError) {
+        console.warn('他のブログへの投稿処理エラー:', otherBlogsError);
+        // エラーでも続行
+      }
+
+      // =====================
       // 5. スレメモくんに投稿済みとして登録
       // =====================
       try {
