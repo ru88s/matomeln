@@ -208,8 +208,8 @@ function formatNewsBody(body: string): string {
   return body
     // 全角スペースを半角スペースに統一
     .replace(/　/g, ' ')
-    // 行頭の連続するスペースを1つに
-    .replace(/^[ ]+/gm, ' ')
+    // 行頭のスペースを完全に削除
+    .replace(/^[ ]+/gm, '')
     // 行末のスペースを削除
     .replace(/[ ]+$/gm, '')
     // 連続する空行を1つに
