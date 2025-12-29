@@ -234,7 +234,7 @@ function extractImagesFromBody(body: string): string[] {
 }
 
 // URLがどのサービスか判定
-export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'unknown';
+export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
   if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
@@ -249,7 +249,164 @@ export function detectSourceType(url: string): SourceType {
   if (/open2ch\.net/i.test(url)) {
     return 'open2ch';
   }
+  if (/girlschannel\.net/i.test(url)) {
+    return 'girlschannel';
+  }
   return 'unknown';
+}
+
+// ガールズちゃんねる URLから情報を抽出
+export interface GirlsChannelThreadInfo {
+  topicId: string;   // トピックID（数字）
+}
+
+// ガールズちゃんねる URLのパターン
+// https://girlschannel.net/topics/5978590/
+// https://girlschannel.net/topics/5978590
+export function parseGirlsChannelUrl(url: string): GirlsChannelThreadInfo | null {
+  const pattern = /https?:\/\/girlschannel\.net\/topics\/(\d+)\/?/i;
+  const match = url.match(pattern);
+
+  if (match) {
+    return {
+      topicId: match[1],
+    };
+  }
+
+  return null;
+}
+
+// ガールズちゃんねるのHTMLをパースしてComment[]に変換
+export function parseGirlsChannelHtml(
+  htmlContent: string,
+  threadInfo: GirlsChannelThreadInfo
+): { talk: Talk; comments: Comment[] } {
+  const comments: Comment[] = [];
+
+  // タイトルを抽出
+  const titleMatch = htmlContent.match(/<h1[^>]*>\s*(?:<!--[^>]*-->)?\s*([^<]+)/);
+  const threadTitle = titleMatch ? titleMatch[1].trim() : 'ガールズちゃんねるトピック';
+
+  // コメントを抽出
+  // <li class="comment-item" id="comment1"> ... </li>
+  const commentRegex = /<li\s+class="comment-item"\s+id="comment(\d+)"[^>]*>([\s\S]*?)<\/li>/gi;
+  let match;
+
+  while ((match = commentRegex.exec(htmlContent)) !== null) {
+    const commentNum = match[1];
+    const commentHtml = match[2];
+
+    // 日時を抽出: <a href="/comment/xxx/1/" rel="nofollow">2025/12/29(月) 17:19:34</a>
+    const dateMatch = commentHtml.match(/<a[^>]*rel="nofollow"[^>]*>(\d{4}\/\d{1,2}\/\d{1,2}\([^)]+\)\s*\d{1,2}:\d{2}:\d{2})<\/a>/);
+    const dateStr = dateMatch ? dateMatch[1] : '';
+
+    // 本文を抽出: <div class="body ...">本文</div>
+    const bodyMatch = commentHtml.match(/<div\s+class="body[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+    let body = bodyMatch ? bodyMatch[1] : '';
+
+    // HTMLを整形
+    body = body
+      // <!-- logly_body_begin --> などのコメントを除去
+      .replace(/<!--[^>]*-->/g, '')
+      // <br>を改行に
+      .replace(/<br\s*\/?>/gi, '\n')
+      // 画像タグから画像URLを抽出して残す
+      .replace(/<img[^>]+src="([^"]+)"[^>]*>/gi, '$1')
+      // リンクタグからURLを抽出
+      .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]*)<\/a>/gi, '$2')
+      // その他のHTMLタグを除去
+      .replace(/<[^>]+>/g, '')
+      // HTMLエンティティをデコード
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+
+    // 日付をパース
+    const createdAt = parseGirlsChannelDate(dateStr);
+
+    // 画像URLを抽出
+    const images: string[] = [];
+    const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
+    const imgMatches = commentHtml.match(imgRegex);
+    if (imgMatches) {
+      images.push(...imgMatches);
+    }
+
+    const comment: Comment = {
+      id: `gc-${threadInfo.topicId}-${commentNum}`,
+      res_id: commentNum,
+      name: '匿名',
+      name_id: undefined,
+      body: body,
+      talk_id: threadInfo.topicId,
+      created_at: createdAt,
+      images: images,
+    };
+
+    comments.push(comment);
+  }
+
+  // Talk情報を作成
+  const talk: Talk = {
+    id: `gc-${threadInfo.topicId}`,
+    title: threadTitle,
+    body: '',
+    created_at: comments[0]?.created_at || new Date().toISOString(),
+    updated_at: comments[comments.length - 1]?.created_at || new Date().toISOString(),
+    views_count: 0,
+    sage_count: 0,
+    hash_id: threadInfo.topicId,
+    comment_count: comments.length,
+    show_id: false, // ガルちゃんはID表示なし
+  };
+
+  return { talk, comments };
+}
+
+// ガールズちゃんねるの日付文字列をISO形式に変換
+function parseGirlsChannelDate(dateStr: string): string {
+  // "2025/12/29(月) 17:19:34" → ISO形式
+  const match = dateStr.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\([^)]+\)\s*(\d{1,2}):(\d{2}):(\d{2})/);
+
+  if (match) {
+    const year = match[1];
+    const month = match[2].padStart(2, '0');
+    const day = match[3].padStart(2, '0');
+    const hour = match[4].padStart(2, '0');
+    const minute = match[5];
+    const second = match[6];
+
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}+09:00`;
+  }
+
+  return new Date().toISOString();
+}
+
+// ガールズちゃんねるスレッドデータを取得
+export async function fetchGirlsChannelThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
+  const threadInfo = parseGirlsChannelUrl(url);
+  if (!threadInfo) {
+    throw new Error('無効なガールズちゃんねるURLです');
+  }
+
+  try {
+    const response = await fetch(`/api/proxy/getGirlsChannel?url=${encodeURIComponent(url)}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'トピックの取得に失敗しました');
+    }
+
+    const data = await response.json();
+    return parseGirlsChannelHtml(data.content, threadInfo);
+  } catch (error) {
+    console.error('Error fetching GirlsChannel thread:', error);
+    throw error;
+  }
 }
 
 // 2ch.sc URLから情報を抽出

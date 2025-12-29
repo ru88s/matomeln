@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // ユーザーが手動で並べ替えた順番をそのまま使用します。
 
 interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
   originalUrl: string;
 }
 

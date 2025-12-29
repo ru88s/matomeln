@@ -7,7 +7,7 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
   originalUrl: string;
 }
 
@@ -61,6 +61,16 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
     if (match) {
       const host = match[1] ? `${match[1]}.open2ch.net` : 'open2ch.net';
       return `https://${host}/test/read.cgi/${match[2]}/${match[3]}/`;
+    }
+    return url;
+  }
+  if (sourceInfo?.source === 'girlschannel' && sourceInfo.originalUrl) {
+    // ガールズちゃんねるの場合は入力されたURLを整形
+    const url = sourceInfo.originalUrl.trim();
+    // 末尾のスラッシュやパラメータを除去して正規化
+    const match = url.match(/https?:\/\/girlschannel\.net\/topics\/(\d+)/i);
+    if (match) {
+      return `https://girlschannel.net/topics/${match[1]}/`;
     }
     return url;
   }
