@@ -3,5 +3,14 @@
   "include": [
     "/api/*"
   ],
-  "exclude": []
+  "exclude": [
+    "/_next/*",
+    "/*.html",
+    "/*.ico",
+    "/*.svg",
+    "/*.png",
+    "/*.json",
+    "/*.xml",
+    "/*.txt"
+  ]
 }
