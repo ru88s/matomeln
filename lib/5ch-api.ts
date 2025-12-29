@@ -304,17 +304,26 @@ export function parseGirlsChannelHtml(
     const bodyMatch = commentHtml.match(/<div\s+class="body[^"]*"[^>]*>([\s\S]*?)<\/div>/);
     let body = bodyMatch ? bodyMatch[1] : '';
 
-    // 画像URLを先に抽出（重複除去）
+    // 画像URLを<img>タグのdata-src属性から抽出（重複除去）
     const images: string[] = [];
-    const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
-    const imgMatches = body.match(imgRegex);
-    if (imgMatches) {
-      // 重複除去
-      imgMatches.forEach(url => {
+    // data-src属性から画像URLを抽出（lazyload用）
+    const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+    let imgMatch;
+    while ((imgMatch = dataSrcRegex.exec(body)) !== null) {
+      const url = imgMatch[1];
+      if (!images.includes(url)) {
+        images.push(url);
+      }
+    }
+    // data-srcがない場合は通常のsrc属性から（noscript内は除外）
+    if (images.length === 0) {
+      const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+      while ((imgMatch = srcRegex.exec(body)) !== null) {
+        const url = imgMatch[1];
         if (!images.includes(url)) {
           images.push(url);
         }
-      });
+      }
     }
 
     // HTMLを整形
