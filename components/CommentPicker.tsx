@@ -529,7 +529,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
             ) : (
               <div className="group relative">
                 <div
-                  className="text-gray-900 whitespace-pre-wrap font-bold cursor-text hover:bg-gray-50 p-2 rounded -m-2"
+                  className="text-gray-900 whitespace-pre-wrap break-all font-bold cursor-text hover:bg-gray-50 p-2 rounded -m-2"
                   style={{ color: color || '#000000', fontSize: `${fontSize || 18}px` }}
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}

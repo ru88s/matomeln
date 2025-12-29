@@ -52,7 +52,7 @@ export function LinkCard({ url }: { url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block text-blue-500 hover:underline"
+        className="inline-block text-blue-500 hover:underline break-all"
         onClick={(e) => e.stopPropagation()}
       >
         {url}
@@ -79,7 +79,7 @@ export function LinkCard({ url }: { url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block text-blue-500 hover:underline"
+        className="inline-block text-blue-500 hover:underline break-all"
         onClick={(e) => e.stopPropagation()}
       >
         {url}
