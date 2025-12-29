@@ -304,18 +304,33 @@ export function parseGirlsChannelHtml(
     const bodyMatch = commentHtml.match(/<div\s+class="body[^"]*"[^>]*>([\s\S]*?)<\/div>/);
     let body = bodyMatch ? bodyMatch[1] : '';
 
+    // 画像URLを先に抽出（重複除去）
+    const images: string[] = [];
+    const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
+    const imgMatches = body.match(imgRegex);
+    if (imgMatches) {
+      // 重複除去
+      imgMatches.forEach(url => {
+        if (!images.includes(url)) {
+          images.push(url);
+        }
+      });
+    }
+
     // HTMLを整形
     body = body
       // <!-- logly_body_begin --> などのコメントを除去
       .replace(/<!--[^>]*-->/g, '')
       // <br>を改行に
       .replace(/<br\s*\/?>/gi, '\n')
-      // 画像タグから画像URLを抽出して残す
-      .replace(/<img[^>]+src="([^"]+)"[^>]*>/gi, '$1')
-      // リンクタグからURLを抽出
-      .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]*)<\/a>/gi, '$2')
+      // 画像タグを除去（imagesに既に抽出済み）
+      .replace(/<img[^>]+>/gi, '')
+      // リンクタグからテキストのみ抽出（URLは除去）
+      .replace(/<a[^>]+href="[^"]*"[^>]*>([^<]*)<\/a>/gi, '$1')
       // その他のHTMLタグを除去
       .replace(/<[^>]+>/g, '')
+      // 画像URLをテキストから除去
+      .replace(/https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?/gi, '')
       // HTMLエンティティをデコード
       .replace(/&quot;/g, '"')
       .replace(/&amp;/g, '&')
@@ -323,18 +338,12 @@ export function parseGirlsChannelHtml(
       .replace(/&gt;/g, '>')
       .replace(/&#39;/g, "'")
       .replace(/&nbsp;/g, ' ')
+      // 連続した空白・改行を整理
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
 
     // 日付をパース
     const createdAt = parseGirlsChannelDate(dateStr);
-
-    // 画像URLを抽出
-    const images: string[] = [];
-    const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
-    const imgMatches = commentHtml.match(imgRegex);
-    if (imgMatches) {
-      images.push(...imgMatches);
-    }
 
     const comment: Comment = {
       id: `gc-${threadInfo.topicId}-${commentNum}`,
