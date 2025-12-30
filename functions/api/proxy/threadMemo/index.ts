@@ -88,8 +88,8 @@ export async function onRequest(context: { request: Request }) {
   // POSTリクエスト：まとめ済み登録
   if (request.method === 'POST') {
     try {
-      const body = await request.json() as { url?: string };
-      const { url } = body;
+      const body = await request.json() as { url?: string; title?: string };
+      const { url, title } = body;
 
       if (!url) {
         return new Response(
@@ -111,7 +111,7 @@ export async function onRequest(context: { request: Request }) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url, title }),
         }
       );
 

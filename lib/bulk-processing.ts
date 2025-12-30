@@ -43,13 +43,13 @@ export async function fetchUnsummarizedUrls(options?: {
 /**
  * まとめ済みとして登録
  */
-export async function markThreadAsSummarized(url: string): Promise<void> {
+export async function markThreadAsSummarized(url: string, title?: string): Promise<void> {
   const response = await fetch('/api/proxy/threadMemo', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, title }),
   });
 
   if (!response.ok) {
