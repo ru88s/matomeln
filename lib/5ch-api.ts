@@ -345,7 +345,7 @@ export function parseGirlsChannelHtml(
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
-      .replace(/&#39;/g, "'")
+      .replace(/&#0?39;/g, "'")
       .replace(/&nbsp;/g, ' ')
       // 連続した空白・改行を整理
       .replace(/\n{3,}/g, '\n\n')
