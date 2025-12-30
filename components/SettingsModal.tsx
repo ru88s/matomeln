@@ -404,6 +404,52 @@ export default function SettingsModal({
 
           {/* コンテンツ */}
           <div className="p-4 max-h-[calc(85vh-70px)] overflow-y-auto space-y-4">
+            {/* ブログ設定 */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h3 className="font-bold text-gray-800 mb-3">ブログ設定</h3>
+              {blogs.length > 0 ? (
+                <div className="space-y-2">
+                  <select
+                    value={selectedBlogId || ''}
+                    onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
+                    className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
+                  >
+                    {blogs.map(blog => (
+                      <option key={blog.id} value={blog.id}>{blog.name}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={openAddBlogModal}
+                      className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                    >
+                      + 追加
+                    </button>
+                    <button
+                      onClick={() => {
+                        const blog = blogs.find(b => b.id === selectedBlogId);
+                        if (blog) openEditBlogModal(blog);
+                      }}
+                      disabled={!selectedBlogId}
+                      className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      編集
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={openAddBlogModal}
+                  className="w-full text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  + ブログを追加
+                </button>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                ライブドアブログのAPI設定を登録できます
+              </p>
+            </div>
+
             {/* レス名設定 */}
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
@@ -461,50 +507,26 @@ export default function SettingsModal({
               </label>
             </div>
 
-            {/* ブログ設定 */}
+            {/* カスタムフッターHTML */}
             <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="font-bold text-gray-800 mb-3">ブログ設定</h3>
-              {blogs.length > 0 ? (
-                <div className="space-y-2">
-                  <select
-                    value={selectedBlogId || ''}
-                    onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
-                    className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
-                  >
-                    {blogs.map(blog => (
-                      <option key={blog.id} value={blog.id}>{blog.name}</option>
-                    ))}
-                  </select>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={openAddBlogModal}
-                      className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                    >
-                      + 追加
-                    </button>
-                    <button
-                      onClick={() => {
-                        const blog = blogs.find(b => b.id === selectedBlogId);
-                        if (blog) openEditBlogModal(blog);
-                      }}
-                      disabled={!selectedBlogId}
-                      className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      編集
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              <h3 className="font-bold text-gray-800 mb-3">カスタムフッターHTML</h3>
+              <textarea
+                value={customFooterHtml}
+                onChange={(e) => setCustomFooterHtml(e.target.value)}
+                placeholder='例: <p style="color:gray;text-align:right;"><a href="https://shikutoku.me/" target="_blank">https://shikutoku.me/</a></p>'
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 h-20 resize-none font-mono"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500">
+                  生成HTMLの最後に追加されます
+                </p>
                 <button
-                  onClick={openAddBlogModal}
-                  className="w-full text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                  onClick={saveCustomFooterHtml}
+                  className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
                 >
-                  + ブログを追加
+                  保存
                 </button>
-              )}
-              <p className="text-xs text-gray-500 mt-2">
-                ライブドアブログのAPI設定を登録できます
-              </p>
+              </div>
             </div>
 
             {/* 開発者モード */}
@@ -878,28 +900,6 @@ export default function SettingsModal({
                 </div>
               </div>
             )}
-
-            {/* カスタムフッターHTML */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="font-bold text-gray-800 mb-3">カスタムフッターHTML</h3>
-              <textarea
-                value={customFooterHtml}
-                onChange={(e) => setCustomFooterHtml(e.target.value)}
-                placeholder='例: <p style="color:gray;text-align:right;"><a href="https://shikutoku.me/" target="_blank">https://shikutoku.me/</a></p>'
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 h-20 resize-none font-mono"
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-500">
-                  生成HTMLの最後に追加されます
-                </p>
-                <button
-                  onClick={saveCustomFooterHtml}
-                  className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
