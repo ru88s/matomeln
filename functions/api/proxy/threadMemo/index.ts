@@ -4,7 +4,6 @@
  */
 
 const THREAD_MEMO_BASE_URL = 'https://thread-memo.starcrown.co.jp';
-const THREAD_MEMO_WORKERS_URL = 'https://thread-memo.w-yonamine.workers.dev';
 
 // CORSヘッダー
 const corsHeaders = {
@@ -88,8 +87,8 @@ export async function onRequest(context: { request: Request }) {
   // POSTリクエスト：まとめ済み登録
   if (request.method === 'POST') {
     try {
-      const body = await request.json() as { url?: string; title?: string };
-      const { url, title } = body;
+      const body = await request.json() as { url?: string };
+      const { url } = body;
 
       if (!url) {
         return new Response(
@@ -105,13 +104,13 @@ export async function onRequest(context: { request: Request }) {
       }
 
       const response = await fetch(
-        `${THREAD_MEMO_WORKERS_URL}/api/threads/mark-summarized`,
+        `${THREAD_MEMO_BASE_URL}/api/threads/mark-summarized`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url, title }),
+          body: JSON.stringify({ url }),
         }
       );
 

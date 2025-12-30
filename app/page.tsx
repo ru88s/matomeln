@@ -737,7 +737,7 @@ export default function Home() {
       // 5. スレメモくんに投稿済みとして登録
       // =====================
       try {
-        await markThreadAsSummarized(url, talk.title);
+        await markThreadAsSummarized(url);
         console.log('✅ スレメモくんに登録完了:', url);
       } catch (memoError) {
         console.warn('⚠️ スレメモくん登録失敗:', memoError);
