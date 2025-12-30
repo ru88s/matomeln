@@ -22,7 +22,8 @@ export async function generateMatomeHTML(
   thumbnailUrl?: string,
   showIdInHtml?: boolean,
   isDevMode?: boolean,
-  skipOgp?: boolean
+  skipOgp?: boolean,
+  customFooterHtml?: string
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
@@ -36,6 +37,11 @@ export async function generateMatomeHTML(
   // DEVモードの場合はタイトルの頭に§を追加（ストック記事とわかるように）
   if (isDevMode) {
     result.title = `§ ${result.title}`;
+  }
+
+  // カスタムフッターHTMLを追加
+  if (customFooterHtml && customFooterHtml.trim()) {
+    result.footer = result.footer + '\n' + customFooterHtml.trim();
   }
 
   return result;

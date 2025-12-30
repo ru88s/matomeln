@@ -488,6 +488,9 @@ export default function Home() {
         customNameSettings = JSON.parse(savedNameSettings);
       }
 
+      // カスタムフッターHTMLを取得
+      const customFooterHtml = localStorage.getItem('matomeln_custom_footer_html') || '';
+
       // =====================
       // 1. スレッド読み込み
       // =====================
@@ -657,7 +660,9 @@ export default function Home() {
         customNameSettings.color,
         generatedThumbnailUrl,
         true, // showIdInHtml
-        true  // isDevMode
+        true, // isDevMode
+        false, // skipOgp
+        customFooterHtml
       );
 
       // 本文と続きを読むを組み合わせてブログ記事の内容を作成

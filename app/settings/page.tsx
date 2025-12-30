@@ -19,6 +19,8 @@ export default function SettingsPage() {
   // 他のブログにも投稿設定
   const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  // カスタムフッターHTML
+  const [customFooterHtml, setCustomFooterHtml] = useState('');
 
   // 設定を読み込み
   useEffect(() => {
@@ -53,6 +55,11 @@ export default function SettingsPage() {
       } catch {
         // パースエラーは無視
       }
+    }
+    // カスタムフッターHTMLを読み込み
+    const savedCustomFooter = localStorage.getItem('matomeln_custom_footer_html');
+    if (savedCustomFooter) {
+      setCustomFooterHtml(savedCustomFooter);
     }
   }, []);
 
@@ -95,6 +102,12 @@ export default function SettingsPage() {
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
     }));
+  };
+
+  // カスタムフッターHTMLを保存
+  const saveCustomFooterHtml = () => {
+    localStorage.setItem('matomeln_custom_footer_html', customFooterHtml);
+    toast.success('フッターHTMLを保存しました');
   };
 
   // 現在選択中のブログを取得
@@ -314,6 +327,34 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* カスタムフッターHTML */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">カスタムフッターHTML</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                生成HTMLの末尾に追加するHTML
+              </label>
+              <textarea
+                value={customFooterHtml}
+                onChange={(e) => setCustomFooterHtml(e.target.value)}
+                placeholder={'<p style="color:gray;text-align:right;"><a href="https://example.com/" target="_blank">https://example.com/</a></p>'}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                HTMLタグをそのまま記述してください。引用元リンクなどに使用できます。
+              </p>
+            </div>
+            <button
+              onClick={saveCustomFooterHtml}
+              className="bg-orange-500 text-white hover:bg-orange-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+            >
+              保存
+            </button>
+          </div>
+        </div>
 
         {/* その他の設定 */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">

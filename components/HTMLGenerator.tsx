@@ -49,6 +49,8 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
   // 投稿先として選択されたブログID
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  // カスタムフッターHTML
+  const [customFooterHtml, setCustomFooterHtml] = useState('');
 
   // LocalStorageから設定を読み込み
   useEffect(() => {
@@ -63,6 +65,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           // パースエラーは無視
         }
       }
+    }
+    // カスタムフッターHTMLを読み込み
+    const savedFooter = localStorage.getItem('matomeln_custom_footer_html');
+    if (savedFooter) {
+      setCustomFooterHtml(savedFooter);
     }
   }, [isDevMode]);
 
@@ -82,11 +89,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // デバッグ: 渡されたコメントを確認
       console.log('📝 HTMLGenerator: selectedComments順序:', selectedComments.map(c => `${c.res_id}`).join(', '));
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, customFooterHtml]);
 
   const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {
@@ -95,7 +102,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
