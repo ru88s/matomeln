@@ -70,6 +70,8 @@ export default function SettingsModal({
   const [testPreviewImage, setTestPreviewImage] = useState<string | null>(null);
   const [testPreviewCharacter, setTestPreviewCharacter] = useState<ThumbnailCharacter | null>(null);
   const [testTitle, setTestTitle] = useState('');
+  // カスタムフッターHTML
+  const [customFooterHtml, setCustomFooterHtml] = useState('');
 
   // 設定を読み込み
   useEffect(() => {
@@ -100,6 +102,11 @@ export default function SettingsModal({
         } catch {
           // パースエラーは無視
         }
+      }
+      // カスタムフッターHTMLを読み込み
+      const savedFooterHtml = localStorage.getItem('matomeln_custom_footer_html');
+      if (savedFooterHtml) {
+        setCustomFooterHtml(savedFooterHtml);
       }
     }
   }, [isOpen]);
@@ -158,6 +165,12 @@ export default function SettingsModal({
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
     }));
+  };
+
+  // カスタムフッターHTMLを保存
+  const saveCustomFooterHtml = () => {
+    localStorage.setItem('matomeln_custom_footer_html', customFooterHtml);
+    toast.success('カスタムフッターHTMLを保存しました');
   };
 
   // 他のブログ一覧（選択中のブログを除く）
@@ -865,6 +878,28 @@ export default function SettingsModal({
                 </div>
               </div>
             )}
+
+            {/* カスタムフッターHTML */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h3 className="font-bold text-gray-800 mb-3">カスタムフッターHTML</h3>
+              <textarea
+                value={customFooterHtml}
+                onChange={(e) => setCustomFooterHtml(e.target.value)}
+                placeholder='例: <p style="color:gray;text-align:right;"><a href="https://shikutoku.me/" target="_blank">https://shikutoku.me/</a></p>'
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 h-20 resize-none font-mono"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500">
+                  生成HTMLの最後に追加されます
+                </p>
+                <button
+                  onClick={saveCustomFooterHtml}
+                  className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
