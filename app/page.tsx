@@ -698,7 +698,7 @@ export default function Home() {
         if (otherBlogsSettingsStr) {
           const otherBlogsSettings = JSON.parse(otherBlogsSettingsStr);
           if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds?.length > 0) {
-            const blogsStr = localStorage.getItem('matomeln_blogs');
+            const blogsStr = localStorage.getItem('blogSettingsList');
             if (blogsStr) {
               const allBlogs = JSON.parse(blogsStr);
               const otherBlogs = allBlogs.filter((b: { id: string }) =>
