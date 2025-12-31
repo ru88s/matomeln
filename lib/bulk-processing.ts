@@ -37,7 +37,15 @@ export async function fetchUnsummarizedUrls(options?: {
     throw new Error(error.error || 'Failed to fetch unsummarized URLs');
   }
 
-  return response.json();
+  const data: UnsummarizedUrlsResponse = await response.json();
+
+  // talk.jp のURLを除外（一括処理対象外）
+  const filteredUrls = data.urls.filter(url => !url.includes('talk.jp'));
+
+  return {
+    urls: filteredUrls,
+    count: filteredUrls.length,
+  };
 }
 
 /**
