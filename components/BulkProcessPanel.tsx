@@ -125,8 +125,9 @@ export default function BulkProcessPanel({
         }));
         toast.error(`(${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
 
-        // エラーでも次に進む
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // 投稿エラー時は処理を中断（ライブドアの投稿制限の可能性が高い）
+        toast.error('エラーが発生したため処理を中断しました', { duration: 5000 });
+        break;
       }
     }
 
@@ -233,15 +234,11 @@ export default function BulkProcessPanel({
           }));
           toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
 
-          // 連続エラーが上限に達したら停止
-          if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-            toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回エラーが発生したため、定期実行を停止します`, { duration: 5000 });
-            setAutoRunEnabled(false);
-            shouldStopRef.current = true;
-            break;
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // 投稿エラー時は処理を中断（ライブドアの投稿制限の可能性が高い）
+          toast.error('エラーが発生したため定期実行を停止しました', { duration: 5000 });
+          setAutoRunEnabled(false);
+          shouldStopRef.current = true;
+          break;
         }
       }
 
