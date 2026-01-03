@@ -434,11 +434,19 @@ export async function callClaudeAPI(
   try {
     const parsed = JSON.parse(jsonStr);
     return enhanceAIResponse(parsed, comments);
-  } catch {
+  } catch (e1) {
     // 不完全なJSONを修復
-    const repaired = repairIncompleteJson(jsonStr);
-    const parsed = JSON.parse(repaired);
-    return enhanceAIResponse(parsed, comments);
+    try {
+      const repaired = repairIncompleteJson(jsonStr);
+      console.log('🔧 JSON修復を試行:', repaired.substring(0, 200));
+      const parsed = JSON.parse(repaired);
+      return enhanceAIResponse(parsed, comments);
+    } catch (e2) {
+      console.error('❌ JSON修復失敗:', e2);
+      console.error('❌ 元のJSON:', jsonStr.substring(0, 500));
+      // 修復も失敗した場合、空の結果を返す
+      throw new Error('AIの応答を解析できませんでした。スレッドが大きすぎる可能性があります。');
+    }
   }
 }
 
@@ -446,10 +454,47 @@ export async function callClaudeAPI(
 function repairIncompleteJson(jsonStr: string): string {
   let str = jsonStr.trim();
 
-  // 最後の不完全な要素を削除
-  const lastCompleteIndex = str.lastIndexOf('}');
-  if (lastCompleteIndex > 0) {
-    str = str.substring(0, lastCompleteIndex + 1);
+  // 最後の完全なオブジェクト（}）を探す
+  if (str.includes('}')) {
+    // 最後の完全な}の位置を見つける
+    let lastValidIndex = -1;
+    let braceCount = 0;
+    let bracketCount = 0;
+    let inString = false;
+    let escapeNext = false;
+
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === '{') braceCount++;
+      if (char === '}') {
+        braceCount--;
+        if (braceCount >= 0) lastValidIndex = i;
+      }
+      if (char === '[') bracketCount++;
+      if (char === ']') bracketCount--;
+    }
+
+    if (lastValidIndex > 0) {
+      str = str.substring(0, lastValidIndex + 1);
+    }
   }
 
   // 閉じ括弧を追加
@@ -458,8 +503,8 @@ function repairIncompleteJson(jsonStr: string): string {
   const openBrackets = (str.match(/\[/g) || []).length;
   const closeBrackets = (str.match(/\]/g) || []).length;
 
-  str += '}'.repeat(Math.max(0, openBraces - closeBraces));
   str += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+  str += '}'.repeat(Math.max(0, openBraces - closeBraces));
 
   return str;
 }
