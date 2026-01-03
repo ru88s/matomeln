@@ -69,8 +69,13 @@ function escapeXml(str) {
 // AtomPub用XMLペイロードを生成
 function buildAtomXml(title, body) {
   // タイトルと本文から制御文字を除去
-  const cleanTitle = removeXmlInvalidChars(title);
+  let cleanTitle = removeXmlInvalidChars(title);
   const cleanBody = removeXmlInvalidChars(body);
+
+  // タイトルを100文字に制限（ライブドアブログの制限対応）
+  if (cleanTitle.length > 100) {
+    cleanTitle = cleanTitle.substring(0, 97) + '...';
+  }
 
   // タイトルはエスケープ
   const escapedTitle = escapeXml(cleanTitle);
