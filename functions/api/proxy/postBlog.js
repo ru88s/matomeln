@@ -153,12 +153,12 @@ export async function onRequest(context) {
 
     throw new Error(`ライブドアブログAPIエラー: ${response.status} - ${responseText}`);
   } catch (error) {
+    // エラーメッセージをそのまま返す（詳細情報を含める）
+    const errorMessage = error.message || 'ライブドアブログへの投稿に失敗しました';
     return new Response(
       JSON.stringify({
-        error: error.message.includes('認証エラー')
-          ? error.message
-          : 'ライブドアブログへの投稿に失敗しました',
-        details: error.message
+        error: errorMessage,
+        details: errorMessage
       }),
       {
         status: 500,
