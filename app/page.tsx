@@ -18,6 +18,27 @@ import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
 import toast from 'react-hot-toast';
 
+// タイムアウト付きfetch（30秒）
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`リクエストがタイムアウトしました（${timeoutMs / 1000}秒）`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // アンカー（>>数字）から参照先のレス番号を抽出
 function extractAnchor(body: string): number | null {
   const match = body.match(/^>>(\d+)/);
@@ -670,8 +691,8 @@ export default function Home() {
         ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
         : generatedHTML.body;
 
-      // ブログ投稿
-      const postResponse = await fetch('/api/proxy/postBlog', {
+      // ブログ投稿（30秒タイムアウト）
+      const postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -683,7 +704,7 @@ export default function Home() {
           body: fullBody,
           draft: false,
         }),
-      });
+      }, 30000);
 
       if (!postResponse.ok) {
         const errorData = await postResponse.json();
@@ -707,7 +728,7 @@ export default function Home() {
 
               for (const blog of otherBlogs) {
                 try {
-                  const otherResponse = await fetch('/api/proxy/postBlog', {
+                  const otherResponse = await fetchWithTimeout('/api/proxy/postBlog', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
@@ -719,7 +740,7 @@ export default function Home() {
                       body: fullBody,
                       draft: false,
                     }),
-                  });
+                  }, 30000);
 
                   if (otherResponse.ok) {
                     console.log(`✅ ${blog.name}にも投稿完了`);
