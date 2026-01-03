@@ -56,25 +56,38 @@ function escapeCDATA(str) {
   return str.replace(/\]\]>/g, ']]]]><![CDATA[>');
 }
 
+// XMLエスケープ
+function escapeXml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 // AtomPub用XMLペイロードを生成
 function buildAtomXml(title, body) {
   // タイトルと本文から制御文字を除去
   const cleanTitle = removeXmlInvalidChars(title);
   const cleanBody = removeXmlInvalidChars(body);
 
+  // タイトルはエスケープ
+  const escapedTitle = escapeXml(cleanTitle);
+
   // <!--more-->タグで本文と続きを分割
   const parts = cleanBody.split('<!--more-->');
-  const mainBody = escapeCDATA(parts[0] || '');
-  const moreBody = escapeCDATA(parts[1] || '');
+  const mainBody = parts[0] || '';
+  const moreBody = parts[1] || '';
 
-  // タイトルもCDATAでラップ（ダブルクォートなど特殊文字対応）
+  // blogcms:body/moreはCDATAを使用（HTMLタグを含むため）
   return (
     '<?xml version="1.0" encoding="UTF-8"?>' +
     '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:app="http://www.w3.org/2007/app" xmlns:blogcms="http://blogcms.jp/-/spec/atompub/1.0/">' +
-    '<title><![CDATA[' + escapeCDATA(cleanTitle) + ']]></title>' +
-    '<content type="text/html" xml:lang="ja"><![CDATA[' + escapeCDATA(cleanBody) + ']]></content>' +
-    '<blogcms:source><blogcms:body><![CDATA[' + mainBody + ']]></blogcms:body>' +
-    '<blogcms:more><![CDATA[' + moreBody + ']]></blogcms:more></blogcms:source>' +
+    '<title>' + escapedTitle + '</title>' +
+    '<content type="text/html" xml:lang="ja">' + escapeXml(cleanBody) + '</content>' +
+    '<blogcms:source><blogcms:body><![CDATA[' + escapeCDATA(mainBody) + ']]></blogcms:body>' +
+    '<blogcms:more><![CDATA[' + escapeCDATA(moreBody) + ']]></blogcms:more></blogcms:source>' +
     '</entry>'
   );
 }
