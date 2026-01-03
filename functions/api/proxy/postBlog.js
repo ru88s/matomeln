@@ -111,6 +111,9 @@ export async function onRequest(context) {
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);
 
+    // デバッグ: サイズをログ出力
+    console.log(`📝 投稿データ: タイトル=${title.length}文字, 本文=${body.length}文字, XML=${xmlPayload.length}文字`);
+
     // ライブドアブログAPIへPOST（20秒タイムアウト）
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
@@ -155,6 +158,10 @@ export async function onRequest(context) {
 
     // エラーレスポンスの処理
     const responseText = await response.text();
+
+    // デバッグ: エラー時のXMLの先頭500文字をログ出力
+    console.log(`❌ エラー時のXML先頭: ${xmlPayload.substring(0, 500)}`);
+    console.log(`❌ エラーレスポンス: ${response.status} - ${responseText}`);
 
     // 401の場合は認証エラー
     if (response.status === 401) {
