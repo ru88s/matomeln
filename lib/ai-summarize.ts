@@ -365,25 +365,41 @@ export async function callClaudeAPI(
   const prompt = buildAISummarizePrompt(title, comments);
   console.log(`📊 プロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件`);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-    })
-  });
+  // タイムアウト設定（60秒）
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+  let response: Response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 8000,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      }),
+      signal: controller.signal
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('AI分析がタイムアウトしました（60秒）。スキップします。');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const error = await response.json();
