@@ -774,6 +774,9 @@ export default function Home() {
 
     } catch (error) {
       console.error('一括処理エラー:', error);
+      // エラー時はtoastをエラー表示に変更
+      const errorMsg = error instanceof Error ? error.message : '一括処理に失敗しました';
+      toast.error(errorMsg, { id: 'bulk-step' });
       // エラーを再スローして呼び出し元でキャッチできるようにする
       throw error;
     } finally {
