@@ -708,7 +708,9 @@ export default function Home() {
 
       if (!postResponse.ok) {
         const errorData = await postResponse.json();
-        throw new Error(errorData.error || 'ブログ投稿に失敗しました');
+        // 詳細なエラーメッセージを表示
+        const errorMsg = errorData.details || errorData.error || 'ブログ投稿に失敗しました';
+        throw new Error(errorMsg);
       }
 
       // =====================
