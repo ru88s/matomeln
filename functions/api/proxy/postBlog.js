@@ -17,25 +17,48 @@ async function generateWSSEHeader(username, password) {
   return `UsernameToken Username="${username}", PasswordDigest="${digest}", Nonce="${nonceBase64}", Created="${created}"`;
 }
 
+// XML制御文字を除去（XML 1.0で許可されていない文字）
+function removeXmlInvalidChars(str) {
+  // XML 1.0で許可されている文字: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
+// CDATA内の]]>をエスケープ
+function escapeCDATA(str) {
+  return str.replace(/\]\]>/g, ']]]]><![CDATA[>');
+}
+
 // AtomPub用XMLペイロードを生成
 function buildAtomXml(title, body) {
-  const escapedTitle = title
+  // タイトルから制御文字を除去してエスケープ
+  const cleanTitle = removeXmlInvalidChars(title);
+  const escapedTitle = cleanTitle
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
+  // 本文から制御文字を除去
+  const cleanBody = removeXmlInvalidChars(body);
+
   // <!--more-->タグで本文と続きを分割
-  const parts = body.split('<!--more-->');
-  const mainBody = parts[0] || '';
-  const moreBody = parts[1] || '';
+  const parts = cleanBody.split('<!--more-->');
+  const mainBody = escapeCDATA(parts[0] || '');
+  const moreBody = escapeCDATA(parts[1] || '');
+
+  // content用にもエスケープ
+  const escapedBody = cleanBody
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
   return (
     '<?xml version="1.0" encoding="UTF-8"?>' +
     '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:app="http://www.w3.org/2007/app" xmlns:blogcms="http://blogcms.jp/-/spec/atompub/1.0/">' +
     '<title>' + escapedTitle + '</title>' +
-    '<content type="text/html" xml:lang="ja">' + body + '</content>' +
+    '<content type="text/html" xml:lang="ja">' + escapedBody + '</content>' +
     '<blogcms:source><blogcms:body><![CDATA[' + mainBody + ']]></blogcms:body>' +
     '<blogcms:more><![CDATA[' + moreBody + ']]></blogcms:more></blogcms:source>' +
     '</entry>'
