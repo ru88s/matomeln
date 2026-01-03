@@ -101,16 +101,31 @@ export async function onRequest(context) {
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);
 
-    // ライブドアブログAPIへPOST
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'WSSE profile="UsernameToken"',
-        'X-WSSE': wsseHeader,
-        'Content-Type': 'application/xml',
-      },
-      body: xmlPayload,
-    });
+    // ライブドアブログAPIへPOST（20秒タイムアウト）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'WSSE profile="UsernameToken"',
+          'X-WSSE': wsseHeader,
+          'Content-Type': 'application/xml',
+        },
+        body: xmlPayload,
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('ライブドアブログAPIがタイムアウトしました（20秒）');
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // 成功の場合、Locationヘッダーから記事URLを取得
     const location = response.headers.get('location');
