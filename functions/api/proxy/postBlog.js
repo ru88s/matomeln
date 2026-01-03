@@ -17,11 +17,38 @@ async function generateWSSEHeader(username, password) {
   return `UsernameToken Username="${username}", PasswordDigest="${digest}", Nonce="${nonceBase64}", Created="${created}"`;
 }
 
-// XML制御文字を除去（XML 1.0で許可されていない文字）
+// XML制御文字と孤立サロゲートを除去
 function removeXmlInvalidChars(str) {
   // XML 1.0で許可されている文字: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
   // eslint-disable-next-line no-control-regex
-  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  let result = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  // 孤立サロゲートを除去（U+D800-U+DFFF）
+  // 正しいサロゲートペアは残し、孤立したものだけ除去
+  let cleaned = '';
+  for (let i = 0; i < result.length; i++) {
+    const code = result.charCodeAt(i);
+    // 高サロゲート（U+D800-U+DBFF）
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      if (i + 1 < result.length) {
+        const nextCode = result.charCodeAt(i + 1);
+        // 次が低サロゲートなら正しいペア
+        if (nextCode >= 0xDC00 && nextCode <= 0xDFFF) {
+          cleaned += result[i] + result[i + 1];
+          i++;
+          continue;
+        }
+      }
+      // 孤立した高サロゲートはスキップ
+      continue;
+    }
+    // 孤立した低サロゲート（U+DC00-U+DFFF）はスキップ
+    if (code >= 0xDC00 && code <= 0xDFFF) {
+      continue;
+    }
+    cleaned += result[i];
+  }
+  return cleaned;
 }
 
 // CDATA内の]]>をエスケープ
