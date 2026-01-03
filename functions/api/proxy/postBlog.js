@@ -72,9 +72,9 @@ function buildAtomXml(title, body) {
   let cleanTitle = removeXmlInvalidChars(title);
   const cleanBody = removeXmlInvalidChars(body);
 
-  // タイトルを100文字に制限（ライブドアブログの制限対応）
-  if (cleanTitle.length > 100) {
-    cleanTitle = cleanTitle.substring(0, 97) + '...';
+  // タイトルを80文字に制限（ライブドアブログの制限対応）
+  if (cleanTitle.length > 80) {
+    cleanTitle = cleanTitle.substring(0, 77) + '...';
   }
 
   // タイトルはエスケープ
