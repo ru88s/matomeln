@@ -301,8 +301,32 @@ export function parseGirlsChannelHtml(
     const dateStr = dateMatch ? dateMatch[1] : '';
 
     // 本文を抽出: <div class="body ...">本文</div>
-    const bodyMatch = commentHtml.match(/<div\s+class="body[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-    let body = bodyMatch ? bodyMatch[1] : '';
+    // ネストされたdivに対応するため、body divの開始位置を見つけてからネストを考慮して終了位置を探す
+    let body = '';
+    const bodyStartMatch = commentHtml.match(/<div\s+class="body[^"]*"[^>]*>/);
+    if (bodyStartMatch && bodyStartMatch.index !== undefined) {
+      const startIndex = bodyStartMatch.index + bodyStartMatch[0].length;
+      let depth = 1;
+      let endIndex = startIndex;
+      const remaining = commentHtml.slice(startIndex);
+
+      // ネストされたdivを追跡しながら終了位置を探す
+      const tagRegex = /<\/?div[^>]*>/gi;
+      let tagMatch;
+      while ((tagMatch = tagRegex.exec(remaining)) !== null) {
+        if (tagMatch[0].startsWith('</')) {
+          depth--;
+          if (depth === 0) {
+            endIndex = startIndex + tagMatch.index;
+            break;
+          }
+        } else if (!tagMatch[0].endsWith('/>')) {
+          depth++;
+        }
+      }
+
+      body = commentHtml.slice(startIndex, endIndex);
+    }
 
     // 画像URLを<img>タグのdata-src属性から抽出（重複除去）
     const images: string[] = [];
