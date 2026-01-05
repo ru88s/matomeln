@@ -213,6 +213,11 @@ export async function onRequest(context) {
       throw new Error('認証エラー: ブログIDまたはAPIキーが正しくありません');
     }
 
+    // 400の場合は投稿制限の可能性
+    if (response.status === 400) {
+      throw new Error('投稿制限中の可能性があります。しばらく時間を置いてから再試行してください。');
+    }
+
     throw new Error(`ライブドアブログAPIエラー: ${response.status} - ${responseText}`);
   } catch (error) {
     // エラーメッセージをそのまま返す（詳細情報を含める）
