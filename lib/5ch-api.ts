@@ -371,8 +371,16 @@ export function parseGirlsChannelHtml(
       .replace(/&gt;/g, '>')
       .replace(/&#0?39;/g, "'")
       .replace(/&nbsp;/g, ' ')
-      // 連続した空白・改行を整理
+      // 「出典：」行を除去（リンクカードの残骸）
+      .replace(/出典[：:]\s*[^\n]+/g, '')
+      // 各行の先頭の空白を除去
+      .split('\n')
+      .map(line => line.trim())
+      .join('\n')
+      // 連続した空行を1つに
       .replace(/\n{3,}/g, '\n\n')
+      // 連続した空白を1つに
+      .replace(/[ 　]{2,}/g, ' ')
       .trim();
 
     // 日付をパース
