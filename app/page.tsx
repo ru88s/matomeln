@@ -747,10 +747,14 @@ export default function Home() {
                   if (otherResponse.ok) {
                     console.log(`✅ ${blog.name}にも投稿完了`);
                   } else {
+                    // 投稿制限などでエラーの場合は通知してスキップ
                     console.warn(`⚠️ ${blog.name}への投稿失敗`);
+                    toast(`${blog.name}への投稿をスキップ（制限中の可能性）`, { icon: '⚠️' });
                   }
                 } catch (otherError) {
+                  // エラーでも通知してスキップ
                   console.warn(`⚠️ ${blog.name}への投稿エラー:`, otherError);
+                  toast(`${blog.name}への投稿をスキップ`, { icon: '⚠️' });
                 }
               }
             }
