@@ -694,7 +694,18 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
     }
 
     const data = await response.json();
-    return parseDatFile(data.content, threadInfo);
+
+    // 文字化けチェック（置換文字や異常な文字パターンを検出）
+    const content = data.content || '';
+    const replacementCharCount = (content.match(/\uFFFD/g) || []).length;
+    const totalChars = content.length;
+    // 置換文字が1%以上、または100個以上ある場合は文字化けとみなす
+    if (totalChars > 0 && (replacementCharCount > 100 || replacementCharCount / totalChars > 0.01)) {
+      console.log(`Detected mojibake (${replacementCharCount} replacement chars), trying 2ch.sc fallback...`);
+      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+    }
+
+    return parseDatFile(content, threadInfo);
   } catch (error) {
     // ネットワークエラーなどの場合も2ch.scにフォールバック
     console.log('5ch.net error, trying 2ch.sc fallback:', error);
