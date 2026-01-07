@@ -402,20 +402,28 @@ export function parseGirlsChannelHtml(
       return filename.toLowerCase();
     };
 
+    // 許可する画像CDNのリスト（Instagram, girlschannel自体の画像）
+    const allowedImageDomains = [
+      'cdninstagram.com',
+      'instagram.com',
+      'scontent',  // Instagram CDN
+      'girlschannel.net',
+      'gc-img.', // Girls Channel images
+    ];
+
     // 画像URLを追加（重複チェック付き）
     const addImage = (url: string): void => {
       // OGP用の小さいサムネイルは除外
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
         return;
       }
-      // ニュースサイトのOGP/プレビュー画像CDNは除外（リンクカードのプレビュー画像）
-      if (url.includes('img-mdpr.freetls.fastly.net') ||
-          url.includes('ogp.') ||
-          url.includes('image.news.') ||
-          url.includes('newsimg.') ||
-          url.includes('thumbnail.')) {
+
+      // 許可されたドメインからの画像のみ抽出
+      const isAllowed = allowedImageDomains.some(domain => url.includes(domain));
+      if (!isAllowed) {
         return;
       }
+
       const base = getImageBase(url);
       if (!seenImageBases.has(base)) {
         seenImageBases.add(base);
