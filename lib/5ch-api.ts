@@ -276,6 +276,51 @@ export function parseGirlsChannelUrl(url: string): GirlsChannelThreadInfo | null
   return null;
 }
 
+// ネストしたdivを考慮してdiv要素を除去し、コールバックで変換する
+function replaceNestedDivs(
+  html: string,
+  classPattern: RegExp,
+  replacer: (fullMatch: string, content: string) => string
+): string {
+  let result = html;
+  let startMatch;
+  const startRegex = new RegExp(`<div[^>]*class="[^"]*(?:${classPattern.source})[^"]*"[^>]*>`, 'gi');
+
+  while ((startMatch = startRegex.exec(result)) !== null) {
+    const startIndex = startMatch.index;
+    const contentStart = startIndex + startMatch[0].length;
+
+    // ネストしたdivを追跡して終了位置を探す
+    let depth = 1;
+    let endIndex = contentStart;
+    const remaining = result.slice(contentStart);
+    const tagRegex = /<\/?div[^>]*>/gi;
+    let tagMatch;
+
+    while ((tagMatch = tagRegex.exec(remaining)) !== null) {
+      if (tagMatch[0].startsWith('</')) {
+        depth--;
+        if (depth === 0) {
+          endIndex = contentStart + tagMatch.index;
+          break;
+        }
+      } else if (!tagMatch[0].endsWith('/>')) {
+        depth++;
+      }
+    }
+
+    const fullMatch = result.slice(startIndex, endIndex + 6); // +6 for </div>
+    const content = result.slice(contentStart, endIndex);
+    const replacement = replacer(fullMatch, content);
+
+    result = result.slice(0, startIndex) + replacement + result.slice(endIndex + 6);
+    // 正規表現のlastIndexをリセット
+    startRegex.lastIndex = startIndex + replacement.length;
+  }
+
+  return result;
+}
+
 // ガールズちゃんねるのHTMLをパースしてComment[]に変換
 export function parseGirlsChannelHtml(
   htmlContent: string,
@@ -328,15 +373,6 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
-    // まずリンクカードを除去してから画像を抽出（リンクカード内の画像を除外するため）
-    let bodyForImages = body
-      // リンクカード全体を除去（class="link-card"やclass="ogp-card"など）
-      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-      // blockquote内のリンクカード情報を除去
-      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '')
-      // aタグで囲まれた外部リンクの画像（OGP画像）を除去
-      .replace(/<a[^>]*href="https?:\/\/(?!girlschannel\.net)[^"]*"[^>]*>[\s\S]*?<img[^>]*>[\s\S]*?<\/a>/gi, '');
-
     // 画像URLを<img>タグから抽出（重複除去）
     const images: string[] = [];
     const seenImageBases = new Set<string>();
@@ -356,6 +392,10 @@ export function parseGirlsChannelHtml(
 
     // 画像URLを追加（重複チェック付き）
     const addImage = (url: string): void => {
+      // OGP用の小さいサムネイルは除外（リンクカードのプレビュー画像）
+      if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
+        return;
+      }
       const base = getImageBase(url);
       if (!seenImageBases.has(base)) {
         seenImageBases.add(base);
@@ -363,37 +403,39 @@ export function parseGirlsChannelHtml(
       }
     };
 
-    // data-src属性から画像URLを抽出（lazyload用）- リンクカード除去済みのbodyから
+    // data-src属性から画像URLを抽出（lazyload用）
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
-    while ((imgMatch = dataSrcRegex.exec(bodyForImages)) !== null) {
+    while ((imgMatch = dataSrcRegex.exec(body)) !== null) {
       addImage(imgMatch[1]);
     }
-    // src属性からも抽出（data-srcがない場合や追加の画像）
+    // src属性からも抽出
     const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-    while ((imgMatch = srcRegex.exec(bodyForImages)) !== null) {
+    while ((imgMatch = srcRegex.exec(body)) !== null) {
       addImage(imgMatch[1]);
     }
 
-    // HTMLを整形
+    // HTMLを整形 - リンクカードからURLを抽出（ネストしたdiv対応）
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card/;
+    body = replaceNestedDivs(body, linkCardPattern, (fullMatch, content) => {
+      // リンクカード内のaタグからhrefを抽出
+      const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
+      if (hrefMatch) {
+        return '\n' + hrefMatch[1] + '\n';
+      }
+      return '';
+    });
+
+    // blockquote内のリンクカードからもURLを抽出
+    body = body.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>([\s\S]*?)<\/blockquote>/gi, (match, content) => {
+      const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
+      if (hrefMatch) {
+        return '\n' + hrefMatch[1] + '\n';
+      }
+      return '';
+    });
+
     body = body
-      // リンクカードからURLを抽出してテキストリンクに変換
-      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi, (match, content) => {
-        // リンクカード内のaタグからhrefを抽出
-        const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
-        if (hrefMatch) {
-          return '\n' + hrefMatch[1] + '\n';
-        }
-        return '';
-      })
-      // blockquote内のリンクカードからもURLを抽出
-      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>([\s\S]*?)<\/blockquote>/gi, (match, content) => {
-        const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
-        if (hrefMatch) {
-          return '\n' + hrefMatch[1] + '\n';
-        }
-        return '';
-      })
       // <!-- logly_body_begin --> などのコメントを除去
       .replace(/<!--[^>]*-->/g, '')
       // <br>を改行に
