@@ -328,26 +328,42 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
-    // 画像URLを<img>タグのdata-src属性から抽出（重複除去）
+    // 画像URLを<img>タグから抽出（重複除去）
     const images: string[] = [];
+    const seenImageBases = new Set<string>();
+
+    // 画像URLのベース部分を取得（クエリパラメータとサイズ指定を除去して重複判定）
+    const getImageBase = (url: string): string => {
+      // クエリパラメータを除去
+      let base = url.split('?')[0];
+      // よくあるサイズ指定パターンを除去（例: _200x200, -thumb, /s200/ など）
+      base = base.replace(/[_-]\d+x\d+/g, '');
+      base = base.replace(/\/s\d+\//g, '/');
+      base = base.replace(/[_-]thumb/gi, '');
+      // ファイル名だけを取得（パスの違いを吸収）
+      const filename = base.split('/').pop() || base;
+      return filename.toLowerCase();
+    };
+
+    // 画像URLを追加（重複チェック付き）
+    const addImage = (url: string): void => {
+      const base = getImageBase(url);
+      if (!seenImageBases.has(base)) {
+        seenImageBases.add(base);
+        images.push(url);
+      }
+    };
+
     // data-src属性から画像URLを抽出（lazyload用）
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
     while ((imgMatch = dataSrcRegex.exec(body)) !== null) {
-      const url = imgMatch[1];
-      if (!images.includes(url)) {
-        images.push(url);
-      }
+      addImage(imgMatch[1]);
     }
-    // data-srcがない場合は通常のsrc属性から（noscript内は除外）
-    if (images.length === 0) {
-      const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-      while ((imgMatch = srcRegex.exec(body)) !== null) {
-        const url = imgMatch[1];
-        if (!images.includes(url)) {
-          images.push(url);
-        }
-      }
+    // src属性からも抽出（data-srcがない場合や追加の画像）
+    const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+    while ((imgMatch = srcRegex.exec(body)) !== null) {
+      addImage(imgMatch[1]);
     }
 
     // HTMLを整形
