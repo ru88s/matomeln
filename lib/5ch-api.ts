@@ -378,11 +378,11 @@ export function parseGirlsChannelHtml(
     }
 
     // URL抽出用パターン（リンクカード全般）
-    const urlExtractionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
+    const urlExtractionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head|comment-url\d*/;
 
-    // 画像抽出: コメント全体から抽出（body div外の画像も取得するため）
-    // OGPサムネイルのパターンは除外
-    const imageExclusionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
+    // 画像抽出: リンクカードのサムネイルのみ除外
+    // comment-url, comment-url1等のリンクカードは除外（OGPサムネイルを避けるため）
+    const imageExclusionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url\d*/;
     let htmlForImages = replaceNestedDivs(commentHtml, imageExclusionPattern, () => '');
     // blockquote内のリンクカードも除去
     htmlForImages = htmlForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
@@ -460,14 +460,19 @@ export function parseGirlsChannelHtml(
     while ((imgMatch = srcRegex.exec(htmlForImages)) !== null) {
       addImage(imgMatch[1]);
     }
-    // gc-img.net URLをHTML全体から抽出（noscript内や他の属性からも取得）
-    const gcImgRegex = /https?:\/\/[^"'\s]+gc-img\.net[^"'\s]+\.(?:jpg|jpeg|png|gif|webp)/gi;
-    while ((imgMatch = gcImgRegex.exec(htmlForImages)) !== null) {
+    // gc-img.net URLを元のcommentHtml全体から抽出（除外処理の影響を受けない）
+    const gcImgRegex = /https?:\/\/[^"'\s<>]+gc-img\.net[^"'\s<>]+\.(?:jpg|jpeg|png|gif|webp)/gi;
+    while ((imgMatch = gcImgRegex.exec(commentHtml)) !== null) {
       addImage(imgMatch[0]);
     }
-    // data-original, data-lazy など他のlazyload属性からも抽出
-    const lazyAttrRegex = /data-(?:original|lazy|echo|delayed)="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-    while ((imgMatch = lazyAttrRegex.exec(htmlForImages)) !== null) {
+    // data-original, data-lazy など他のlazyload属性からも抽出（元HTMLから）
+    const lazyAttrRegex = /data-(?:original|lazy|echo|delayed|src)="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+    while ((imgMatch = lazyAttrRegex.exec(commentHtml)) !== null) {
+      addImage(imgMatch[1]);
+    }
+    // src属性からも元HTMLで抽出（comment-img内の画像を確実に取得）
+    const allSrcRegex = /src="(https?:\/\/[^"]+gc-img[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+    while ((imgMatch = allSrcRegex.exec(commentHtml)) !== null) {
       addImage(imgMatch[1]);
     }
 
