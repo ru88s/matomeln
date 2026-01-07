@@ -380,11 +380,14 @@ export function parseGirlsChannelHtml(
     // URL抽出用パターン（リンクカード全般）
     const urlExtractionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
 
-    // 画像抽出用パターン（OGPサムネイルのみ除外、Instagram埋め込みは含める）
+    // 画像抽出: コメント全体から抽出（body div外の画像も取得するため）
+    // OGPサムネイルのパターンは除外
     const imageExclusionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
-    let bodyForImages = replaceNestedDivs(body, imageExclusionPattern, () => '');
+    let htmlForImages = replaceNestedDivs(commentHtml, imageExclusionPattern, () => '');
     // blockquote内のリンクカードも除去
-    bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
+    htmlForImages = htmlForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
+    // ユーザーアイコン（comment-icon）を除去
+    htmlForImages = htmlForImages.replace(/<div[^>]*class="[^"]*comment-icon[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
 
     // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
     const images: string[] = [];
@@ -449,12 +452,12 @@ export function parseGirlsChannelHtml(
     // data-src属性から画像URLを抽出（lazyload用）- リンクカード除去後
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
-    while ((imgMatch = dataSrcRegex.exec(bodyForImages)) !== null) {
+    while ((imgMatch = dataSrcRegex.exec(htmlForImages)) !== null) {
       addImage(imgMatch[1]);
     }
     // src属性からも抽出
     const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-    while ((imgMatch = srcRegex.exec(bodyForImages)) !== null) {
+    while ((imgMatch = srcRegex.exec(htmlForImages)) !== null) {
       addImage(imgMatch[1]);
     }
 
