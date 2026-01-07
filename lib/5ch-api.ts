@@ -408,6 +408,14 @@ export function parseGirlsChannelHtml(
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
         return;
       }
+      // ニュースサイトのOGP/プレビュー画像CDNは除外（リンクカードのプレビュー画像）
+      if (url.includes('img-mdpr.freetls.fastly.net') ||
+          url.includes('ogp.') ||
+          url.includes('image.news.') ||
+          url.includes('newsimg.') ||
+          url.includes('thumbnail.')) {
+        return;
+      }
       const base = getImageBase(url);
       if (!seenImageBases.has(base)) {
         seenImageBases.add(base);
