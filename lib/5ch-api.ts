@@ -377,13 +377,13 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
-    // まずリンクカードを除去（画像抽出前に行う）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
+    // リンクカード系のクラスパターン（URL抽出用）
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
+
+    // 画像抽出用: リンクカードのサムネイルを除去（comment-url-headも含む）
     let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
     // blockquote内のリンクカードも除去
     bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
-    // 外部リンク（aタグ）に包まれた画像を除去（OGPプレビュー画像）
-    bodyForImages = bodyForImages.replace(/<a[^>]*href="https?:\/\/(?!girlschannel\.net|instagram\.com|cdninstagram\.com)[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '');
 
     // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
     const images: string[] = [];
@@ -427,26 +427,14 @@ export function parseGirlsChannelHtml(
       return filename.toLowerCase();
     };
 
-    // 許可する画像CDNのリスト（Instagram, girlschannel自体の画像、モデルプレス等）
-    const allowedImageDomains = [
-      'cdninstagram.com',
-      'instagram.com',
-      'scontent',  // Instagram CDN
-      'girlschannel.net',
-      'gc-img.', // Girls Channel images
-      'freetls.fastly', // mdpr, modelpress等の画像CDN
-    ];
-
     // 画像URLを追加（重複チェック付き）
     const addImage = (url: string): void => {
       // OGP用の小さいサムネイルは除外
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
         return;
       }
-
-      // 許可されたドメインからの画像のみ抽出
-      const isAllowed = allowedImageDomains.some(domain => url.includes(domain));
-      if (!isAllowed) {
+      // 広告・トラッキング系は除外
+      if (url.includes('doubleclick') || url.includes('googlesyndication') || url.includes('analytics')) {
         return;
       }
 
