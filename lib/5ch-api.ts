@@ -377,10 +377,23 @@ export function parseGirlsChannelHtml(
 
     // HTMLを整形
     body = body
-      // リンクカード全体を除去（class="link-card"やclass="ogp-card"など）
-      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-      // blockquote内のリンクカード情報を除去
-      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+      // リンクカードからURLを抽出してテキストリンクに変換
+      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi, (match, content) => {
+        // リンクカード内のaタグからhrefを抽出
+        const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
+        if (hrefMatch) {
+          return '\n' + hrefMatch[1] + '\n';
+        }
+        return '';
+      })
+      // blockquote内のリンクカードからもURLを抽出
+      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>([\s\S]*?)<\/blockquote>/gi, (match, content) => {
+        const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
+        if (hrefMatch) {
+          return '\n' + hrefMatch[1] + '\n';
+        }
+        return '';
+      })
       // <!-- logly_body_begin --> などのコメントを除去
       .replace(/<!--[^>]*-->/g, '')
       // <br>を改行に
