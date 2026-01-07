@@ -393,40 +393,11 @@ export function parseGirlsChannelHtml(
     const images: string[] = [];
     const seenImageBases = new Set<string>();
 
-    // 画像URLのベース部分を取得（クエリパラメータとサイズ指定を除去して重複判定）
+    // 画像URLのベース部分を取得（完全なファイル名で重複判定）
     const getImageBase = (url: string): string => {
       // クエリパラメータを除去
-      let base = url.split('?')[0];
-
-      // Girls Channel画像の場合、ハッシュ部分を抽出（例: b712965b80e6317fc35c24dd8ac669b7_685.jpeg）
-      if (url.includes('gc-img.net')) {
-        // gc-img URLからハッシュ部分を抽出（_数字の前まで）
-        const gcImgMatch = base.match(/([a-f0-9]{32})_\d+\.(jpg|jpeg|png|webp|gif)/i);
-        if (gcImgMatch) {
-          return gcImgMatch[1].toLowerCase();
-        }
-      }
-
-      // Instagram画像の場合、画像IDを抽出（例: 123456789_123456789_123456789_n.jpg）
-      if (url.includes('cdninstagram.com') || url.includes('scontent')) {
-        // Instagram URLから数字のID部分を抽出
-        const instagramMatch = base.match(/(\d{10,}_\d+_\d+)_n\.(jpg|jpeg|png|webp)/i);
-        if (instagramMatch) {
-          return instagramMatch[1].toLowerCase();
-        }
-        // 別のパターン: 数字だけのファイル名
-        const numericMatch = base.match(/\/(\d{10,})[_.].*\.(jpg|jpeg|png|webp)/i);
-        if (numericMatch) {
-          return numericMatch[1];
-        }
-      }
-
-      // よくあるサイズ指定パターンを除去（例: _200x200, -thumb, /s200/ など）
-      base = base.replace(/[_-]\d+x\d+/g, '');
-      base = base.replace(/\/s\d+x\d+\//g, '/');
-      base = base.replace(/\/s\d+\//g, '/');
-      base = base.replace(/[_-]thumb/gi, '');
-      // ファイル名だけを取得（パスの違いを吸収）
+      const base = url.split('?')[0];
+      // ファイル名を取得（パス全体ではなくファイル名のみで比較）
       const filename = base.split('/').pop() || base;
       return filename.toLowerCase();
     };
