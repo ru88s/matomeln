@@ -377,7 +377,13 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
-    // 画像URLを<img>タグから抽出（重複除去）
+    // まずリンクカードを除去（画像抽出前に行う）
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card/;
+    let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
+    // blockquote内のリンクカードも除去
+    bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
+
+    // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
     const images: string[] = [];
     const seenImageBases = new Set<string>();
 
@@ -396,7 +402,7 @@ export function parseGirlsChannelHtml(
 
     // 画像URLを追加（重複チェック付き）
     const addImage = (url: string): void => {
-      // OGP用の小さいサムネイルは除外（リンクカードのプレビュー画像）
+      // OGP用の小さいサムネイルは除外
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
         return;
       }
@@ -407,20 +413,19 @@ export function parseGirlsChannelHtml(
       }
     };
 
-    // data-src属性から画像URLを抽出（lazyload用）
+    // data-src属性から画像URLを抽出（lazyload用）- リンクカード除去後
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
-    while ((imgMatch = dataSrcRegex.exec(body)) !== null) {
+    while ((imgMatch = dataSrcRegex.exec(bodyForImages)) !== null) {
       addImage(imgMatch[1]);
     }
     // src属性からも抽出
     const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-    while ((imgMatch = srcRegex.exec(body)) !== null) {
+    while ((imgMatch = srcRegex.exec(bodyForImages)) !== null) {
       addImage(imgMatch[1]);
     }
 
     // HTMLを整形 - リンクカードからURLを抽出（ネストしたdiv対応）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card/;
     body = replaceNestedDivs(body, linkCardPattern, (fullMatch, content) => {
       // リンクカード内のaタグからhrefを抽出
       const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
