@@ -328,6 +328,15 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
+    // まずリンクカードを除去してから画像を抽出（リンクカード内の画像を除外するため）
+    let bodyForImages = body
+      // リンクカード全体を除去（class="link-card"やclass="ogp-card"など）
+      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      // blockquote内のリンクカード情報を除去
+      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+      // aタグで囲まれた外部リンクの画像（OGP画像）を除去
+      .replace(/<a[^>]*href="https?:\/\/(?!girlschannel\.net)[^"]*"[^>]*>[\s\S]*?<img[^>]*>[\s\S]*?<\/a>/gi, '');
+
     // 画像URLを<img>タグから抽出（重複除去）
     const images: string[] = [];
     const seenImageBases = new Set<string>();
@@ -354,22 +363,22 @@ export function parseGirlsChannelHtml(
       }
     };
 
-    // data-src属性から画像URLを抽出（lazyload用）
+    // data-src属性から画像URLを抽出（lazyload用）- リンクカード除去済みのbodyから
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
-    while ((imgMatch = dataSrcRegex.exec(body)) !== null) {
+    while ((imgMatch = dataSrcRegex.exec(bodyForImages)) !== null) {
       addImage(imgMatch[1]);
     }
     // src属性からも抽出（data-srcがない場合や追加の画像）
     const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
-    while ((imgMatch = srcRegex.exec(body)) !== null) {
+    while ((imgMatch = srcRegex.exec(bodyForImages)) !== null) {
       addImage(imgMatch[1]);
     }
 
     // HTMLを整形
     body = body
       // リンクカード全体を除去（class="link-card"やclass="ogp-card"など）
-      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box|article-card)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
       // blockquote内のリンクカード情報を除去
       .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '')
       // <!-- logly_body_begin --> などのコメントを除去
