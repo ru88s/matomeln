@@ -449,7 +449,7 @@ export function parseGirlsChannelHtml(
       }
     };
 
-    // data-src属性から画像URLを抽出（lazyload用）- リンクカード除去後
+    // data-src属性から画像URLを抽出（lazyload用）
     const dataSrcRegex = /data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     let imgMatch;
     while ((imgMatch = dataSrcRegex.exec(htmlForImages)) !== null) {
@@ -458,6 +458,16 @@ export function parseGirlsChannelHtml(
     // src属性からも抽出
     const srcRegex = /<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
     while ((imgMatch = srcRegex.exec(htmlForImages)) !== null) {
+      addImage(imgMatch[1]);
+    }
+    // gc-img.net URLをHTML全体から抽出（noscript内や他の属性からも取得）
+    const gcImgRegex = /https?:\/\/[^"'\s]+gc-img\.net[^"'\s]+\.(?:jpg|jpeg|png|gif|webp)/gi;
+    while ((imgMatch = gcImgRegex.exec(htmlForImages)) !== null) {
+      addImage(imgMatch[0]);
+    }
+    // data-original, data-lazy など他のlazyload属性からも抽出
+    const lazyAttrRegex = /data-(?:original|lazy|echo|delayed)="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|gif|webp)[^"]*)"/gi;
+    while ((imgMatch = lazyAttrRegex.exec(htmlForImages)) !== null) {
       addImage(imgMatch[1]);
     }
 
