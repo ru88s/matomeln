@@ -393,8 +393,24 @@ export function parseGirlsChannelHtml(
     const getImageBase = (url: string): string => {
       // クエリパラメータを除去
       let base = url.split('?')[0];
+
+      // Instagram画像の場合、画像IDを抽出（例: 123456789_123456789_123456789_n.jpg）
+      if (url.includes('cdninstagram.com') || url.includes('scontent')) {
+        // Instagram URLから数字のID部分を抽出
+        const instagramMatch = base.match(/(\d{10,}_\d+_\d+)_n\.(jpg|jpeg|png|webp)/i);
+        if (instagramMatch) {
+          return instagramMatch[1].toLowerCase();
+        }
+        // 別のパターン: 数字だけのファイル名
+        const numericMatch = base.match(/\/(\d{10,})[_.].*\.(jpg|jpeg|png|webp)/i);
+        if (numericMatch) {
+          return numericMatch[1];
+        }
+      }
+
       // よくあるサイズ指定パターンを除去（例: _200x200, -thumb, /s200/ など）
       base = base.replace(/[_-]\d+x\d+/g, '');
+      base = base.replace(/\/s\d+x\d+\//g, '/');
       base = base.replace(/\/s\d+\//g, '/');
       base = base.replace(/[_-]thumb/gi, '');
       // ファイル名だけを取得（パスの違いを吸収）
