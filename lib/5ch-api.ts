@@ -390,19 +390,20 @@ export function parseGirlsChannelHtml(
     htmlForImages = htmlForImages.replace(/<div[^>]*class="[^"]*comment-icon[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
 
     // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
-    const images: string[] = [];
-    const seenImageBases = new Set<string>();
+    // ハッシュごとに最大サイズの画像を保持するMap
+    const imagesByHash = new Map<string, { url: string; size: number }>();
+    const seenFilenames = new Set<string>();
 
-    // 画像URLのベース部分を取得（完全なファイル名で重複判定）
-    const getImageBase = (url: string): string => {
-      // クエリパラメータを除去
-      const base = url.split('?')[0];
-      // ファイル名を取得（パス全体ではなくファイル名のみで比較）
-      const filename = base.split('/').pop() || base;
-      return filename.toLowerCase();
+    // gc-img.netのハッシュとサイズを抽出
+    const getGcImgInfo = (url: string): { hash: string; size: number } | null => {
+      const match = url.match(/([a-f0-9]{32})_(\d+)\.(jpg|jpeg|png|webp|gif)/i);
+      if (match) {
+        return { hash: match[1].toLowerCase(), size: parseInt(match[2], 10) };
+      }
+      return null;
     };
 
-    // 画像URLを追加（重複チェック付き）
+    // 画像URLを追加（重複チェック付き、gc-imgは最大サイズを保持）
     const addImage = (url: string): void => {
       // OGP用の小さいサムネイルは除外
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
@@ -413,10 +414,23 @@ export function parseGirlsChannelHtml(
         return;
       }
 
-      const base = getImageBase(url);
-      if (!seenImageBases.has(base)) {
-        seenImageBases.add(base);
-        images.push(url);
+      // gc-img.netの場合はハッシュベースで最大サイズを保持
+      if (url.includes('gc-img.net')) {
+        const info = getGcImgInfo(url);
+        if (info) {
+          const existing = imagesByHash.get(info.hash);
+          if (!existing || info.size > existing.size) {
+            imagesByHash.set(info.hash, { url, size: info.size });
+          }
+          return;
+        }
+      }
+
+      // その他の画像はファイル名で重複判定
+      const filename = (url.split('?')[0].split('/').pop() || url).toLowerCase();
+      if (!seenFilenames.has(filename)) {
+        seenFilenames.add(filename);
+        imagesByHash.set(filename, { url, size: 0 });
       }
     };
 
@@ -519,6 +533,9 @@ export function parseGirlsChannelHtml(
 
     // 日付をパース
     const createdAt = parseGirlsChannelDate(dateStr);
+
+    // imagesByHashからimages配列を生成
+    const images = Array.from(imagesByHash.values()).map(item => item.url);
 
     const comment: Comment = {
       id: `gc-${threadInfo.topicId}-${commentNum}`,
