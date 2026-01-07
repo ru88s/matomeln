@@ -352,6 +352,10 @@ export function parseGirlsChannelHtml(
 
     // HTMLを整形
     body = body
+      // リンクカード全体を除去（class="link-card"やclass="ogp-card"など）
+      .replace(/<div[^>]*class="[^"]*(?:link-card|ogp-card|embed-card|card-box)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      // blockquote内のリンクカード情報を除去
+      .replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '')
       // <!-- logly_body_begin --> などのコメントを除去
       .replace(/<!--[^>]*-->/g, '')
       // <br>を改行に
@@ -373,9 +377,24 @@ export function parseGirlsChannelHtml(
       .replace(/&nbsp;/g, ' ')
       // 「出典：」行を除去（リンクカードの残骸）
       .replace(/出典[：:]\s*[^\n]+/g, '')
-      // 各行の先頭の空白を除去
+      // 各行の先頭の空白を除去し、重複行を除去
       .split('\n')
       .map(line => line.trim())
+      .filter((line, index, arr) => {
+        // 空行は保持（ただし連続は後で処理）
+        if (line === '') return true;
+        // 同じ内容の行が直前にあれば除去（重複除去）
+        if (index > 0 && arr[index - 1] === line) return false;
+        // 短い行（10文字以上）が長い行に含まれている場合は除去
+        if (line.length >= 10) {
+          for (let i = 0; i < arr.length; i++) {
+            if (i !== index && arr[i].length > line.length && arr[i].includes(line)) {
+              return false;
+            }
+          }
+        }
+        return true;
+      })
       .join('\n')
       // 連続した空行を1つに
       .replace(/\n{3,}/g, '\n\n')
