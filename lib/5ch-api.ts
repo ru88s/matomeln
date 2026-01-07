@@ -378,10 +378,12 @@ export function parseGirlsChannelHtml(
     }
 
     // まずリンクカードを除去（画像抽出前に行う）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card/;
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
     let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
     // blockquote内のリンクカードも除去
     bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
+    // 外部リンク（aタグ）に包まれた画像を除去（OGPプレビュー画像）
+    bodyForImages = bodyForImages.replace(/<a[^>]*href="https?:\/\/(?!girlschannel\.net|instagram\.com|cdninstagram\.com)[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '');
 
     // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
     const images: string[] = [];
