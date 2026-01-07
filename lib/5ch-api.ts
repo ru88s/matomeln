@@ -378,7 +378,7 @@ export function parseGirlsChannelHtml(
     }
 
     // まずリンクカードを除去（画像抽出前に行う）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
     let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
     // blockquote内のリンクカードも除去
     bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
@@ -427,13 +427,14 @@ export function parseGirlsChannelHtml(
       return filename.toLowerCase();
     };
 
-    // 許可する画像CDNのリスト（Instagram, girlschannel自体の画像）
+    // 許可する画像CDNのリスト（Instagram, girlschannel自体の画像、モデルプレス等）
     const allowedImageDomains = [
       'cdninstagram.com',
       'instagram.com',
       'scontent',  // Instagram CDN
       'girlschannel.net',
       'gc-img.', // Girls Channel images
+      'freetls.fastly', // mdpr, modelpress等の画像CDN
     ];
 
     // 画像URLを追加（重複チェック付き）
