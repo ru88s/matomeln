@@ -389,21 +389,18 @@ export function parseGirlsChannelHtml(
     // ユーザーアイコン（comment-icon）を除去
     htmlForImages = htmlForImages.replace(/<div[^>]*class="[^"]*comment-icon[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
 
-    // 画像URLを<img>タグから抽出（リンクカード除去後のbodyから）
-    // ハッシュごとに最大サイズの画像を保持するMap
-    const imagesByHash = new Map<string, { url: string; size: number }>();
+    // 画像URLを<img>タグから抽出
+    // 完全なファイル名（ハッシュ+サイズ）で重複判定
     const seenFilenames = new Set<string>();
+    const images: string[] = [];
 
-    // gc-img.netのハッシュとサイズを抽出
-    const getGcImgInfo = (url: string): { hash: string; size: number } | null => {
-      const match = url.match(/([a-f0-9]{32})_(\d+)\.(jpg|jpeg|png|webp|gif)/i);
-      if (match) {
-        return { hash: match[1].toLowerCase(), size: parseInt(match[2], 10) };
-      }
-      return null;
+    // gc-img.netのサイズを抽出（サムネイル判定用）
+    const getGcImgSize = (url: string): number | null => {
+      const match = url.match(/[a-f0-9]{32}_(\d+)\.(jpg|jpeg|png|webp|gif)/i);
+      return match ? parseInt(match[1], 10) : null;
     };
 
-    // 画像URLを追加（重複チェック付き、gc-imgは最大サイズを保持）
+    // 画像URLを追加（重複チェック付き）
     const addImage = (url: string): void => {
       // OGP用の小さいサムネイルは除外
       if (url.includes('/card/') || url.includes('/ogp/') || url.includes('_ogp')) {
@@ -414,23 +411,19 @@ export function parseGirlsChannelHtml(
         return;
       }
 
-      // gc-img.netの場合はハッシュベースで最大サイズを保持
+      // gc-img.netの場合、小さいサムネイル（サイズ < 1000）は除外
       if (url.includes('gc-img.net')) {
-        const info = getGcImgInfo(url);
-        if (info) {
-          const existing = imagesByHash.get(info.hash);
-          if (!existing || info.size > existing.size) {
-            imagesByHash.set(info.hash, { url, size: info.size });
-          }
-          return;
+        const size = getGcImgSize(url);
+        if (size !== null && size < 1000) {
+          return; // サムネイルは除外
         }
       }
 
-      // その他の画像はファイル名で重複判定
+      // ファイル名で重複判定（完全一致）
       const filename = (url.split('?')[0].split('/').pop() || url).toLowerCase();
       if (!seenFilenames.has(filename)) {
         seenFilenames.add(filename);
-        imagesByHash.set(filename, { url, size: 0 });
+        images.push(url);
       }
     };
 
@@ -533,9 +526,6 @@ export function parseGirlsChannelHtml(
 
     // 日付をパース
     const createdAt = parseGirlsChannelDate(dateStr);
-
-    // imagesByHashからimages配列を生成
-    const images = Array.from(imagesByHash.values()).map(item => item.url);
 
     const comment: Comment = {
       id: `gc-${threadInfo.topicId}-${commentNum}`,
