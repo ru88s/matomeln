@@ -377,11 +377,12 @@ export function parseGirlsChannelHtml(
       body = commentHtml.slice(startIndex, endIndex);
     }
 
-    // リンクカード系のクラスパターン（URL抽出用）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
+    // URL抽出用パターン（リンクカード全般）
+    const urlExtractionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
 
-    // 画像抽出用: リンクカードのサムネイルを除去（comment-url-headも含む）
-    let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
+    // 画像抽出用パターン（OGPサムネイルのみ除外、Instagram埋め込みは含める）
+    const imageExclusionPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
+    let bodyForImages = replaceNestedDivs(body, imageExclusionPattern, () => '');
     // blockquote内のリンクカードも除去
     bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
 
@@ -458,7 +459,7 @@ export function parseGirlsChannelHtml(
     }
 
     // HTMLを整形 - リンクカードからURLを抽出（ネストしたdiv対応）
-    body = replaceNestedDivs(body, linkCardPattern, (fullMatch, content) => {
+    body = replaceNestedDivs(body, urlExtractionPattern, (fullMatch, content) => {
       // リンクカード内のaタグからhrefを抽出
       const hrefMatch = content.match(/<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>/i);
       if (hrefMatch) {
