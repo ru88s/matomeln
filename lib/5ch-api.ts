@@ -378,7 +378,7 @@ export function parseGirlsChannelHtml(
     }
 
     // まずリンクカードを除去（画像抽出前に行う）
-    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link/;
+    const linkCardPattern = /link-card|ogp-card|embed-card|card-box|article-card|article-body|body-link|link-box|card-link|comment-url-head/;
     let bodyForImages = replaceNestedDivs(body, linkCardPattern, () => '');
     // blockquote内のリンクカードも除去
     bodyForImages = bodyForImages.replace(/<blockquote[^>]*class="[^"]*link[^"]*"[^>]*>[\s\S]*?<\/blockquote>/gi, '');
@@ -393,6 +393,15 @@ export function parseGirlsChannelHtml(
     const getImageBase = (url: string): string => {
       // クエリパラメータを除去
       let base = url.split('?')[0];
+
+      // Girls Channel画像の場合、ハッシュ部分を抽出（例: b712965b80e6317fc35c24dd8ac669b7_685.jpeg）
+      if (url.includes('gc-img.net')) {
+        // gc-img URLからハッシュ部分を抽出（_数字の前まで）
+        const gcImgMatch = base.match(/([a-f0-9]{32})_\d+\.(jpg|jpeg|png|webp|gif)/i);
+        if (gcImgMatch) {
+          return gcImgMatch[1].toLowerCase();
+        }
+      }
 
       // Instagram画像の場合、画像IDを抽出（例: 123456789_123456789_123456789_n.jpg）
       if (url.includes('cdninstagram.com') || url.includes('scontent')) {
