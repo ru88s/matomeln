@@ -188,6 +188,10 @@ function convertBodyFromDat(body: string): string {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    // 数値文字参照をデコード（10進数: &#65374; → ～）
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    // 数値文字参照をデコード（16進数: &#xFF5E; → ～）
+    .replace(/&#x([0-9a-fA-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     // HTMLタグを除去（リンクなど）
     .replace(/<a[^>]*>([^<]*)<\/a>/gi, '$1')
     .replace(/<[^>]+>/g, '')
@@ -455,6 +459,10 @@ export function parseGirlsChannelHtml(
       .replace(/&gt;/g, '>')
       .replace(/&#0?39;/g, "'")
       .replace(/&nbsp;/g, ' ')
+      // 数値文字参照をデコード（10進数: &#65374; → ～）
+      .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+      // 数値文字参照をデコード（16進数: &#xFF5E; → ～）
+      .replace(/&#x([0-9a-fA-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
       // 「出典：」行を除去（リンクカードの残骸）
       .replace(/出典[：:]\s*[^\n]+/g, '')
       // 各行の先頭の空白を除去し、重複行を除去
