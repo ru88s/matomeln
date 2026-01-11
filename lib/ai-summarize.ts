@@ -20,7 +20,7 @@ export interface AISummarizeResponse {
     post_number: number;
     decorations: {
       color: string | null; // カラーコード or null
-      size_boost: 'large' | null;
+      size_boost: 'large' | 'small' | null;
     };
     reason: string;
   }[];
@@ -283,18 +283,18 @@ export function enhanceAIResponse(
     }
   }
 
-  // 連続した同じ色を修正
-  fixConsecutiveColors(selectedPosts, comments);
+  // 色とサイズの分布を改善
+  improveColorAndSizeDistribution(selectedPosts, comments);
 
   return { selected_posts: selectedPosts };
 }
 
-// 連続した同じ色を修正する（null連続はOK、色付き連続はNG）
-function fixConsecutiveColors(
+// 色とサイズの分布を改善する
+function improveColorAndSizeDistribution(
   selectedPosts: AISummarizeResponse['selected_posts'],
   comments: Comment[]
 ): void {
-  // 使用可能な色（紫以外、バリエーション用にシャッフル的に使用）
+  // 使用可能な色（紫以外、バリエーション用）
   const availableColors = [
     '#3b82f6', // 青
     '#22c55e', // 緑
@@ -302,54 +302,128 @@ function fixConsecutiveColors(
     '#f97316', // オレンジ
     '#eab308', // 黄色
     '#06b6d4', // シアン
-    '#64748b', // グレー
-    '#000000', // 黒
   ];
 
+  const totalPosts = selectedPosts.length;
+
+  // === 1. サイズの正規化と分布調整 ===
+  // smallが多すぎる場合は制限（最大で全体の10%）
+  const maxSmall = Math.max(1, Math.floor(totalPosts * 0.1));
+  let smallCount = 0;
+  let largeCount = 0;
+
+  for (const post of selectedPosts) {
+    const size = post.decorations.size_boost;
+    if (size === 'small') {
+      smallCount++;
+      if (smallCount > maxSmall) {
+        post.decorations.size_boost = null; // 超過分はnullに変更
+      }
+    } else if (size === 'large') {
+      largeCount++;
+    }
+  }
+
+  // largeが多すぎる場合も制限（最大4個）
+  if (largeCount > 4) {
+    let count = 0;
+    for (const post of selectedPosts) {
+      if (post.decorations.size_boost === 'large') {
+        count++;
+        if (count > 4) {
+          post.decorations.size_boost = null;
+        }
+      }
+    }
+  }
+
+  // === 2. 色の分布を改善 ===
+  // まず、スレ主と特殊なレス（レス1、最後）以外の色付き/null比率を確認
+  const normalPosts = selectedPosts.filter((post, index) => {
+    const comment = comments[post.post_number - 1];
+    const isOwner = comment?.is_talk_owner;
+    const isFirst = post.post_number === 1;
+    const isLast = index === selectedPosts.length - 1;
+    return !isOwner && !isFirst && !isLast;
+  });
+
+  // 色付きの目標: 40-50%程度
+  const targetColoredCount = Math.floor(normalPosts.length * 0.45);
+  const currentColoredCount = normalPosts.filter(p => p.decorations.color !== null).length;
+
+  // 色が少なすぎる場合は追加
+  if (currentColoredCount < targetColoredCount - 2) {
+    let colorIndex = 0;
+    let addedCount = 0;
+    const toAdd = targetColoredCount - currentColoredCount;
+
+    // 均等に色を追加（間隔を空けて）
+    const interval = Math.max(2, Math.floor(normalPosts.length / toAdd));
+    for (let i = 0; i < normalPosts.length && addedCount < toAdd; i += interval) {
+      const post = normalPosts[i];
+      if (post.decorations.color === null) {
+        post.decorations.color = availableColors[colorIndex % availableColors.length];
+        colorIndex++;
+        addedCount++;
+      }
+    }
+  }
+
+  // === 3. 連続した同じ状態を修正 ===
   let colorIndex = 0;
+  let consecutiveNull = 0;
+  let consecutiveColored = 0;
+  let lastColor: string | null = null;
 
-  for (let i = 1; i < selectedPosts.length; i++) {
+  for (let i = 0; i < selectedPosts.length; i++) {
     const currentPost = selectedPosts[i];
-    const prevPost = selectedPosts[i - 1];
+    const comment = comments[currentPost.post_number - 1];
+    const isOwner = comment?.is_talk_owner;
+    const isFirst = currentPost.post_number === 1;
+    const isLast = i === selectedPosts.length - 1;
 
-    const currentColor = currentPost.decorations.color;
-    const prevColor = prevPost.decorations.color;
-
-    // 両方nullなら問題なし（色なし連続は許容）
-    if (currentColor === null && prevColor === null) {
+    // スレ主、レス1、最後のレスは色を維持
+    if (isOwner || isFirst || isLast) {
+      // これらのレスはリセット用にカウントはリセット
+      consecutiveNull = 0;
+      consecutiveColored = 0;
+      lastColor = currentPost.decorations.color;
       continue;
     }
 
-    // 現在の色と前の色が同じ場合（両方とも色付き）
-    if (currentColor !== null && prevColor !== null && currentColor === prevColor) {
-      // スレ主のレスは紫色を維持する必要がある
-      const comment = comments[currentPost.post_number - 1];
-      if (comment?.is_talk_owner) {
-        // スレ主の場合は前の色を変更
-        const prevComment = comments[prevPost.post_number - 1];
-        if (!prevComment?.is_talk_owner) {
-          // 前のレスがスレ主でなければ、前の色を変更
-          const newColor = availableColors.find(c => c !== currentColor && c !== '#a855f7');
-          if (newColor) {
-            prevPost.decorations.color = newColor;
-          }
-        }
-        // 前もスレ主なら紫の連続は許容（稀なケース）
+    const currentColor = currentPost.decorations.color;
+
+    if (currentColor === null) {
+      consecutiveColored = 0;
+      consecutiveNull++;
+
+      // null(黒字)が3つ以上続いたら色を付ける
+      if (consecutiveNull >= 3) {
+        const newColor = availableColors[colorIndex % availableColors.length];
+        currentPost.decorations.color = newColor;
+        colorIndex++;
+        consecutiveNull = 0;
+        lastColor = newColor;
       } else {
-        // 通常のレスの場合は現在の色を変更
-        // 前の色と異なる色を選ぶ（ローテーションで選択）
-        let newColor: string | null = null;
-        for (let j = 0; j < availableColors.length; j++) {
-          const candidate = availableColors[(colorIndex + j) % availableColors.length];
-          if (candidate !== prevColor && candidate !== '#a855f7') {
-            newColor = candidate;
-            colorIndex = (colorIndex + j + 1) % availableColors.length;
-            break;
-          }
-        }
-        if (newColor) {
-          currentPost.decorations.color = newColor;
-        }
+        lastColor = null;
+      }
+    } else {
+      consecutiveNull = 0;
+      consecutiveColored++;
+
+      // 同じ色が連続したら変更
+      if (currentColor === lastColor) {
+        const newColor = availableColors.find(c => c !== lastColor) || availableColors[colorIndex % availableColors.length];
+        currentPost.decorations.color = newColor;
+        colorIndex++;
+        lastColor = newColor;
+      } else if (consecutiveColored >= 3) {
+        // 色付きが3つ以上続いたらnullに
+        currentPost.decorations.color = null;
+        consecutiveColored = 0;
+        lastColor = null;
+      } else {
+        lastColor = currentColor;
       }
     }
   }
