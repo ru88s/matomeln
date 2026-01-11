@@ -1,6 +1,6 @@
 import Encoding from 'encoding-japanese';
 
-// 5ch URLから情報を抽出して2ch.scのDATを取得するフォールバックAPI
+// 5ch URLから情報を抽出して5ch.net直接またはか2ch.scのDATを取得するAPI
 
 interface ThreadInfo {
   server: string;
@@ -48,17 +48,183 @@ function normalize5chUrl(url: string): string {
   return url;
 }
 
-// 2ch.scのDATファイルURLを生成
-function generate2chscDatUrls(info: ThreadInfo): string[] {
-  const { board, threadKey } = info;
+// 試行するURLを生成（5ch.net直接 + 2ch.scフォールバック）
+function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; isHtml?: boolean }[] {
+  const { server, board, threadKey } = info;
   const keyPrefix = threadKey.substring(0, 4);
 
   return [
-    // tomcat.2ch.sc を使用（5chと同じスレッドがミラーされている）
-    `https://tomcat.2ch.sc/${board}/dat/${threadKey}.dat`,
-    // DAT落ちした過去ログ
-    `https://tomcat.2ch.sc/${board}/oyster/${keyPrefix}/${threadKey}.dat`,
+    // 1. 5ch.net 直接アクセス（Cloudflare Workers経由）
+    { url: `https://${server}.5ch.net/${board}/dat/${threadKey}.dat`, source: '5ch.net' },
+    // 2. tomcat.2ch.sc（5chミラー）
+    { url: `https://tomcat.2ch.sc/${board}/dat/${threadKey}.dat`, source: '2ch.sc' },
+    // 3. サーバー名.2ch.sc
+    { url: `https://${server}.2ch.sc/${board}/dat/${threadKey}.dat`, source: '2ch.sc' },
+    // 4. DAT落ち過去ログ（tomcat）
+    { url: `https://tomcat.2ch.sc/${board}/oyster/${keyPrefix}/${threadKey}.dat`, source: '2ch.sc-kako' },
+    // 5. DAT落ち過去ログ（サーバー名）
+    { url: `https://${server}.2ch.sc/${board}/oyster/${keyPrefix}/${threadKey}.dat`, source: '2ch.sc-kako' },
+    // 6. 5ch.net HTML版（最後の手段）
+    { url: `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`, source: '5ch.net-html', isHtml: true },
   ];
+}
+
+// 5ch HTMLをDATフォーマットに変換
+function parseHtmlToDat(html: string): string {
+  const lines: string[] = [];
+
+  // スレッドタイトルを取得
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+  let threadTitle = '';
+  if (titleMatch) {
+    threadTitle = titleMatch[1].replace(/\s*\n\s*/g, '').trim();
+  }
+
+  // 各レスを抽出（5chのHTML構造に基づく）
+  // パターン1: <div class="post">...</div>
+  // パターン2: <dt>...</dt><dd>...</dd>
+  // パターン3: <article>...</article>
+
+  // パターン: <article data-number="N">形式
+  const articlePattern = /<article[^>]*data-number="(\d+)"[^>]*>[\s\S]*?<\/article>/gi;
+  let articleMatch;
+
+  while ((articleMatch = articlePattern.exec(html)) !== null) {
+    const article = articleMatch[0];
+    const resNum = articleMatch[1];
+
+    // 名前を抽出
+    const nameMatch = article.match(/<span[^>]*class="[^"]*postusername[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+    let name = nameMatch ? nameMatch[1].replace(/<[^>]+>/g, '').trim() : '名無しさん';
+
+    // 日付とIDを抽出
+    const dateMatch = article.match(/<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]+)<\/span>/i);
+    const dateStr = dateMatch ? dateMatch[1].trim() : '';
+
+    const idMatch = article.match(/ID:([a-zA-Z0-9+\/]+)/);
+    const userId = idMatch ? idMatch[1] : '';
+
+    // 本文を抽出
+    const messageMatch = article.match(/<section[^>]*class="[^"]*post-content[^"]*"[^>]*>([\s\S]*?)<\/section>/i);
+    let body = messageMatch ? messageMatch[1] : '';
+
+    // HTMLタグを適切に変換
+    body = body
+      .replace(/<br\s*\/?>/gi, ' <br> ')
+      .replace(/<a[^>]*href="mailto:[^"]*"[^>]*>([^<]*)<\/a>/gi, '$1')
+      .replace(/<a[^>]*>([^<]*)<\/a>/gi, '$1')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&gt;/g, '>')
+      .replace(/&lt;/g, '<')
+      .replace(/&amp;/g, '&')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+
+    // DATフォーマット: 名前<>メール<>日付 ID:xxx<>本文<>スレタイ（1レス目のみ）
+    const dateWithId = userId ? `${dateStr} ID:${userId}` : dateStr;
+    if (lines.length === 0) {
+      lines.push(`${name}<><>${dateWithId}<>${body}<>${threadTitle}`);
+    } else {
+      lines.push(`${name}<><>${dateWithId}<>${body}<>`);
+    }
+  }
+
+  // articleパターンで取れなかった場合、dt/ddパターンを試す
+  if (lines.length === 0) {
+    const dtPattern = /<dt[^>]*>(\d+)[^<]*<[^>]*>([^<]*)<\/[^>]*>[^<]*<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/gi;
+    let dtMatch;
+
+    while ((dtMatch = dtPattern.exec(html)) !== null) {
+      const name = dtMatch[2].replace(/<[^>]+>/g, '').trim() || '名無しさん';
+      let body = dtMatch[3]
+        .replace(/<br\s*\/?>/gi, ' <br> ')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+
+      if (lines.length === 0) {
+        lines.push(`${name}<><><>${body}<>${threadTitle}`);
+      } else {
+        lines.push(`${name}<><><>${body}<>`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// DATコンテンツを取得してデコード
+async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promise<{ content: string; status: number } | null> {
+  try {
+    const headers: Record<string, string> = isHtml
+      ? {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Cache-Control': 'max-age=0',
+          'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Upgrade-Insecure-Requests': '1',
+        }
+      : {
+          'User-Agent': 'Monazilla/1.00',
+          'Accept-Encoding': 'gzip',
+          'Accept': '*/*',
+        };
+
+    const response = await fetch(datUrl, { headers });
+
+    console.log(`[get5chFallback] ${datUrl} -> ${response.status}`);
+
+    if (!response.ok) {
+      return { content: '', status: response.status };
+    }
+
+    // バイナリデータとして取得
+    const buffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+
+    // 文字コード検出・変換
+    let content: string;
+    const detectedEncoding = Encoding.detect(uint8Array);
+
+    if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP' || detectedEncoding === 'ASCII') {
+      const unicodeArray = Encoding.convert(uint8Array, {
+        to: 'UNICODE',
+        from: detectedEncoding === 'ASCII' ? 'SJIS' : detectedEncoding,
+      });
+      content = Encoding.codeToString(unicodeArray);
+    } else {
+      content = new TextDecoder('utf-8').decode(uint8Array);
+    }
+
+    // HTML版の場合はDATフォーマットに変換
+    if (isHtml) {
+      console.log(`[get5chFallback] Parsing HTML (${content.length} chars)...`);
+      content = parseHtmlToDat(content);
+      console.log(`[get5chFallback] Converted to DAT: ${content.split('\n').length} lines`);
+      if (!content || content.split('\n').length === 0) {
+        console.log(`[get5chFallback] HTML parsing failed`);
+        return { content: '', status: 404 };
+      }
+    } else {
+      // DATフォーマットかどうか確認（<>区切りがあるか）
+      if (!content.includes('<>')) {
+        console.log(`[get5chFallback] Not DAT format: ${datUrl}`);
+        return { content: '', status: 404 };
+      }
+    }
+
+    return { content, status: 200 };
+  } catch (error) {
+    console.error(`[get5chFallback] Error fetching ${datUrl}:`, error);
+    return null;
+  }
 }
 
 export async function onRequest(context: any) {
@@ -87,70 +253,46 @@ export async function onRequest(context: any) {
     );
   }
 
-  const datUrls = generate2chscDatUrls(threadInfo);
-  let lastError: Error | null = null;
-  let lastStatus = 404;
+  const allUrls = generateAllDatUrls(threadInfo);
+  const triedUrls: string[] = [];
+  const errors: { url: string; status: number }[] = [];
 
-  // 複数のURLパターンを順番に試す
-  for (const datUrl of datUrls) {
-    try {
-      const response = await fetch(datUrl, {
-        headers: {
-          'User-Agent': 'Monazilla/1.00',
-          'Accept-Encoding': 'gzip',
-        },
-      });
+  // 全てのURLパターンを順番に試す
+  for (const { url: datUrl, source, isHtml } of allUrls) {
+    triedUrls.push(datUrl);
+    const result = await fetchAndDecodeDat(datUrl, isHtml || false);
 
-      if (response.ok) {
-        // バイナリデータとして取得
-        const buffer = await response.arrayBuffer();
-        const uint8Array = new Uint8Array(buffer);
-
-        // 2ch.scはShift_JISなので変換
-        let content: string;
-        const detectedEncoding = Encoding.detect(uint8Array);
-
-        if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP' || detectedEncoding === 'ASCII') {
-          // Shift_JIS または EUC-JP をUTF-8に変換
-          const unicodeArray = Encoding.convert(uint8Array, {
-            to: 'UNICODE',
-            from: detectedEncoding === 'ASCII' ? 'SJIS' : detectedEncoding,
-          });
-          content = Encoding.codeToString(unicodeArray);
-        } else {
-          // UTF-8の場合はそのままデコード
-          content = new TextDecoder('utf-8').decode(uint8Array);
+    if (result && result.status === 200 && result.content) {
+      console.log(`[get5chFallback] Success: ${datUrl} (${result.content.length} chars)`);
+      return new Response(
+        JSON.stringify({
+          content: result.content,
+          threadInfo,
+          datUrl,
+          source,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
         }
+      );
+    }
 
-        return new Response(
-          JSON.stringify({
-            content,
-            threadInfo,
-            datUrl,
-            source: '2ch.sc',
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }
-        );
-      } else {
-        lastStatus = response.status;
-      }
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error');
+    if (result) {
+      errors.push({ url: datUrl, status: result.status });
     }
   }
 
   // すべてのURLパターンで失敗
+  console.error(`[get5chFallback] All URLs failed for ${url}`, errors);
   return new Response(
     JSON.stringify({
       error: 'DATファイルが見つかりませんでした。スレッドが存在しないか、アクセスが制限されている可能性があります。',
-      details: lastError?.message,
-      triedUrls: datUrls,
+      triedUrls,
+      errors,
     }),
     {
-      status: lastStatus,
+      status: 404,
       headers: { 'Content-Type': 'application/json' },
     }
   );

@@ -67,6 +67,24 @@ export async function markThreadAsSummarized(url: string): Promise<void> {
 }
 
 /**
+ * スキップ済みとして登録
+ */
+export async function markThreadAsSkipped(url: string, reason: string): Promise<void> {
+  const response = await fetch('/api/proxy/threadMemo/skip', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url, reason }),
+  });
+
+  if (!response.ok) {
+    // スキップマーク失敗はログのみ（処理を止めない）
+    console.error('Failed to mark thread as skipped:', url, reason);
+  }
+}
+
+/**
  * URLからスレッドIDを抽出
  */
 export function extractThreadId(url: string): string | null {

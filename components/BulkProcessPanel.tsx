@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus } from '@/lib/bulk-processing';
+import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
 interface BulkProcessPanelProps {
@@ -46,6 +46,30 @@ export default function BulkProcessPanel({
     }
   }, []);
 
+  // スキップ可能なエラーかどうか判定（リトライ→スキップ対象）
+  const isSkippableError = (errorMsg: string): boolean => {
+    const skippablePatterns = [
+      // AIエラー
+      'AIの応答を解析できませんでした',
+      'AI processing failed',
+      'Failed to parse AI response',
+      'overloaded',
+      'rate_limit',
+      'timeout',
+      // 5ch取得エラー
+      'スレッドが見つかりませんでした',
+      '5chスレッドの取得に失敗しました',
+      'スレッドタイトルの取得に失敗しました',
+      'スレッドデータの解析に失敗しました',
+      'DATファイルが見つかりませんでした',
+      'アクセスが制限されている',
+      // コンテンツ検証エラー
+      'タイトルが空のため投稿できません',
+      '本文が空のため投稿できません',
+    ];
+    return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+  };
+
   // 一括処理開始
   const handleStartBulk = useCallback(async () => {
     const urlList = urls
@@ -89,19 +113,59 @@ export default function BulkProcessPanel({
         currentUrl: url,
       }));
 
-      try {
-        // スレッドを読み込んでAIまとめを実行
-        toast.loading(`(${i + 1}/${urlList.length}) 処理中...`, { id: 'bulk-progress' });
-        await onBulkProcess(url);
+      let success = false;
+      let lastError = '';
+      const maxRetries = 2; // 最大2回試行（初回 + リトライ1回）
 
-        // 停止チェック
-        if (shouldStopRef.current) {
-          toast('処理を停止しました', { icon: '⏹️' });
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          // スレッドを読み込んでAIまとめを実行
+          const attemptMsg = attempt > 1 ? ` (リトライ ${attempt - 1}回目)` : '';
+          toast.loading(`(${i + 1}/${urlList.length}) 処理中...${attemptMsg}`, { id: 'bulk-progress' });
+          await onBulkProcess(url);
+
+          // 停止チェック
+          if (shouldStopRef.current) {
+            toast('処理を停止しました', { icon: '⏹️' });
+            break;
+          }
+
+          // スレメモくんへのまとめ済み登録はonBulkProcess内で行う
+          success = true;
           break;
+        } catch (error) {
+          console.error(`Bulk process error (attempt ${attempt}):`, error);
+          lastError = error instanceof Error ? error.message : 'Unknown error';
+
+          // スキップ可能なエラーの場合はリトライ
+          if (isSkippableError(lastError) && attempt < maxRetries) {
+            toast(`(${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
+            await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
+            continue;
+          }
+
+          // スキップ不可のエラー（投稿エラーなど）の場合は即座に中断
+          if (!isSkippableError(lastError)) {
+            failedCount++;
+            failedUrlsList.push({ url, error: lastError });
+            setStatus(prev => ({
+              ...prev,
+              failedUrls: [...prev.failedUrls, { url, error: lastError }],
+            }));
+            toast.error(`(${i + 1}/${urlList.length}) エラー: ${lastError}`, { id: 'bulk-progress' });
+            toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
+            shouldStopRef.current = true;
+            break;
+          }
         }
+      }
 
-        // スレメモくんへのまとめ済み登録はonBulkProcess内で行う
+      // 停止チェック
+      if (shouldStopRef.current) {
+        break;
+      }
 
+      if (success) {
         completedCount++;
         setStatus(prev => ({
           ...prev,
@@ -114,20 +178,27 @@ export default function BulkProcessPanel({
         if (i < urlList.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
-      } catch (error) {
-        console.error('Bulk process error:', error);
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      } else if (!shouldStopRef.current) {
+        // リトライ後も失敗した場合（スキップして次へ進む）
         failedCount++;
-        failedUrlsList.push({ url, error: errorMsg });
+        failedUrlsList.push({ url, error: lastError });
         setStatus(prev => ({
           ...prev,
-          failedUrls: [...prev.failedUrls, { url, error: errorMsg }],
+          failedUrls: [...prev.failedUrls, { url, error: lastError }],
         }));
-        toast.error(`(${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
+        toast.error(`(${i + 1}/${urlList.length}) 取得失敗: ${lastError}（スキップ）`, { id: 'bulk-progress' });
 
-        // 投稿エラー時は処理を中断（ライブドアの投稿制限の可能性が高い）
-        toast.error('エラーが発生したため処理を中断しました', { duration: 5000 });
-        break;
+        // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
+        try {
+          await markThreadAsSkipped(url, lastError);
+        } catch (skipError) {
+          console.error('Failed to mark as skipped:', skipError);
+        }
+
+        // スキップして次のURLに進む
+        if (i < urlList.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
       }
     }
 
@@ -202,12 +273,55 @@ export default function BulkProcessPanel({
           currentUrl: url,
         }));
 
-        try {
-          toast.loading(`定期実行 (${i + 1}/${urlList.length}) 処理中...`, { id: 'bulk-progress' });
-          await onBulkProcess(url);
+        let success = false;
+        let lastError = '';
+        const maxRetries = 2; // 最大2回試行（初回 + リトライ1回）
 
-          if (shouldStopRef.current) break;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const attemptMsg = attempt > 1 ? ` (リトライ ${attempt - 1}回目)` : '';
+            toast.loading(`定期実行 (${i + 1}/${urlList.length}) 処理中...${attemptMsg}`, { id: 'bulk-progress' });
+            await onBulkProcess(url);
 
+            if (shouldStopRef.current) break;
+
+            success = true;
+            break;
+          } catch (error) {
+            console.error(`Auto run error (attempt ${attempt}):`, error);
+            lastError = error instanceof Error ? error.message : 'Unknown error';
+
+            // スキップ可能なエラーの場合はリトライ
+            if (isSkippableError(lastError) && attempt < maxRetries) {
+              toast(`定期実行 (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
+              await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
+              continue;
+            }
+
+            // スキップ不可のエラー（投稿エラーなど）の場合は即座に中断
+            if (!isSkippableError(lastError)) {
+              failedCount++;
+              consecutiveFailures++;
+              consecutiveErrorsRef.current++;
+              setStatus(prev => ({
+                ...prev,
+                failedUrls: [...prev.failedUrls, { url, error: lastError }],
+              }));
+              toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${lastError}`, { id: 'bulk-progress' });
+              toast.error('投稿エラーが発生したため定期実行を停止しました', { duration: 5000 });
+              setAutoRunEnabled(false);
+              shouldStopRef.current = true;
+              break;
+            }
+          }
+        }
+
+        // 停止チェック
+        if (shouldStopRef.current) {
+          break;
+        }
+
+        if (success) {
           completedCount++;
           consecutiveFailures = 0; // 成功したらリセット
           consecutiveErrorsRef.current = 0; // 全体のエラーカウントもリセット
@@ -221,24 +335,27 @@ export default function BulkProcessPanel({
           if (i < urlList.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 3000));
           }
-        } catch (error) {
-          console.error('Auto run error:', error);
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        } else if (!shouldStopRef.current) {
+          // リトライ後も失敗した場合（スキップして次へ進む）
           failedCount++;
           consecutiveFailures++;
-          consecutiveErrorsRef.current++;
-
           setStatus(prev => ({
             ...prev,
-            failedUrls: [...prev.failedUrls, { url, error: errorMsg }],
+            failedUrls: [...prev.failedUrls, { url, error: lastError }],
           }));
-          toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${errorMsg}`, { id: 'bulk-progress' });
+          toast.error(`定期実行 (${i + 1}/${urlList.length}) 取得失敗: ${lastError}（スキップ）`, { id: 'bulk-progress' });
 
-          // 投稿エラー時は処理を中断（ライブドアの投稿制限の可能性が高い）
-          toast.error('エラーが発生したため定期実行を停止しました', { duration: 5000 });
-          setAutoRunEnabled(false);
-          shouldStopRef.current = true;
-          break;
+          // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
+          try {
+            await markThreadAsSkipped(url, lastError);
+          } catch (skipError) {
+            console.error('Failed to mark as skipped:', skipError);
+          }
+
+          // スキップして次のURLに進む
+          if (i < urlList.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
         }
       }
 
@@ -455,12 +572,13 @@ export default function BulkProcessPanel({
             <span className="text-red-600">失敗: {status.failedUrls.length}件</span>
           </div>
           {status.failedUrls.length > 0 && (
-            <details className="mt-2">
-              <summary className="text-sm text-red-600 cursor-pointer">失敗したURL</summary>
-              <ul className="mt-1 text-xs text-gray-600 space-y-1">
+            <details className="mt-2" open>
+              <summary className="text-sm text-red-600 cursor-pointer font-medium">▼ 失敗したURL</summary>
+              <ul className="mt-2 text-xs space-y-2 max-h-60 overflow-y-auto">
                 {status.failedUrls.map((f, i) => (
-                  <li key={i} className="truncate">
-                    {f.url}: {f.error}
+                  <li key={i} className="bg-red-50 rounded p-2 border border-red-200">
+                    <div className="text-gray-700 font-mono text-xs break-all mb-1">{f.url}</div>
+                    <div className="text-red-600 break-words">{f.error}</div>
                   </li>
                 ))}
               </ul>

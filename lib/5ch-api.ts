@@ -134,10 +134,24 @@ export function parseDatFile(
     comments.push(comment);
   });
 
+  // コメントが空の場合はエラー
+  if (comments.length === 0) {
+    console.error('[parseDatFile] DATファイルからコメントを抽出できませんでした');
+    console.error('[parseDatFile] DAT内容 (先頭500文字):', datContent.substring(0, 500));
+    throw new Error('スレッドデータの解析に失敗しました: コメントが0件です');
+  }
+
+  // タイトルが空の場合はエラー（フォールバックタイトルを使わない）
+  if (!threadTitle) {
+    console.error('[parseDatFile] スレッドタイトルを取得できませんでした');
+    console.error('[parseDatFile] DAT 1行目:', lines[0]?.substring(0, 200));
+    throw new Error('スレッドタイトルの取得に失敗しました');
+  }
+
   // Talk情報を作成
   const talk: Talk = {
     id: `5ch-${threadInfo.threadKey}`,
-    title: threadTitle || `${threadInfo.board}スレッド`,
+    title: threadTitle,
     body: '',
     created_at: comments[0]?.created_at || new Date().toISOString(),
     updated_at: comments[comments.length - 1]?.created_at || new Date().toISOString(),
@@ -824,20 +838,36 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
   }
 
   try {
-    // Deno Deploy APIを使用（Cloudflare Workersは5chにブロックされているため）
+    // Deno Deploy APIを使用
     // 正規化されたURLを使用
     const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(normalizedUrl)}`);
 
     if (!response.ok) {
-      // Deno Deployが失敗した場合、Cloudflare Functions経由で2ch.scにフォールバック
-      console.log('5ch.net failed, trying 2ch.sc fallback via Cloudflare...');
+      // Deno Deployが失敗した場合、Cloudflare Functions経由でフォールバック
+      console.log('[fetch5chThread] Deno Deploy HTTP error, trying Cloudflare fallback...');
       return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
     }
 
     const data = await response.json();
 
+    // Deno DeployがJSONエラーを返した場合もフォールバック
+    if (data.error) {
+      console.log('[fetch5chThread] Deno Deploy returned error:', data.error);
+      console.log('[fetch5chThread] Trying Cloudflare fallback...');
+      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+    }
+
     // 文字化けチェック（置換文字や異常な文字パターンを検出）
     const content = data.content || '';
+
+    // ログ: DATコンテンツの状態を確認
+    console.log(`[fetch5chThread] DAT取得結果: ${content.length}文字, URL: ${normalizedUrl}`);
+    if (content.length === 0) {
+      console.error('[fetch5chThread] 警告: DATコンテンツが空です');
+    } else if (content.length < 100) {
+      console.warn('[fetch5chThread] 警告: DATコンテンツが非常に短いです:', content);
+    }
+
     const replacementCharCount = (content.match(/\uFFFD/g) || []).length;
     const totalChars = content.length;
     // 置換文字が1%以上、または100個以上ある場合は文字化けとみなす
@@ -861,10 +891,12 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
 
 // 5ch URLを使って2ch.scからDATを取得（フォールバック用）
 async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Promise<{ talk: Talk; comments: Comment[] }> {
+  console.log('[fetch5chFrom2chsc] 2ch.scフォールバック開始:', url);
   const response = await fetch(`/api/proxy/get5chFallback?url=${encodeURIComponent(url)}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    console.error('[fetch5chFrom2chsc] 2ch.scフォールバック失敗:', response.status, error);
     if (response.status === 403) {
       throw new Error('サーバーからのアクセスが制限されています。しばらく時間をおいてから再度お試しください。');
     }
@@ -875,7 +907,17 @@ async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Pro
   }
 
   const data = await response.json();
-  return parseDatFile(data.content, threadInfo);
+  const content = data.content || '';
+
+  // ログ: 2ch.scフォールバックのDATコンテンツの状態を確認
+  console.log(`[fetch5chFrom2chsc] DAT取得結果: ${content.length}文字`);
+  if (content.length === 0) {
+    console.error('[fetch5chFrom2chsc] 警告: DATコンテンツが空です');
+  } else if (content.length < 100) {
+    console.warn('[fetch5chFrom2chsc] 警告: DATコンテンツが非常に短いです:', content);
+  }
+
+  return parseDatFile(content, threadInfo);
 }
 
 // open2chスレッドデータを取得

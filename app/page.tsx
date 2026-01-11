@@ -691,6 +691,26 @@ export default function Home() {
         ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
         : generatedHTML.body;
 
+      // 投稿前のバリデーション: タイトルと本文が空の場合はエラー
+      if (!generatedHTML.title || generatedHTML.title.trim().length === 0) {
+        console.error('[handleBulkProcess] タイトルが空です:', { title: generatedHTML.title, url });
+        throw new Error('タイトルが空のため投稿できません');
+      }
+      if (!fullBody || fullBody.trim().length === 0) {
+        console.error('[handleBulkProcess] 本文が空です:', { body: fullBody, url });
+        throw new Error('本文が空のため投稿できません');
+      }
+      // フォールバックタイトルが使われた可能性をチェック
+      if (generatedHTML.title.includes('スレッド') && !talk.title.includes('スレッド')) {
+        console.warn('[handleBulkProcess] タイトルがフォールバック値の可能性:', generatedHTML.title);
+      }
+
+      console.log('[handleBulkProcess] 投稿データ:', {
+        title: generatedHTML.title.substring(0, 50),
+        bodyLength: fullBody.length,
+        url
+      });
+
       // ブログ投稿（30秒タイムアウト）
       const postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
         method: 'POST',
