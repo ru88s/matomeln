@@ -109,6 +109,7 @@ ${postsText}
 - ストーリーの流れが分かるように選んでください
 - レス1は含めないでください（自動追加されます）
 - スレ主[主]のレスは優先的に選んでください
+- 10文字未満の短いレスは選ばないでください（「あ」「草」など）
 
 【色の使用ルール】
 - 使用できる色: "red", "blue", "green", "pink", "orange", "purple", null
@@ -117,9 +118,9 @@ ${postsText}
 - 色なし(null)を積極的に使ってください（50%程度）
 
 【サイズルール】
-- "large": 特に重要・面白いレスのみ（2〜4個）
+- "large": 短くてインパクトのあるレスのみ（50文字以内、2〜4個）
 - null: 通常（デフォルト）
-- "small": 補足的なレス
+- "small": 補足的なレス（使用は控えめに）
 
 以下のJSON形式で返答してください：
 {"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}]}
@@ -163,6 +164,21 @@ export function enhanceAIResponse(
   let selectedPosts = [...aiResponse.selected_posts];
   const totalPosts = comments.length;
 
+  // 短すぎるレス（10文字未満）を除外（レス1とアンカー参照元は除く）
+  const MIN_BODY_LENGTH = 10;
+  selectedPosts = selectedPosts.filter(post => {
+    if (post.post_number === 1) return true; // レス1は除外しない
+    const comment = comments[post.post_number - 1];
+    if (!comment) return false;
+    // 本文からアンカー(>>数字)を除いた文字数をカウント
+    const bodyWithoutAnchors = comment.body.replace(/>>(\d+)/g, '').trim();
+    if (bodyWithoutAnchors.length < MIN_BODY_LENGTH) {
+      console.log(`⚠️ 短いレスを除外: ${post.post_number}「${bodyWithoutAnchors.substring(0, 20)}」(${bodyWithoutAnchors.length}文字)`);
+      return false;
+    }
+    return true;
+  });
+
   // AIが全レスを選択した場合のみ制限（50%以上選択 = 全選択とみなす）
   // 50%以下になるように間引く
   const selectionRatio = selectedPosts.length / totalPosts;
@@ -179,6 +195,21 @@ export function enhanceAIResponse(
       }
     }
     selectedPosts = filtered;
+  }
+
+  // 長いレス（50文字以上）にlargeサイズを付けない
+  const MAX_LARGE_BODY_LENGTH = 50;
+  for (const post of selectedPosts) {
+    if (post.decorations.size_boost === 'large') {
+      const comment = comments[post.post_number - 1];
+      if (comment) {
+        const bodyWithoutAnchors = comment.body.replace(/>>(\d+)/g, '').trim();
+        if (bodyWithoutAnchors.length > MAX_LARGE_BODY_LENGTH) {
+          console.log(`⚠️ 長いレスのlargeを解除: ${post.post_number}(${bodyWithoutAnchors.length}文字)`);
+          post.decorations.size_boost = null;
+        }
+      }
+    }
   }
 
   const selectedNumbers = new Set(selectedPosts.map(p => p.post_number));
