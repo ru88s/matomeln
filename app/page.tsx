@@ -727,6 +727,7 @@ export default function Home() {
             body: fullBody,
             sourceUrl: url,
             tags: talk.tag_names?.join(',') || '',
+            thumbnailUrl: generatedThumbnailUrl || '',
           }),
         }, 30000);
       } else {
@@ -786,6 +787,7 @@ export default function Home() {
                         body: fullBody,
                         sourceUrl: url,
                         tags: talk.tag_names?.join(',') || '',
+                        thumbnailUrl: generatedThumbnailUrl || '',
                       }),
                     }, 30000);
                   } else {

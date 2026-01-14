@@ -58,7 +58,7 @@ export async function onRequest(context) {
 
   try {
     const requestData = await context.request.json();
-    const { apiUrl, apiKey, title, body, sourceUrl, tags } = requestData;
+    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl } = requestData;
 
     if (!apiUrl || !apiKey || !title || !body) {
       return new Response(
@@ -81,10 +81,37 @@ export async function onRequest(context) {
       );
     }
 
-    // APIエンドポイントを構築
-    const endpoint = apiUrl.endsWith('/')
-      ? `${apiUrl}api/posts/import`
-      : `${apiUrl}/api/posts/import`;
+    // APIベースURLを構築
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+    // サムネイルをアップロード（指定されている場合）
+    let uploadedThumbnailUrl = null;
+    if (thumbnailUrl) {
+      try {
+        console.log(`📷 サムネイルアップロード開始: ${thumbnailUrl}`);
+        const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify({ imageUrl: thumbnailUrl }),
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          if (uploadData.success && uploadData.data?.url) {
+            uploadedThumbnailUrl = uploadData.data.url;
+            console.log(`✅ サムネイルアップロード成功: ${uploadedThumbnailUrl}`);
+          }
+        } else {
+          console.log(`⚠️ サムネイルアップロード失敗: ${uploadResponse.status}`);
+        }
+      } catch (uploadError) {
+        console.log(`⚠️ サムネイルアップロードエラー: ${uploadError.message}`);
+        // サムネイルアップロードが失敗しても投稿は続行
+      }
+    }
 
     // スラッグと抜粋を生成
     const slug = generateSlug(title);
@@ -94,7 +121,7 @@ export async function onRequest(context) {
     const tagsString = tags || '';
 
     // ガールズまとめ速報APIへPOST
-    const response = await fetch(endpoint, {
+    const response = await fetch(`${baseUrl}/api/posts/import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,6 +132,7 @@ export async function onRequest(context) {
         slug: slug,
         body_html: body,
         excerpt: excerpt,
+        thumbnail_url: uploadedThumbnailUrl,
         source_url: sourceUrl || '',
         tags: tagsString,
       }),

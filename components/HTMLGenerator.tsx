@@ -148,6 +148,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             body: fullBody,
             sourceUrl: sourceInfo?.originalUrl || '',
             tags: talk?.tag_names?.join(',') || '',
+            thumbnailUrl: thumbnailUrl || '',
           }),
         });
       } else {
@@ -198,6 +199,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                   body: fullBody,
                   sourceUrl: sourceInfo?.originalUrl || '',
                   tags: talk?.tag_names?.join(',') || '',
+                  thumbnailUrl: thumbnailUrl || '',
                 }),
               });
             } else {
