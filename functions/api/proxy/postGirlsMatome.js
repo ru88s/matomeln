@@ -90,8 +90,8 @@ export async function onRequest(context) {
     const slug = generateSlug(title);
     const excerpt = generateExcerpt(body);
 
-    // タグを配列に変換
-    const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+    // タグを文字列に（カンマ区切り）
+    const tagsString = tags || '';
 
     // ガールズまとめ速報APIへPOST
     const response = await fetch(endpoint, {
@@ -103,11 +103,10 @@ export async function onRequest(context) {
       body: JSON.stringify({
         title: title,
         slug: slug,
-        content: body,
+        body_html: body,
         excerpt: excerpt,
         source_url: sourceUrl || '',
-        tags: tagArray,
-        status: 'draft', // 下書きとしてインポート
+        tags: tagsString,
       }),
     });
 
