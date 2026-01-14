@@ -58,7 +58,7 @@ export async function onRequest(context) {
 
   try {
     const requestData = await context.request.json();
-    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl } = requestData;
+    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl, thumbnailBase64 } = requestData;
 
     if (!apiUrl || !apiKey || !title || !body) {
       return new Response(
@@ -86,9 +86,49 @@ export async function onRequest(context) {
 
     // サムネイルをアップロード（指定されている場合）
     let uploadedThumbnailUrl = null;
-    if (thumbnailUrl) {
+
+    // base64サムネイルがある場合（AI生成サムネイル）
+    if (thumbnailBase64) {
       try {
-        console.log(`📷 サムネイルアップロード開始: ${thumbnailUrl}`);
+        console.log(`📷 Base64サムネイルアップロード開始`);
+
+        // Base64をBlobに変換
+        const binary = atob(thumbnailBase64);
+        const array = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          array[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([array], { type: 'image/png' });
+
+        // FormDataで送信
+        const formData = new FormData();
+        formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
+
+        const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
+          method: 'POST',
+          headers: {
+            'X-API-Key': apiKey,
+          },
+          body: formData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          if (uploadData.success && uploadData.data?.url) {
+            uploadedThumbnailUrl = uploadData.data.url;
+            console.log(`✅ Base64サムネイルアップロード成功: ${uploadedThumbnailUrl}`);
+          }
+        } else {
+          console.log(`⚠️ Base64サムネイルアップロード失敗: ${uploadResponse.status}`);
+        }
+      } catch (uploadError) {
+        console.log(`⚠️ Base64サムネイルアップロードエラー: ${uploadError.message}`);
+      }
+    }
+    // URLサムネイルがある場合（既存画像URL）
+    else if (thumbnailUrl) {
+      try {
+        console.log(`📷 URLサムネイルアップロード開始: ${thumbnailUrl}`);
         const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
           method: 'POST',
           headers: {
@@ -102,14 +142,13 @@ export async function onRequest(context) {
           const uploadData = await uploadResponse.json();
           if (uploadData.success && uploadData.data?.url) {
             uploadedThumbnailUrl = uploadData.data.url;
-            console.log(`✅ サムネイルアップロード成功: ${uploadedThumbnailUrl}`);
+            console.log(`✅ URLサムネイルアップロード成功: ${uploadedThumbnailUrl}`);
           }
         } else {
-          console.log(`⚠️ サムネイルアップロード失敗: ${uploadResponse.status}`);
+          console.log(`⚠️ URLサムネイルアップロード失敗: ${uploadResponse.status}`);
         }
       } catch (uploadError) {
-        console.log(`⚠️ サムネイルアップロードエラー: ${uploadError.message}`);
-        // サムネイルアップロードが失敗しても投稿は続行
+        console.log(`⚠️ URLサムネイルアップロードエラー: ${uploadError.message}`);
       }
     }
 

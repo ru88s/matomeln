@@ -594,6 +594,7 @@ export default function Home() {
       // 3. AIサムネ生成 & アップロード
       // =====================
       let generatedThumbnailUrl = '';
+      let generatedThumbnailBase64 = '';  // girls-matome用のbase64
       if (geminiApiKey && blogSettings) {
         // キャラクターが複数ある場合、AIが記事に合うキャラを選択
         if (allCharacters.length > 0) {
@@ -613,34 +614,40 @@ export default function Home() {
           );
 
           if (thumbnailResult.success && thumbnailResult.imageBase64) {
-            // Base64画像をBlobに変換してアップロード
-            toast.loading('サムネイルをアップロード中...', { id: 'bulk-step' });
-            const binary = atob(thumbnailResult.imageBase64);
-            const array = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              array[i] = binary.charCodeAt(i);
-            }
-            const blob = new Blob([array], { type: 'image/png' });
-
-            const formData = new FormData();
-            formData.append('blogId', blogSettings.blogId);
-            formData.append('apiKey', blogSettings.apiKey);
-            formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
-
-            const uploadResponse = await fetch('/api/proxy/uploadImage', {
-              method: 'POST',
-              body: formData,
-            });
-
-            if (uploadResponse.ok) {
-              const uploadData = await uploadResponse.json();
-              if (uploadData.url) {
-                generatedThumbnailUrl = uploadData.url;
-                setThumbnailUrl(generatedThumbnailUrl);
-                toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
-              }
+            // girls-matomeの場合はbase64を保持（postGirlsMatomeで直接アップロード）
+            if (blogSettings.blogType === 'girls-matome') {
+              generatedThumbnailBase64 = thumbnailResult.imageBase64;
+              toast.success('サムネイル生成完了', { id: 'bulk-step' });
             } else {
-              console.warn('サムネイルアップロード失敗');
+              // Livedoorの場合は従来通りアップロード
+              toast.loading('サムネイルをアップロード中...', { id: 'bulk-step' });
+              const binary = atob(thumbnailResult.imageBase64);
+              const array = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) {
+                array[i] = binary.charCodeAt(i);
+              }
+              const blob = new Blob([array], { type: 'image/png' });
+
+              const formData = new FormData();
+              formData.append('blogId', blogSettings.blogId);
+              formData.append('apiKey', blogSettings.apiKey);
+              formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
+
+              const uploadResponse = await fetch('/api/proxy/uploadImage', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (uploadResponse.ok) {
+                const uploadData = await uploadResponse.json();
+                if (uploadData.url) {
+                  generatedThumbnailUrl = uploadData.url;
+                  setThumbnailUrl(generatedThumbnailUrl);
+                  toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+                }
+              } else {
+                console.warn('サムネイルアップロード失敗');
+              }
             }
           } else {
             console.warn('サムネイル生成失敗:', thumbnailResult.error);
@@ -728,6 +735,7 @@ export default function Home() {
             sourceUrl: url,
             tags: talk.tag_names?.join(',') || '',
             thumbnailUrl: generatedThumbnailUrl || '',
+            thumbnailBase64: generatedThumbnailBase64 || '',
           }),
         }, 30000);
       } else {
@@ -788,6 +796,7 @@ export default function Home() {
                         sourceUrl: url,
                         tags: talk.tag_names?.join(',') || '',
                         thumbnailUrl: generatedThumbnailUrl || '',
+                        thumbnailBase64: generatedThumbnailBase64 || '',
                       }),
                     }, 30000);
                   } else {
