@@ -90,7 +90,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // デバッグ: 渡されたコメントを確認
       console.log('📝 HTMLGenerator: selectedComments順序:', selectedComments.map(c => `${c.res_id}`).join(', '));
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType).then(html => {
         setGeneratedHTML(html);
       });
     }
@@ -103,7 +103,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };
