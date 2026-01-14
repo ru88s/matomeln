@@ -495,7 +495,7 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean): Prom
 
   // アンカーリンクを作成（>>数字）
   formatted = formatted.replace(/&gt;&gt;(\d+)/g, (match, num) => {
-    return `<a href="#${num}" style="color: #ff69b4; text-decoration: none; font-weight: bold;">&gt;&gt;${num}</a>`;
+    return `<a href="#${num}" style="color: #467CE2; text-decoration: none; font-weight: bold;">&gt;&gt;${num}</a>`;
   });
 
   // URLをリンクカードに変換

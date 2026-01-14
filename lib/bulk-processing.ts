@@ -42,9 +42,19 @@ export async function fetchUnsummarizedUrls(options?: {
   // talk.jp のURLを除外（一括処理対象外）
   const filteredUrls = data.urls.filter(url => !url.includes('talk.jp'));
 
+  // スレッドIDでソート（新しい順 = ID降順）
+  // 5ch URLのスレッドIDはUnix timestamp形式
+  const sortedUrls = filteredUrls.sort((a, b) => {
+    const idA = extractThreadId(a);
+    const idB = extractThreadId(b);
+    if (!idA || !idB) return 0;
+    // 降順（新しい順）
+    return parseInt(idB) - parseInt(idA);
+  });
+
   return {
-    urls: filteredUrls,
-    count: filteredUrls.length,
+    urls: sortedUrls,
+    count: sortedUrls.length,
   };
 }
 

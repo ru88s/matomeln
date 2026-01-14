@@ -26,6 +26,42 @@ export interface AISummarizeResponse {
   }[];
 }
 
+// キーワードスパムを検出（同じ単語の繰り返し）
+export function isKeywordSpam(text: string): boolean {
+  // 本文が短すぎる場合はスパムではない
+  if (text.length < 50) return false;
+
+  // 日本語の単語を抽出（2文字以上の連続したひらがな/カタカナ/漢字）
+  const words = text.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]{2,}/g) || [];
+  if (words.length < 10) return false; // 単語数が少なすぎる場合は判定不可
+
+  // 単語の出現回数をカウント
+  const wordCount: Record<string, number> = {};
+  for (const word of words) {
+    wordCount[word] = (wordCount[word] || 0) + 1;
+  }
+
+  // ユニークな単語の数
+  const uniqueWords = Object.keys(wordCount).length;
+
+  // 3回以上繰り返される単語の数
+  const repeatedWords = Object.values(wordCount).filter(count => count >= 3).length;
+
+  // スパム判定条件:
+  // 1. ユニーク率が低い（全単語の30%未満がユニーク）
+  const uniqueRatio = uniqueWords / words.length;
+  // 2. 繰り返し単語が多い（ユニーク単語の50%以上が3回以上繰り返し）
+  const repeatRatio = repeatedWords / uniqueWords;
+
+  // どちらかの条件を満たせばスパム
+  if (uniqueRatio < 0.3 || repeatRatio > 0.5) {
+    console.log(`🚫 キーワードスパム検出: ユニーク率=${(uniqueRatio * 100).toFixed(1)}%, 繰り返し率=${(repeatRatio * 100).toFixed(1)}%`);
+    return true;
+  }
+
+  return false;
+}
+
 // 不正なUnicode文字（孤立サロゲート）を除去
 function sanitizeText(text: string): string {
   // 文字列を1文字ずつチェックして、孤立サロゲートを除去
@@ -163,6 +199,18 @@ export function enhanceAIResponse(
 ): AISummarizeResponse {
   let selectedPosts = [...aiResponse.selected_posts];
   const totalPosts = comments.length;
+
+  // キーワードスパムを除外（レス1は除く）
+  selectedPosts = selectedPosts.filter(post => {
+    if (post.post_number === 1) return true; // レス1は除外しない
+    const comment = comments[post.post_number - 1];
+    if (!comment) return false;
+    if (isKeywordSpam(comment.body)) {
+      console.log(`🚫 スパムレスを除外: ${post.post_number}`);
+      return false;
+    }
+    return true;
+  });
 
   // 短すぎるレス（10文字未満）を除外（レス1とアンカー参照元は除く）
   const MIN_BODY_LENGTH = 10;
