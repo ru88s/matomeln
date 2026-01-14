@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { BlogSettings, ThumbnailCharacter } from '@/lib/types';
+import { BlogSettings, ThumbnailCharacter, BlogType } from '@/lib/types';
 import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
 
 // 開発者モードのパスワード
@@ -57,7 +57,7 @@ export default function SettingsModal({
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
-  const [blogForm, setBlogForm] = useState({ name: '', blogId: '', apiKey: '' });
+  const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor' });
   const [thumbnailCharacters, setThumbnailCharacters] = useState<ThumbnailCharacter[]>([]);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
@@ -322,14 +322,14 @@ export default function SettingsModal({
   // ブログ追加モーダルを開く
   const openAddBlogModal = () => {
     setEditingBlog(null);
-    setBlogForm({ name: '', blogId: '', apiKey: '' });
+    setBlogForm({ name: '', blogId: '', apiKey: '', blogType: 'livedoor' });
     setShowBlogModal(true);
   };
 
   // ブログ編集モーダルを開く
   const openEditBlogModal = (blog: BlogSettings) => {
     setEditingBlog(blog);
-    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey });
+    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey, blogType: blog.blogType || 'livedoor' });
     setShowBlogModal(true);
   };
 
@@ -344,7 +344,7 @@ export default function SettingsModal({
       // 編集
       const updated = blogs.map(b =>
         b.id === editingBlog.id
-          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey }
+          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey, blogType: blogForm.blogType }
           : b
       );
       onBlogsChange(updated);
@@ -356,6 +356,7 @@ export default function SettingsModal({
         name: blogForm.name,
         blogId: blogForm.blogId,
         apiKey: blogForm.apiKey,
+        blogType: blogForm.blogType,
       };
       onBlogsChange([...blogs, newBlog]);
       onSelectedBlogIdChange(newBlog.id);
@@ -930,29 +931,60 @@ export default function SettingsModal({
             <div className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ブログタイプ
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBlogForm({ ...blogForm, blogType: 'livedoor' })}
+                    className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      blogForm.blogType === 'livedoor'
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    ライブドアブログ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBlogForm({ ...blogForm, blogType: 'girls-matome' })}
+                    className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      blogForm.blogType === 'girls-matome'
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    ガールズまとめ
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   表示名
                 </label>
                 <input
                   type="text"
                   value={blogForm.name}
                   onChange={(e) => setBlogForm({ ...blogForm, name: e.target.value })}
-                  placeholder="マイブログ"
+                  placeholder={blogForm.blogType === 'girls-matome' ? 'ガールズまとめ速報' : 'マイブログ'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ブログID
+                  {blogForm.blogType === 'girls-matome' ? 'API URL' : 'ブログID'}
                 </label>
                 <input
                   type="text"
                   value={blogForm.blogId}
                   onChange={(e) => setBlogForm({ ...blogForm, blogId: e.target.value })}
-                  placeholder="myblog"
+                  placeholder={blogForm.blogType === 'girls-matome' ? 'https://girls-matome.example.com' : 'myblog'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  https://●●●.blog.jp の ●●● 部分
+                  {blogForm.blogType === 'girls-matome'
+                    ? 'ガールズまとめ速報のAPIエンドポイントURL'
+                    : 'https://●●●.blog.jp の ●●● 部分'}
                 </p>
               </div>
               <div>

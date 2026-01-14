@@ -45,11 +45,14 @@ export interface MatomeOptions {
   };
 }
 
+export type BlogType = 'livedoor' | 'girls-matome';
+
 export interface BlogSettings {
   id: string;
   name: string;
-  blogId: string;
+  blogId: string;  // Livedoor: ブログID, girls-matome: APIのURL
   apiKey: string;
+  blogType?: BlogType;  // デフォルト: 'livedoor'（後方互換性）
 }
 
 // AIサムネイル用キャラクター設定

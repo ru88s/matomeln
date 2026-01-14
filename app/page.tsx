@@ -711,20 +711,40 @@ export default function Home() {
         url
       });
 
-      // ブログ投稿（30秒タイムアウト）
-      const postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          blogId: blogSettings.blogId,
-          apiKey: blogSettings.apiKey,
-          title: generatedHTML.title,
-          body: fullBody,
-          draft: false,
-        }),
-      }, 30000);
+      // ブログタイプに応じたAPI呼び出し（30秒タイムアウト）
+      let postResponse: Response;
+      if (blogSettings.blogType === 'girls-matome') {
+        // ガールズまとめ速報へ投稿
+        postResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            apiUrl: blogSettings.blogId,
+            apiKey: blogSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            sourceUrl: url,
+            tags: talk.tag_names?.join(',') || '',
+          }),
+        }, 30000);
+      } else {
+        // ライブドアブログへ投稿（デフォルト）
+        postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            blogId: blogSettings.blogId,
+            apiKey: blogSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            draft: false,
+          }),
+        }, 30000);
+      }
 
       if (!postResponse.ok) {
         const errorData = await postResponse.json();
@@ -750,19 +770,40 @@ export default function Home() {
 
               for (const blog of otherBlogs) {
                 try {
-                  const otherResponse = await fetchWithTimeout('/api/proxy/postBlog', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      blogId: blog.blogId,
-                      apiKey: blog.apiKey,
-                      title: generatedHTML.title,
-                      body: fullBody,
-                      draft: false,
-                    }),
-                  }, 30000);
+                  let otherResponse: Response;
+
+                  if (blog.blogType === 'girls-matome') {
+                    // ガールズまとめ速報へ投稿
+                    otherResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        apiUrl: blog.blogId,
+                        apiKey: blog.apiKey,
+                        title: generatedHTML.title,
+                        body: fullBody,
+                        sourceUrl: url,
+                        tags: talk.tag_names?.join(',') || '',
+                      }),
+                    }, 30000);
+                  } else {
+                    // ライブドアブログへ投稿
+                    otherResponse = await fetchWithTimeout('/api/proxy/postBlog', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        blogId: blog.blogId,
+                        apiKey: blog.apiKey,
+                        title: generatedHTML.title,
+                        body: fullBody,
+                        draft: false,
+                      }),
+                    }, 30000);
+                  }
 
                   if (otherResponse.ok) {
                     console.log(`✅ ${blog.name}にも投稿完了`);
@@ -962,6 +1003,7 @@ export default function Home() {
                   thumbnailUrl={thumbnailUrl}
                   apiSettings={apiSettings}
                   selectedBlogName={selectedBlog?.name}
+                  selectedBlogType={selectedBlog?.blogType}
                   showIdInHtml={showIdInHtml}
                   isDevMode={isDevMode}
                   blogs={blogs}

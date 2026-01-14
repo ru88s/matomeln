@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Talk, CommentWithStyle, MatomeOptions, BlogSettings } from '@/lib/types';
+import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
@@ -25,13 +25,14 @@ interface HTMLGeneratorProps {
   thumbnailUrl?: string;
   apiSettings?: { blogUrl: string; apiKey: string };
   selectedBlogName?: string;
+  selectedBlogType?: BlogType;
   showIdInHtml?: boolean;
   isDevMode?: boolean;
   blogs?: BlogSettings[];
   selectedBlogId?: string;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '' }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', selectedBlogType = 'livedoor', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -130,20 +131,41 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
         : generatedHTML.body;
 
-      // メインブログに投稿
-      const response = await fetch('/api/proxy/postBlog', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          blogId: apiSettings.blogUrl,
-          apiKey: apiSettings.apiKey,
-          title: generatedHTML.title,
-          body: fullBody,
-          draft: false,
-        }),
-      });
+      // ブログタイプに応じたAPI呼び出し
+      let response: Response;
+
+      if (selectedBlogType === 'girls-matome') {
+        // ガールズまとめ速報へ投稿
+        response = await fetch('/api/proxy/postGirlsMatome', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            apiUrl: apiSettings.blogUrl,
+            apiKey: apiSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            sourceUrl: sourceInfo?.originalUrl || '',
+            tags: talk?.tag_names?.join(',') || '',
+          }),
+        });
+      } else {
+        // ライブドアブログへ投稿（デフォルト）
+        response = await fetch('/api/proxy/postBlog', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            blogId: apiSettings.blogUrl,
+            apiKey: apiSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            draft: false,
+          }),
+        });
+      }
 
       const data = await response.json();
 
@@ -160,19 +182,40 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
         for (const blog of otherBlogs) {
           try {
-            const otherResponse = await fetch('/api/proxy/postBlog', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                blogId: blog.blogId,
-                apiKey: blog.apiKey,
-                title: generatedHTML.title,
-                body: fullBody,
-                draft: false,
-              }),
-            });
+            let otherResponse: Response;
+
+            if (blog.blogType === 'girls-matome') {
+              // ガールズまとめ速報へ投稿
+              otherResponse = await fetch('/api/proxy/postGirlsMatome', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  apiUrl: blog.blogId,
+                  apiKey: blog.apiKey,
+                  title: generatedHTML.title,
+                  body: fullBody,
+                  sourceUrl: sourceInfo?.originalUrl || '',
+                  tags: talk?.tag_names?.join(',') || '',
+                }),
+              });
+            } else {
+              // ライブドアブログへ投稿
+              otherResponse = await fetch('/api/proxy/postBlog', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  blogId: blog.blogId,
+                  apiKey: blog.apiKey,
+                  title: generatedHTML.title,
+                  body: fullBody,
+                  draft: false,
+                }),
+              });
+            }
 
             if (otherResponse.ok) {
               otherBlogResults.push({ name: blog.name, success: true });
