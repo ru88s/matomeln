@@ -690,7 +690,8 @@ export default function Home() {
         true, // showIdInHtml
         true, // isDevMode
         false, // skipOgp
-        customFooterHtml
+        customFooterHtml,
+        blogSettings.blogType // blogType
       );
 
       // 本文と続きを読むを組み合わせてブログ記事の内容を作成
