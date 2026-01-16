@@ -72,6 +72,10 @@ export default function BulkProcessPanel({
       '500',
       '502',
       '503',
+      // ガールズちゃんねるエラー
+      'トピックの取得に失敗',
+      'Invalid GirlsChannel',
+      'girlschannel',
       // コンテンツ検証エラー
       'タイトルが空のため投稿できません',
       '本文が空のため投稿できません',
