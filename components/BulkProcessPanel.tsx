@@ -26,8 +26,8 @@ export default function BulkProcessPanel({
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
-  const consecutiveErrorsRef = useRef(0); // 連続エラー回数
-  const MAX_CONSECUTIVE_ERRORS = 5; // 連続エラー上限
+  const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
+  const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
 
   // 未まとめURL取得
   const handleFetchUrls = useCallback(async () => {
@@ -380,14 +380,19 @@ export default function BulkProcessPanel({
       // 停止されていなければ、まだURLがある可能性を返す
       return !shouldStopRef.current;
     } catch (error) {
-      console.error('Auto run cycle error:', error);
-      toast.error('定期実行エラー', { id: 'auto-run' });
-      consecutiveErrorsRef.current++;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Auto run cycle error:', errorMsg);
+      toast.error(`定期実行エラー: ${errorMsg}`, { id: 'auto-run' });
 
-      // 連続エラーが上限に達したら停止
-      if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-        toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回エラーが発生したため、定期実行を停止します`, { duration: 5000 });
-        setAutoRunEnabled(false);
+      // スキップ可能なエラーはカウントしない
+      if (!isSkippableError(errorMsg)) {
+        consecutiveErrorsRef.current++;
+
+        // 連続エラーが上限に達したら停止
+        if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
+          toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回の致命的エラーが発生したため、定期実行を停止します`, { duration: 5000 });
+          setAutoRunEnabled(false);
+        }
       }
       return false;
     } finally {
