@@ -76,13 +76,13 @@ export default function AboutLayout({
         '@type': 'ListItem',
         position: 1,
         name: 'ホーム',
-        item: 'https://matomeln.pages.dev',
+        item: 'https://matomeln.com',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: '使い方',
-        item: 'https://matomeln.pages.dev/about',
+        item: 'https://matomeln.com/about',
       },
     ],
   };

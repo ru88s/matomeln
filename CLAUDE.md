@@ -408,7 +408,7 @@ return result.sort((a, b) => a.sortKey - b.sortKey);
 - robots.txt: APIへのアクセスを制限
 - 構造化データ: WebApplicationスキーマ実装
 - OGP・Twitterカード設定済み
-- 本番ドメイン: https://matomeln.pages.dev
+- 本番ドメイン: https://matomeln.com
 
 ## AIまとめ機能
 

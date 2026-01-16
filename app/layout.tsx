@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
     description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。",
-    url: "https://matomeln.pages.dev",
+    url: "https://matomeln.com",
     siteName: "まとめるん",
     type: "website",
     locale: "ja_JP",
     images: [
       {
-        url: "https://matomeln.pages.dev/og-image.png",
+        url: "https://matomeln.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "まとめるん - 掲示板まとめ作成ツール",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "まとめるん - 掲示板まとめ作成ツール",
     description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
-    images: ["https://matomeln.pages.dev/og-image.png"],
+    images: ["https://matomeln.com/og-image.png"],
   },
-  metadataBase: new URL('https://matomeln.pages.dev'),
+  metadataBase: new URL('https://matomeln.com'),
   alternates: {
     canonical: '/',
   },
@@ -65,7 +65,7 @@ export default function RootLayout({
     '@type': 'WebApplication',
     name: 'まとめるん',
     alternateName: 'Matomeln',
-    url: 'https://matomeln.pages.dev',
+    url: 'https://matomeln.com',
     description: '5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。',
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'Web',
@@ -81,11 +81,11 @@ export default function RootLayout({
       'HTMLタグ自動生成',
       'ライブドアブログ直接投稿',
     ],
-    screenshot: 'https://matomeln.pages.dev/og-image.svg',
+    screenshot: 'https://matomeln.com/og-image.svg',
     author: {
       '@type': 'Organization',
       name: 'まとめるん',
-      url: 'https://matomeln.pages.dev',
+      url: 'https://matomeln.com',
     },
   };
 

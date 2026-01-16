@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 export const dynamic = 'error';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://matomeln.pages.dev';
+  const baseUrl = 'https://matomeln.com';
 
   return [
     {
