@@ -156,12 +156,21 @@ export default function Home() {
     if (savedBlogs) {
       const blogsList = JSON.parse(savedBlogs) as BlogSettings[];
       setBlogs(blogsList);
-      // 選択中のブログIDを読み込み
-      const savedSelectedId = localStorage.getItem('selectedBlogId');
-      if (savedSelectedId && blogsList.some(b => b.id === savedSelectedId)) {
-        setSelectedBlogId(savedSelectedId);
+      // 選択中のブログIDを読み込み（sessionStorage優先、なければlocalStorageからコピー）
+      // これによりタブごとに独立したブログ選択が可能
+      let selectedId = sessionStorage.getItem('selectedBlogId');
+      if (!selectedId) {
+        // sessionStorageになければlocalStorageから読み込んでコピー
+        selectedId = localStorage.getItem('selectedBlogId');
+        if (selectedId) {
+          sessionStorage.setItem('selectedBlogId', selectedId);
+        }
+      }
+      if (selectedId && blogsList.some(b => b.id === selectedId)) {
+        setSelectedBlogId(selectedId);
       } else if (blogsList.length > 0) {
         setSelectedBlogId(blogsList[0].id);
+        sessionStorage.setItem('selectedBlogId', blogsList[0].id);
       }
     } else {
       // 旧形式のAPI設定があれば移行
@@ -205,13 +214,15 @@ export default function Home() {
     localStorage.setItem('blogSettingsList', JSON.stringify(newBlogs));
   }, []);
 
-  // 選択中のブログIDの更新
+  // 選択中のブログIDの更新（sessionStorageを使用してタブごとに独立）
   const handleSelectedBlogIdChange = useCallback((id: string | null) => {
     setSelectedBlogId(id);
     if (id) {
+      sessionStorage.setItem('selectedBlogId', id);
+      // localStorageにも保存（新しいタブを開いた時のデフォルト値として）
       localStorage.setItem('selectedBlogId', id);
     } else {
-      localStorage.removeItem('selectedBlogId');
+      sessionStorage.removeItem('selectedBlogId');
     }
   }, []);
 
@@ -472,7 +483,8 @@ export default function Home() {
       const claudeApiKey = localStorage.getItem('matomeln_claude_api_key');
       const geminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       const savedBlogs = localStorage.getItem('blogSettingsList');
-      const savedSelectedBlogId = localStorage.getItem('selectedBlogId');
+      // sessionStorageから読み込み（タブごとに独立したブログ選択）
+      const savedSelectedBlogId = sessionStorage.getItem('selectedBlogId') || localStorage.getItem('selectedBlogId');
 
       if (!claudeApiKey) {
         throw new Error('Claude APIキーが設定されていません');
