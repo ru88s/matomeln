@@ -89,6 +89,9 @@ export default function BulkProcessPanel({
       '本文が空のため投稿できません',
       // 過去ログ化
       '過去ログ',
+      // 投稿制限（一時的なエラーの可能性）
+      '投稿制限中',
+      '制限中の可能性',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
