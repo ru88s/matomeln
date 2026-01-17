@@ -348,7 +348,9 @@ export function parseGirlsChannelHtml(
 
   // タイトルを抽出
   const titleMatch = htmlContent.match(/<h1[^>]*>\s*(?:<!--[^>]*-->)?\s*([^<]+)/);
-  const threadTitle = titleMatch ? titleMatch[1].trim() : 'ガールズちゃんねるトピック';
+  const rawTitle = titleMatch ? titleMatch[1].trim() : 'ガールズちゃんねるトピック';
+  // HTMLエンティティをデコード（&quot; → " など）
+  const threadTitle = decodeHtmlEntities(rawTitle);
 
   // コメントを抽出
   // <li class="comment-item" id="comment1"> ... </li>
