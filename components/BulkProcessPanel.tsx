@@ -56,13 +56,18 @@ export default function BulkProcessPanel({
       'overloaded',
       'rate_limit',
       'timeout',
-      // 5ch取得エラー
+      // 5ch取得エラー（スレッドが存在しない・削除済み）
       'スレッドが見つかりませんでした',
+      '見つかりませんでした',
+      '削除されて',
+      '存在しない',
       '5chスレッドの取得に失敗しました',
       'スレッドタイトルの取得に失敗しました',
       'スレッドデータの解析に失敗しました',
       'DATファイルが見つかりませんでした',
       'アクセスが制限されている',
+      '取得に失敗',
+      'の取得に失敗しました',
       // HTTPエラー（404など）
       '404',
       'Not Found',
@@ -72,6 +77,9 @@ export default function BulkProcessPanel({
       '500',
       '502',
       '503',
+      'network error',
+      'ECONNREFUSED',
+      'ETIMEDOUT',
       // ガールズちゃんねるエラー
       'トピックの取得に失敗',
       'Invalid GirlsChannel',
@@ -79,6 +87,8 @@ export default function BulkProcessPanel({
       // コンテンツ検証エラー
       'タイトルが空のため投稿できません',
       '本文が空のため投稿できません',
+      // 過去ログ化
+      '過去ログ',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
