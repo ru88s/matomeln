@@ -90,7 +90,7 @@ export async function onRequest(context: { request: Request; env: Env }) {
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': '/?error=access_denied',
+          'Location': '/login?error=access_denied',
           'Set-Cookie': 'auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
         },
       });
