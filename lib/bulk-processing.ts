@@ -33,11 +33,11 @@ export async function fetchUnsummarizedUrls(options?: {
   const response = await fetch(`/api/proxy/threadMemo?${params.toString()}`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch unsummarized URLs');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to fetch unsummarized URLs');
   }
 
-  const data: UnsummarizedUrlsResponse = await response.json();
+  const data = await response.json() as UnsummarizedUrlsResponse;
 
   // talk.jp のURLを除外（一括処理対象外）
   const filteredUrls = data.urls.filter(url => !url.includes('talk.jp'));
@@ -71,8 +71,8 @@ export async function markThreadAsSummarized(url: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to mark thread as summarized');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to mark thread as summarized');
   }
 }
 

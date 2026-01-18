@@ -555,9 +555,9 @@ export async function callClaudeAPI(
   }
 
   if (!response.ok) {
-    const error = await response.json();
-    const errorMessage = error.error?.message || '';
-    console.error('Claude API Error:', error);
+    const errorData = await response.json() as { error?: { message?: string } };
+    const errorMessage = errorData.error?.message || '';
+    console.error('Claude API Error:', errorData);
 
     if (response.status === 529) {
       throw new Error('APIが混雑しています。しばらく待ってから再試行してください。');
@@ -572,7 +572,7 @@ export async function callClaudeAPI(
     throw new Error(errorMessage || 'API呼び出しに失敗しました');
   }
 
-  const data = await response.json();
+  const data = await response.json() as { content: Array<{ text?: string }> };
   const content = data.content[0]?.text || '';
 
   // JSONをパース

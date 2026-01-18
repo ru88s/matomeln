@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const data = await response.json();
+    const data = await response.json() as { error?: string; [key: string]: unknown };
 
     // APIが404を返す場合でも、エラーメッセージを適切に返す
     if (!response.ok) {

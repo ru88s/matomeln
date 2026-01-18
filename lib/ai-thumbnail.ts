@@ -60,7 +60,7 @@ ${characterList}
       return characters[0];
     }
 
-    const data = await response.json();
+    const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
     // 数字を抽出
@@ -264,7 +264,7 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
       return null;
     }
 
-    const result = await response.json();
+    const result = await response.json() as { error?: string; data?: string; mimeType?: string };
 
     if (result.error) {
       console.warn('Proxy error:', result.error);
@@ -272,7 +272,7 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
     }
 
     return {
-      data: result.data,
+      data: result.data || '',
       mimeType: result.mimeType || 'image/png'
     };
   } catch (error) {
@@ -448,7 +448,16 @@ ${prompt}`
       };
     }
 
-    const data = await response.json();
+    interface GeminiCandidate {
+      finishReason?: string;
+      content?: {
+        parts?: Array<{ inlineData?: { data: string; mimeType: string } }>;
+      };
+    }
+    interface GeminiResponse {
+      candidates?: GeminiCandidate[];
+    }
+    const data = await response.json() as GeminiResponse;
 
     // 安全フィルターでブロックされた場合
     if (data.candidates && data.candidates[0]) {
@@ -476,7 +485,7 @@ ${prompt}`
     }
 
     const responseParts = data.candidates[0].content.parts;
-    const imagePart = responseParts.find((part: { inlineData?: { data: string; mimeType: string } }) => part.inlineData);
+    const imagePart = responseParts.find((part) => part.inlineData);
 
     if (!imagePart?.inlineData?.data) {
       return {

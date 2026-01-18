@@ -645,11 +645,11 @@ export async function fetchGirlsChannelThread(url: string): Promise<{ talk: Talk
     const response = await fetch(`/api/proxy/getGirlsChannel?url=${encodeURIComponent(url)}`);
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'トピックの取得に失敗しました');
+      const errorData = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(errorData.error || 'トピックの取得に失敗しました');
     }
 
-    const data = await response.json();
+    const data = await response.json() as { content: string };
     return parseGirlsChannelHtml(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching GirlsChannel thread:', error);
@@ -891,7 +891,7 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
       return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { error?: string; content?: string };
 
     // Deno DeployがJSONエラーを返した場合もフォールバック
     if (data.error) {
@@ -936,18 +936,18 @@ async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Pro
   const response = await fetch(`/api/proxy/get5chFallback?url=${encodeURIComponent(url)}`);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    console.error('[fetch5chFrom2chsc] 2ch.scフォールバック失敗:', response.status, error);
+    const errorData = await response.json().catch(() => ({})) as { error?: string };
+    console.error('[fetch5chFrom2chsc] 2ch.scフォールバック失敗:', response.status, errorData);
     if (response.status === 403) {
       throw new Error('サーバーからのアクセスが制限されています。しばらく時間をおいてから再度お試しください。');
     }
     if (response.status === 404) {
       throw new Error('スレッドが見つかりませんでした。URLが正しいか、またはスレッドが削除されていないか確認してください。');
     }
-    throw new Error(error.error || 'スレッドの取得に失敗しました');
+    throw new Error(errorData.error || 'スレッドの取得に失敗しました');
   }
 
-  const data = await response.json();
+  const data = await response.json() as { content?: string };
   const content = data.content || '';
 
   // ログ: 2ch.scフォールバックのDATコンテンツの状態を確認
@@ -979,11 +979,11 @@ export async function fetchOpen2chThread(url: string): Promise<{ talk: Talk; com
     const response = await fetch(`/api/proxy/getOpen2chDat?url=${encodeURIComponent(url)}`);
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'スレッドの取得に失敗しました');
+      const errorData = await response.json() as { error?: string };
+      throw new Error(errorData.error || 'スレッドの取得に失敗しました');
     }
 
-    const data = await response.json();
+    const data = await response.json() as { content: string };
     return parseOpen2chDatFile(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching open2ch thread:', error);
@@ -1003,11 +1003,11 @@ export async function fetch2chscThread(url: string): Promise<{ talk: Talk; comme
     const response = await fetch(`/api/proxy/get2chscDat?url=${encodeURIComponent(url)}`);
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'スレッドの取得に失敗しました');
+      const errorData = await response.json() as { error?: string };
+      throw new Error(errorData.error || 'スレッドの取得に失敗しました');
     }
 
-    const data = await response.json();
+    const data = await response.json() as { content: string };
     return parse2chscDatFile(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching 2ch.sc thread:', error);

@@ -44,9 +44,17 @@ function buildAtomXml(title: string, body: string): string {
   );
 }
 
+interface PostBlogRequest {
+  blogId: string;
+  apiKey: string;
+  title: string;
+  body: string;
+  draft?: boolean;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { blogId, apiKey, title, body, draft } = await request.json();
+    const { blogId, apiKey, title, body, draft } = await request.json() as PostBlogRequest;
 
     if (!blogId || !apiKey || !title || !body) {
       return NextResponse.json(

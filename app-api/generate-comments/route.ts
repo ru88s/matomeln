@@ -5,9 +5,16 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
+interface GenerateCommentsRequest {
+  talkTitle: string;
+  talkBody?: string;
+  existingComments: Array<{ body: string }>;
+  count?: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { talkTitle, talkBody, existingComments, count = 20 } = await request.json();
+    const { talkTitle, talkBody, existingComments, count = 20 } = await request.json() as GenerateCommentsRequest;
 
     if (!talkTitle || !existingComments) {
       return NextResponse.json(

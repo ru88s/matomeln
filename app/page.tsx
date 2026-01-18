@@ -651,7 +651,7 @@ export default function Home() {
               });
 
               if (uploadResponse.ok) {
-                const uploadData = await uploadResponse.json();
+                const uploadData = await uploadResponse.json() as { url?: string };
                 if (uploadData.url) {
                   generatedThumbnailUrl = uploadData.url;
                   setThumbnailUrl(generatedThumbnailUrl);
@@ -769,7 +769,7 @@ export default function Home() {
       }
 
       if (!postResponse.ok) {
-        const errorData = await postResponse.json();
+        const errorData = await postResponse.json() as { details?: string; error?: string };
         // 詳細なエラーメッセージを表示
         const errorMsg = errorData.details || errorData.error || 'ブログ投稿に失敗しました';
         throw new Error(errorMsg);

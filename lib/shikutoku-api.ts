@@ -9,7 +9,7 @@ export async function fetchTalk(talkId: string): Promise<Talk | null> {
   try {
     const response = await fetch(`${API_BASE}/getTalk?id=${talkId}`);
     if (!response.ok) throw new Error('Failed to fetch talk');
-    const data = await response.json();
+    const data = await response.json() as { data: Talk };
     return data.data;
   } catch (error) {
     logger.error('Error fetching talk:', error);
@@ -29,9 +29,17 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
     const to = page * 50;
     
     const response = await fetch(`${API_BASE}/getComments?talk_id=${talkId}&page=${from}-${to}`);
-    
-    const data = await response.json();
-    
+
+    interface CommentsResponse {
+      error?: string;
+      data?: {
+        comments: Comment[];
+        pagination?: unknown;
+        totalCount?: number;
+      };
+    }
+    const data = await response.json() as CommentsResponse;
+
     // エラーレスポンスの処理
     if (!response.ok) {
       if (response.status === 404) {
@@ -40,7 +48,7 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
       }
       throw new Error(data.error || 'Failed to fetch comments');
     }
-    
+
     // APIレスポンスの構造: { data: { comments: [...], pagination: {...}, totalCount: N } }
     if (data.data && data.data.comments) {
       return data.data.comments;

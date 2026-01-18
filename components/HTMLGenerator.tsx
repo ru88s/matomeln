@@ -168,7 +168,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         });
       }
 
-      const data = await response.json();
+      const data = await response.json() as { error?: string; success?: boolean; url?: string; message?: string };
 
       if (!response.ok) {
         const errorMessage = data.error || 'ブログ投稿に失敗しました';

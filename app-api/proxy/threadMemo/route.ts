@@ -49,11 +49,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
+interface MarkSummarizedRequest {
+  url: string;
+}
+
 // まとめ済み登録
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { url } = body;
+    const { url } = await request.json() as MarkSummarizedRequest;
 
     if (!url) {
       return NextResponse.json(

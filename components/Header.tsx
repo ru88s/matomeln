@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Logo } from '@/components/ui/Logo';
 import HelpModal from '@/components/HelpModal';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Header() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
+  const { user, loading, logout } = useAuth();
 
   // 開発者モードの状態を監視
   useEffect(() => {
@@ -75,6 +77,39 @@ export default function Header() {
                 <span>⚙️</span>
                 <span>設定</span>
               </button>
+
+              {/* User info and logout */}
+              {!loading && user && (
+                <div className="flex items-center gap-3 ml-2 pl-4 border-l border-gray-200">
+                  <div className="flex items-center gap-2">
+                    {user.image ? (
+                      <img
+                        src={user.image}
+                        alt={user.name || user.email}
+                        className="w-7 h-7 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                        {(user.name || user.email)[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm text-gray-700 hidden sm:inline">
+                      {user.name || user.email.split('@')[0]}
+                    </span>
+                    {user.role === 'admin' && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-500 text-white rounded">
+                        ADMIN
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="text-xs text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                  >
+                    ログアウト
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -29,7 +29,7 @@ export function LinkCard({ url }: { url: string }) {
       try {
         const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
         if (!response.ok) throw new Error('Failed to fetch OGP');
-        const data = await response.json();
+        const data = await response.json() as OGPData;
         setOgp(data);
       } catch (err) {
         // 開発環境のみエラーログを出力

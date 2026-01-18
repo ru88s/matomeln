@@ -396,7 +396,7 @@ async function fetchTwitterOEmbed(url: string): Promise<string | null> {
   try {
     const response = await fetch(`https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`);
     if (!response.ok) return null;
-    const data = await response.json();
+    const data = await response.json() as { html?: string };
     return data.html || null;
   } catch {
     return null;

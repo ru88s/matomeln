@@ -92,7 +92,7 @@ export default function TalkLoader({
         body: formData,
       });
 
-      const data = await response.json();
+      const data = await response.json() as { url?: string; error?: string };
 
       if (!response.ok) {
         throw new Error(data.error || '画像のアップロードに失敗しました');
@@ -173,7 +173,7 @@ export default function TalkLoader({
         body: formData,
       });
 
-      const data = await response.json();
+      const data = await response.json() as { url?: string; error?: string };
 
       if (!response.ok) {
         throw new Error(data.error || 'アップロードに失敗しました');

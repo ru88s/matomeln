@@ -3,6 +3,7 @@ import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
 import Header from '@/components/Header';
+import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
   title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
@@ -100,47 +101,49 @@ export default function RootLayout({
         <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
       </head>
       <body className="bg-gray-50 min-h-screen">
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              borderRadius: '8px',
-              background: '#fff',
-              color: '#1f2937',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            },
-          }}
-        />
-        <Header />
+        <AuthProvider>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                borderRadius: '8px',
+                background: '#fff',
+                color: '#1f2937',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              },
+            }}
+          />
+          <Header />
 
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {children}
+          </main>
 
-        <footer className="py-6 border-t border-gray-200 bg-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="flex items-center justify-center gap-4 text-xs mb-2">
-              <a href="/site-map" className="text-gray-500 hover:text-gray-700 transition-colors">
-                サイトマップ
-              </a>
-              <span className="text-gray-300">|</span>
-              <a href="/privacy" className="text-gray-500 hover:text-gray-700 transition-colors">
-                プライバシーポリシー
-              </a>
-              <span className="text-gray-300">|</span>
-              <a href="/terms" className="text-gray-500 hover:text-gray-700 transition-colors">
-                利用規約
-              </a>
-              <span className="text-gray-300">|</span>
-              <a href="/contact" className="text-gray-500 hover:text-gray-700 transition-colors">
-                お問い合わせ
-              </a>
+          <footer className="py-6 border-t border-gray-200 bg-white">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <div className="flex items-center justify-center gap-4 text-xs mb-2">
+                <a href="/site-map" className="text-gray-500 hover:text-gray-700 transition-colors">
+                  サイトマップ
+                </a>
+                <span className="text-gray-300">|</span>
+                <a href="/privacy" className="text-gray-500 hover:text-gray-700 transition-colors">
+                  プライバシーポリシー
+                </a>
+                <span className="text-gray-300">|</span>
+                <a href="/terms" className="text-gray-500 hover:text-gray-700 transition-colors">
+                  利用規約
+                </a>
+                <span className="text-gray-300">|</span>
+                <a href="/contact" className="text-gray-500 hover:text-gray-700 transition-colors">
+                  お問い合わせ
+                </a>
+              </div>
+              <p className="text-xs text-gray-400">
+                © 2025 まとめるん
+              </p>
             </div>
-            <p className="text-xs text-gray-400">
-              © 2025 まとめるん
-            </p>
-          </div>
-        </footer>
+          </footer>
+        </AuthProvider>
       </body>
     </html>
   );
