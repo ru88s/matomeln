@@ -590,7 +590,7 @@ export default function BulkProcessPanel({
           </div>
           {status.currentUrl && (
             <p className="text-xs text-gray-500 truncate">
-              処理中: {status.currentUrl}
+              処理中: <a href={status.currentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{status.currentUrl}</a>
             </p>
           )}
         </div>
@@ -610,7 +610,7 @@ export default function BulkProcessPanel({
               <ul className="mt-2 text-xs space-y-2 max-h-60 overflow-y-auto">
                 {status.failedUrls.map((f, i) => (
                   <li key={i} className="bg-red-50 rounded p-2 border border-red-200">
-                    <div className="text-gray-700 font-mono text-xs break-all mb-1">{f.url}</div>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-mono text-xs break-all mb-1 block">{f.url}</a>
                     <div className="text-red-600 break-words">{f.error}</div>
                   </li>
                 ))}
