@@ -1,6 +1,10 @@
 // Cloudflare Pages Middleware for authentication
 // This runs on every request to check if the user is authenticated
 
+interface Env {
+  DB: D1Database;
+}
+
 const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth/callback',
@@ -22,7 +26,7 @@ const PUBLIC_PATHS = [
   '/og-image.svg',
 ];
 
-export const onRequest: PagesFunction = async (context) => {
+export const onRequest: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
   const pathname = url.pathname;
 
