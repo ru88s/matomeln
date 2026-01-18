@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "./scripts/dev-setup.sh && next dev --turbopack",
-    "build": "./scripts/build-clean.sh && CF_PAGES=true next build --turbopack",
+    "build": "./scripts/build-clean.sh && CF_PAGES=true next build --turbopack && ./scripts/post-build.sh",
     "build:local": "./scripts/dev-setup.sh && next build --turbopack",
     "start": "next start",
     "export": "next build && next export",
