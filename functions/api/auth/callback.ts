@@ -139,10 +139,13 @@ export async function onRequest(context: { request: Request; env: Env }) {
     const sessionCookie = createSessionCookie(sessionId, expiresAt);
     const clearStateCookie = 'auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 
+    // Validate returnTo is a relative path (prevent open redirect)
+    const safeReturnTo = (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')) ? returnTo : '/';
+
     return new Response(null, {
       status: 302,
       headers: [
-        ['Location', returnTo || '/'],
+        ['Location', safeReturnTo],
         ['Set-Cookie', sessionCookie],
         ['Set-Cookie', clearStateCookie],
       ],

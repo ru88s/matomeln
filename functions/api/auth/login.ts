@@ -15,7 +15,9 @@ export async function onRequest(context: { request: Request; env: Env }) {
 
   // Get redirect URL after login (default to /)
   const url = new URL(request.url);
-  const returnTo = url.searchParams.get('returnTo') || '/';
+  const rawReturnTo = url.searchParams.get('returnTo') || '/';
+  // Validate returnTo is a relative path (prevent open redirect)
+  const returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/';
 
   // Store state and returnTo in a short-lived cookie
   const stateCookie = `auth_state=${state}|${returnTo}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`;

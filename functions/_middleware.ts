@@ -53,9 +53,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const sessionCookie = context.request.headers.get('cookie')?.match(/matomeln_session=([^;]+)/)?.[1];
 
   if (!sessionCookie) {
-    // Redirect to login
+    // Redirect to login (only use relative path for returnTo)
     const loginUrl = new URL('/login', url.origin);
-    loginUrl.searchParams.set('returnTo', pathname);
+    // Only set returnTo for safe relative paths
+    if (pathname.startsWith('/') && !pathname.startsWith('//')) {
+      loginUrl.searchParams.set('returnTo', pathname);
+    }
     return Response.redirect(loginUrl.toString(), 302);
   }
 
