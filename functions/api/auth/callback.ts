@@ -135,6 +135,21 @@ export async function onRequest(context: { request: Request; env: Env }) {
       VALUES (?, ?, ?)
     `).bind(sessionId, user.id, expiresAt.toISOString()).run();
 
+    // Log login activity
+    const ipAddress = request.headers.get('cf-connecting-ip') ||
+                      request.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+    await env.DB.prepare(`
+      INSERT INTO activity_logs (user_id, action, details, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      user.id,
+      'login',
+      JSON.stringify({ email: userInfo.email, role }),
+      ipAddress,
+      userAgent.substring(0, 500)
+    ).run();
+
     // Create session cookie and redirect
     const sessionCookie = createSessionCookie(sessionId, expiresAt);
     const clearStateCookie = 'auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';

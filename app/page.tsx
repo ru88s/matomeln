@@ -16,6 +16,7 @@ import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail
 import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
+import { logActivity, logError } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
 // タイムアウト付きfetch（30秒）
@@ -431,13 +432,22 @@ export default function Home() {
       setSelectedComments(newSelectedComments);
 
       toast.success(`${newSelectedComments.length}件のレスを選択しました`, { id: toastId });
+
+      // ログ記録
+      logActivity('ai_summarize', {
+        threadUrl: sourceInfo?.originalUrl,
+        commentCount: comments.length,
+        selectedCount: newSelectedComments.length,
+      });
     } catch (error) {
       console.error('AI summarize error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'AIまとめに失敗しました';
       if (error instanceof Error) {
         toast.error(error.message, { id: toastId });
       } else {
         toast.error('AIまとめに失敗しました', { id: toastId });
       }
+      logError(errorMessage, { action: 'ai_summarize', threadUrl: sourceInfo?.originalUrl });
     } finally {
       setGeneratingAI(false);
     }
@@ -863,11 +873,20 @@ export default function Home() {
 
       toast.success('ブログ投稿完了！', { id: 'bulk-step' });
 
+      // ログ記録
+      logActivity('post_blog', {
+        threadUrl: url,
+        blogId: blogSettings.blogId,
+        blogType: blogSettings.blogType || 'livedoor',
+        title: generatedHTML.title,
+      });
+
     } catch (error) {
       console.error('一括処理エラー:', error);
       // エラー時はtoastをエラー表示に変更
       const errorMsg = error instanceof Error ? error.message : '一括処理に失敗しました';
       toast.error(errorMsg, { id: 'bulk-step' });
+      logError(errorMsg, { action: 'bulk_process', threadUrl: url });
       // エラーを再スローして呼び出し元でキャッチできるようにする
       throw error;
     } finally {

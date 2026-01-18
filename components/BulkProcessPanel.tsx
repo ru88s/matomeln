@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
+import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
 interface BulkProcessPanelProps {
@@ -238,6 +239,13 @@ export default function BulkProcessPanel({
     }));
 
     toast.success(`一括処理完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+
+    // ログ記録
+    logActivity('bulk_process', {
+      urlCount: urlList.length,
+      successCount: completedCount,
+      failCount: failedCount,
+    });
   }, [urls, onBulkProcess]);
 
   // 停止
@@ -395,6 +403,13 @@ export default function BulkProcessPanel({
 
       setLastRunTime(new Date());
       toast.success(`定期実行完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+
+      // ログ記録
+      logActivity('bulk_process', {
+        urlCount: urlList.length,
+        successCount: completedCount,
+        failCount: failedCount,
+      });
 
       // 停止されていなければ、まだURLがある可能性を返す
       return !shouldStopRef.current;
