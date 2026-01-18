@@ -4,14 +4,12 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType } from '@/lib/types';
 import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
-
-// 開発者モードのパスワード
-const DEV_MODE_PASSWORD = 'matomeln2025';
+import { useIsAdmin } from '@/lib/auth-context';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // 開発者モード
+  // 開発者モード（管理者なら自動でtrue）
   isDevMode: boolean;
   onDevModeChange: (enabled: boolean) => void;
   // レス名設定
@@ -49,8 +47,7 @@ export default function SettingsModal({
   onBlogsChange,
   onSelectedBlogIdChange,
 }: SettingsModalProps) {
-  const [showDevModeInput, setShowDevModeInput] = useState(false);
-  const [devModePassword, setDevModePassword] = useState('');
+  const isAdmin = useIsAdmin();
   const [claudeApiKey, setClaudeApiKey] = useState('');
   const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -72,6 +69,15 @@ export default function SettingsModal({
   const [testTitle, setTestTitle] = useState('');
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+
+  // 管理者なら開発者モードを自動で有効化
+  useEffect(() => {
+    if (isAdmin && !isDevMode) {
+      onDevModeChange(true);
+      localStorage.setItem('matomeln_dev_mode', 'true');
+      window.dispatchEvent(new CustomEvent('devModeChanged'));
+    }
+  }, [isAdmin, isDevMode, onDevModeChange]);
 
   // 設定を読み込み
   useEffect(() => {
@@ -110,30 +116,6 @@ export default function SettingsModal({
       }
     }
   }, [isOpen]);
-
-  // 開発者モードのパスワード検証
-  const verifyDevModePassword = () => {
-    if (devModePassword === DEV_MODE_PASSWORD) {
-      onDevModeChange(true);
-      localStorage.setItem('matomeln_dev_mode', 'true');
-      // Headerに通知
-      window.dispatchEvent(new CustomEvent('devModeChanged'));
-      toast.success('開発者モードを有効にしました');
-      setShowDevModeInput(false);
-      setDevModePassword('');
-    } else {
-      toast.error('パスワードが正しくありません');
-    }
-  };
-
-  // 開発者モードを無効化
-  const disableDevMode = () => {
-    onDevModeChange(false);
-    localStorage.removeItem('matomeln_dev_mode');
-    // Headerに通知
-    window.dispatchEvent(new CustomEvent('devModeChanged'));
-    toast.success('開発者モードを無効にしました');
-  };
 
   // Claude APIキーを保存
   const saveClaudeApiKey = () => {
@@ -530,79 +512,8 @@ export default function SettingsModal({
               </div>
             </div>
 
-            {/* 開発者モード */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="font-bold text-gray-800 mb-3">開発者モード</h3>
-
-              {isDevMode ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-                      <span className="text-green-700 font-bold text-sm">有効</span>
-                    </div>
-                    <button
-                      onClick={disableDevMode}
-                      className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-                    >
-                      無効にする
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    AIまとめ機能が利用可能です。
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {showDevModeInput ? (
-                    <div className="space-y-2">
-                      <input
-                        type="password"
-                        value={devModePassword}
-                        onChange={(e) => setDevModePassword(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') verifyDevModePassword();
-                          if (e.key === 'Escape') {
-                            setShowDevModeInput(false);
-                            setDevModePassword('');
-                          }
-                        }}
-                        placeholder="パスワードを入力"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={verifyDevModePassword}
-                          className="flex-1 text-sm bg-purple-500 text-white hover:bg-purple-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                        >
-                          有効化
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowDevModeInput(false);
-                            setDevModePassword('');
-                          }}
-                          className="flex-1 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                        >
-                          キャンセル
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                    onClick={() => setShowDevModeInput(true)}
-                    className="text-sm bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                  >
-                    有効にする
-                  </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Claude API設定（開発者モード時のみ） */}
-            {isDevMode && (
+            {/* Claude API設定（管理者のみ） */}
+            {isAdmin && (
               <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">Claude API</h3>
@@ -656,8 +567,8 @@ export default function SettingsModal({
               </div>
             )}
 
-            {/* Gemini API設定（開発者モード時のみ） */}
-            {isDevMode && (
+            {/* Gemini API設定（管理者のみ） */}
+            {isAdmin && (
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">Gemini API</h3>
@@ -848,12 +759,11 @@ export default function SettingsModal({
               </div>
             )}
 
-            {/* 複数ブログ同時投稿（DEVモード & 2つ以上のブログがある場合のみ） */}
-            {isDevMode && blogs.length > 1 && (
+            {/* 複数ブログ同時投稿（管理者 & 2つ以上のブログがある場合のみ） */}
+            {isAdmin && blogs.length > 1 && (
               <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">複数ブログ同時投稿</h3>
-                  <span className="text-[10px] bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">開発者専用</span>
                 </div>
 
                 <div className="space-y-3">

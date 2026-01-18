@@ -3,14 +3,10 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings } from '@/lib/types';
-
-// 開発者モードのパスワード
-const DEV_MODE_PASSWORD = 'matomeln2025';
+import { useIsAdmin } from '@/lib/auth-context';
 
 export default function SettingsPage() {
-  const [isDevMode, setIsDevMode] = useState(false);
-  const [showDevModeInput, setShowDevModeInput] = useState(false);
-  const [devModePassword, setDevModePassword] = useState('');
+  const isAdmin = useIsAdmin();
   const [claudeApiKey, setClaudeApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   // ブログ設定
@@ -22,12 +18,16 @@ export default function SettingsPage() {
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
 
+  // 管理者なら開発者モードを自動で有効化
+  useEffect(() => {
+    if (isAdmin) {
+      localStorage.setItem('matomeln_dev_mode', 'true');
+      window.dispatchEvent(new CustomEvent('devModeChanged'));
+    }
+  }, [isAdmin]);
+
   // 設定を読み込み
   useEffect(() => {
-    const savedDevMode = localStorage.getItem('matomeln_dev_mode');
-    if (savedDevMode === 'true') {
-      setIsDevMode(true);
-    }
     const savedApiKey = localStorage.getItem('matomeln_claude_api_key');
     if (savedApiKey) {
       setClaudeApiKey(savedApiKey);
@@ -62,26 +62,6 @@ export default function SettingsPage() {
       setCustomFooterHtml(savedCustomFooter);
     }
   }, []);
-
-  // 開発者モードのパスワード検証
-  const verifyDevModePassword = () => {
-    if (devModePassword === DEV_MODE_PASSWORD) {
-      setIsDevMode(true);
-      localStorage.setItem('matomeln_dev_mode', 'true');
-      toast.success('開発者モードを有効にしました');
-      setShowDevModeInput(false);
-      setDevModePassword('');
-    } else {
-      toast.error('パスワードが正しくありません');
-    }
-  };
-
-  // 開発者モードを無効化
-  const disableDevMode = () => {
-    setIsDevMode(false);
-    localStorage.removeItem('matomeln_dev_mode');
-    toast.success('開発者モードを無効にしました');
-  };
 
   // Claude APIキーを保存
   const saveClaudeApiKey = () => {
@@ -120,88 +100,24 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">設定</h1>
 
       <div className="space-y-6">
-        {/* 開発者モード */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">開発者モード</h2>
-
-          {isDevMode ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-                  <span className="text-green-700 font-bold">有効</span>
-                </div>
-                <button
-                  onClick={disableDevMode}
-                  className="text-sm text-gray-500 hover:text-gray-700 cursor-pointer"
-                >
-                  無効にする
-                </button>
-              </div>
-              <p className="text-sm text-gray-500">
-                開発者モードが有効になっています。AIまとめ機能が利用可能です。
-              </p>
+        {/* 管理者ステータス */}
+        {isAdmin && (
+          <div className="bg-purple-50 rounded-2xl border border-purple-200 p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+              <span className="text-purple-800 font-bold">管理者としてログイン中</span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {showDevModeInput ? (
-                <div className="space-y-3">
-                  <input
-                    type="password"
-                    value={devModePassword}
-                    onChange={(e) => setDevModePassword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') verifyDevModePassword();
-                      if (e.key === 'Escape') {
-                        setShowDevModeInput(false);
-                        setDevModePassword('');
-                      }
-                    }}
-                    placeholder="パスワードを入力"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={verifyDevModePassword}
-                      className="flex-1 bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                    >
-                      有効化
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDevModeInput(false);
-                        setDevModePassword('');
-                      }}
-                      className="flex-1 bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                    >
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm text-gray-500 mb-3">
-                    開発者モードを有効にすると、AIまとめ機能など追加機能が利用できます。
-                  </p>
-                  <button
-                    onClick={() => setShowDevModeInput(true)}
-                    className="bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                  >
-                    開発者モードを有効にする
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            <p className="text-sm text-purple-600 mt-2">
+              AIまとめ機能・一括処理など全ての機能が利用可能です。
+            </p>
+          </div>
+        )}
 
-        {/* Claude API設定（開発者モード時のみ） */}
-        {isDevMode && (
+        {/* Claude API設定（管理者のみ） */}
+        {isAdmin && (
           <div className="bg-white rounded-2xl border border-purple-200 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-bold text-gray-800">Claude API設定</h2>
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">開発者専用</span>
             </div>
 
             <div className="space-y-4">
@@ -260,12 +176,11 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* 他のブログにも投稿（DEVモード時のみ） */}
-        {isDevMode && blogs.length > 1 && (
+        {/* 他のブログにも投稿（管理者のみ） */}
+        {isAdmin && blogs.length > 1 && (
           <div className="bg-white rounded-2xl border border-purple-200 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-bold text-gray-800">複数ブログ同時投稿</h2>
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">開発者専用</span>
             </div>
 
             <div className="space-y-4">
