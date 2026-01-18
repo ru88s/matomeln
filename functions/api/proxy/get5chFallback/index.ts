@@ -152,6 +152,35 @@ function parseHtmlToDat(html: string): string {
   return lines.join('\n');
 }
 
+// 文字化けチェック（簡易版）
+function hasMojibake(text: string): boolean {
+  // 置換文字（U+FFFD）が多い
+  const replacementCount = (text.match(/\uFFFD/g) || []).length;
+  if (replacementCount > 50) return true;
+
+  // Shift_JIS→UTF-8誤読パターン
+  const sjisPattern = /[繧繝螟髮莉翫縺閾]/g;
+  if ((text.match(sjisPattern) || []).length > 30) return true;
+
+  // 日本語文字が少なすぎる（DATなのに）
+  const japaneseChars = (text.substring(0, 500).match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  if (text.length > 100 && japaneseChars < 10) return true;
+
+  return false;
+}
+
+// バイナリデータを指定エンコーディングでデコード
+function decodeWithEncoding(uint8Array: Uint8Array, encoding: 'SJIS' | 'EUCJP' | 'UTF8'): string {
+  if (encoding === 'UTF8') {
+    return new TextDecoder('utf-8').decode(uint8Array);
+  }
+  const unicodeArray = Encoding.convert(uint8Array, {
+    to: 'UNICODE',
+    from: encoding,
+  });
+  return Encoding.codeToString(unicodeArray);
+}
+
 // DATコンテンツを取得してデコード
 async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promise<{ content: string; status: number } | null> {
   try {
@@ -189,18 +218,42 @@ async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promi
     const buffer = await response.arrayBuffer();
     const uint8Array = new Uint8Array(buffer);
 
-    // 文字コード検出・変換
-    let content: string;
+    // 複数のエンコーディングを試す（5chは主にShift_JIS）
+    const encodingsToTry: Array<'SJIS' | 'EUCJP' | 'UTF8'> = ['SJIS', 'EUCJP', 'UTF8'];
+    let content = '';
     const detectedEncoding = Encoding.detect(uint8Array);
+    console.log(`[get5chFallback] Detected encoding: ${detectedEncoding}`);
 
-    if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP' || detectedEncoding === 'ASCII') {
-      const unicodeArray = Encoding.convert(uint8Array, {
-        to: 'UNICODE',
-        from: detectedEncoding === 'ASCII' ? 'SJIS' : detectedEncoding,
-      });
-      content = Encoding.codeToString(unicodeArray);
-    } else {
-      content = new TextDecoder('utf-8').decode(uint8Array);
+    // 検出されたエンコーディングを最初に試す（SJIS/EUCJP/UTF8のみ）
+    if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP') {
+      content = decodeWithEncoding(uint8Array, detectedEncoding);
+      if (!hasMojibake(content)) {
+        console.log(`[get5chFallback] Using detected encoding: ${detectedEncoding}`);
+      } else {
+        content = ''; // リセットして他のエンコーディングを試す
+      }
+    }
+
+    // 検出が失敗または文字化けの場合、順番に試す
+    if (!content || hasMojibake(content)) {
+      for (const encoding of encodingsToTry) {
+        try {
+          const decoded = decodeWithEncoding(uint8Array, encoding);
+          if (!hasMojibake(decoded)) {
+            content = decoded;
+            console.log(`[get5chFallback] Using fallback encoding: ${encoding}`);
+            break;
+          }
+        } catch (e) {
+          console.log(`[get5chFallback] Failed to decode with ${encoding}`);
+        }
+      }
+    }
+
+    // すべて失敗した場合、最も可能性の高いShift_JISで強制デコード
+    if (!content) {
+      console.log(`[get5chFallback] Forcing SJIS decode as last resort`);
+      content = decodeWithEncoding(uint8Array, 'SJIS');
     }
 
     // HTML版の場合はDATフォーマットに変換

@@ -1,5 +1,34 @@
 import Encoding from 'encoding-japanese';
 
+// 文字化けチェック（簡易版）
+function hasMojibake(text) {
+  // 置換文字（U+FFFD）が多い
+  const replacementCount = (text.match(/\uFFFD/g) || []).length;
+  if (replacementCount > 50) return true;
+
+  // Shift_JIS→UTF-8誤読パターン
+  const sjisPattern = /[繧繝螟髮莉翫縺閾]/g;
+  if ((text.match(sjisPattern) || []).length > 30) return true;
+
+  // 日本語文字が少なすぎる
+  const japaneseChars = (text.substring(0, 500).match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  if (text.length > 100 && japaneseChars < 10) return true;
+
+  return false;
+}
+
+// バイナリデータを指定エンコーディングでデコード
+function decodeWithEncoding(uint8Array, encoding) {
+  if (encoding === 'UTF8') {
+    return new TextDecoder('utf-8').decode(uint8Array);
+  }
+  const unicodeArray = Encoding.convert(uint8Array, {
+    to: 'UNICODE',
+    from: encoding,
+  });
+  return Encoding.codeToString(unicodeArray);
+}
+
 // 5ch URLから情報を抽出
 function parse5chUrl(url) {
   const patterns = [
@@ -150,17 +179,37 @@ async function tryHtmlFetch(threadInfo) {
     const buffer = await response.arrayBuffer();
     const uint8Array = new Uint8Array(buffer);
 
-    // 文字コードを検出して変換
+    // 複数のエンコーディングを試す
+    const encodingsToTry = ['SJIS', 'EUCJP', 'UTF8'];
+    let html = '';
     const detectedEncoding = Encoding.detect(uint8Array);
-    let html;
-    if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP') {
-      const unicodeArray = Encoding.convert(uint8Array, {
-        to: 'UNICODE',
-        from: detectedEncoding,
-      });
-      html = Encoding.codeToString(unicodeArray);
-    } else {
-      html = new TextDecoder('utf-8').decode(uint8Array);
+
+    // 検出されたエンコーディングを最初に試す
+    if (detectedEncoding && detectedEncoding !== 'ASCII' && detectedEncoding !== 'BINARY') {
+      html = decodeWithEncoding(uint8Array, detectedEncoding);
+      if (hasMojibake(html)) {
+        html = '';
+      }
+    }
+
+    // 検出失敗または文字化けの場合
+    if (!html) {
+      for (const encoding of encodingsToTry) {
+        try {
+          const decoded = decodeWithEncoding(uint8Array, encoding);
+          if (!hasMojibake(decoded)) {
+            html = decoded;
+            break;
+          }
+        } catch (e) {
+          // continue
+        }
+      }
+    }
+
+    // すべて失敗した場合、Shift_JISで強制
+    if (!html) {
+      html = decodeWithEncoding(uint8Array, 'SJIS');
     }
 
     // HTMLからDAT形式に変換
@@ -227,20 +276,37 @@ export async function onRequest(context) {
           const buffer = await response.arrayBuffer();
           const uint8Array = new Uint8Array(buffer);
 
-          // 文字コードを検出してUTF-8に変換
+          // 複数のエンコーディングを試す
+          const encodingsToTry = ['SJIS', 'EUCJP', 'UTF8'];
+          let content = '';
           const detectedEncoding = Encoding.detect(uint8Array);
 
-          let content;
-          if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP') {
-            // Shift_JIS または EUC-JP をUTF-8に変換
-            const unicodeArray = Encoding.convert(uint8Array, {
-              to: 'UNICODE',
-              from: detectedEncoding,
-            });
-            content = Encoding.codeToString(unicodeArray);
-          } else {
-            // UTF-8の場合はそのままデコード
-            content = new TextDecoder('utf-8').decode(uint8Array);
+          // 検出されたエンコーディングを最初に試す
+          if (detectedEncoding && detectedEncoding !== 'ASCII' && detectedEncoding !== 'BINARY') {
+            content = decodeWithEncoding(uint8Array, detectedEncoding);
+            if (hasMojibake(content)) {
+              content = ''; // リセット
+            }
+          }
+
+          // 検出失敗または文字化けの場合、順番に試す
+          if (!content || hasMojibake(content)) {
+            for (const encoding of encodingsToTry) {
+              try {
+                const decoded = decodeWithEncoding(uint8Array, encoding);
+                if (!hasMojibake(decoded)) {
+                  content = decoded;
+                  break;
+                }
+              } catch (e) {
+                // continue
+              }
+            }
+          }
+
+          // すべて失敗した場合、Shift_JISで強制デコード
+          if (!content) {
+            content = decodeWithEncoding(uint8Array, 'SJIS');
           }
 
           return new Response(
