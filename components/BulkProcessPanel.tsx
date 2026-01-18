@@ -92,6 +92,8 @@ export default function BulkProcessPanel({
       // 投稿制限（一時的なエラーの可能性）
       '投稿制限中',
       '制限中の可能性',
+      // 文字化け
+      '文字化け',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };

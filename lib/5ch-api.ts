@@ -87,6 +87,47 @@ function cleanThreadTitle(title: string): string {
     .trim();
 }
 
+// 文字化け検出関数
+function isMojibake(text: string): boolean {
+  // 1. 置換文字（U+FFFD）のチェック
+  const replacementCharCount = (text.match(/\uFFFD/g) || []).length;
+  if (replacementCharCount > 100 || (text.length > 0 && replacementCharCount / text.length > 0.01)) {
+    console.log(`[mojibake] 置換文字検出: ${replacementCharCount}個`);
+    return true;
+  }
+
+  // 2. Shift-JIS → UTF-8 誤読で出現する典型的な文字パターン
+  // これらの文字が多数出現する場合は文字化けの可能性が高い
+  const sjisAsUtf8Pattern = /[繧繝螟髮莉翫縺閾]/g;
+  const sjisPatternCount = (text.match(sjisAsUtf8Pattern) || []).length;
+  if (sjisPatternCount > 50) {
+    console.log(`[mojibake] SJIS→UTF-8パターン検出: ${sjisPatternCount}個`);
+    return true;
+  }
+
+  // 3. 同じ文字の異常な連続（◇◇◇◇のような）
+  // 10文字以上同じ文字が連続している場合は異常
+  const repeatedCharPattern = /(.)\1{9,}/;
+  if (repeatedCharPattern.test(text)) {
+    console.log(`[mojibake] 同一文字の異常連続を検出`);
+    return true;
+  }
+
+  // 4. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
+  // 最初の1000文字で判定（スレタイと1レス目を含む）
+  const sample = text.substring(0, 1000);
+  const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  const alphanumeric = (sample.match(/[a-zA-Z0-9\s<>]/g) || []).length;
+  const normalChars = japaneseChars + alphanumeric;
+  // 正常なDATファイルは日本語+英数字が30%以上を占めるはず
+  if (sample.length > 100 && normalChars / sample.length < 0.3) {
+    console.log(`[mojibake] 正常文字の割合が低い: ${(normalChars / sample.length * 100).toFixed(1)}%`);
+    return true;
+  }
+
+  return false;
+}
+
 // 5chのDATファイルをパースしてComment[]に変換
 export function parseDatFile(
   datContent: string,
@@ -870,11 +911,9 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
       console.warn('[fetch5chThread] 警告: DATコンテンツが非常に短いです:', content);
     }
 
-    const replacementCharCount = (content.match(/\uFFFD/g) || []).length;
-    const totalChars = content.length;
-    // 置換文字が1%以上、または100個以上ある場合は文字化けとみなす
-    if (totalChars > 0 && (replacementCharCount > 100 || replacementCharCount / totalChars > 0.01)) {
-      console.log(`Detected mojibake (${replacementCharCount} replacement chars), trying 2ch.sc fallback...`);
+    // 文字化けチェック（共通関数を使用）
+    if (isMojibake(content)) {
+      console.log('[fetch5chThread] 文字化けを検出、2ch.scにフォールバック...');
       return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
     }
 
@@ -917,6 +956,12 @@ async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Pro
     console.error('[fetch5chFrom2chsc] 警告: DATコンテンツが空です');
   } else if (content.length < 100) {
     console.warn('[fetch5chFrom2chsc] 警告: DATコンテンツが非常に短いです:', content);
+  }
+
+  // 文字化けチェック（フォールバックでも検出された場合はエラー）
+  if (isMojibake(content)) {
+    console.error('[fetch5chFrom2chsc] フォールバックでも文字化けを検出');
+    throw new Error('文字化けが検出されました。このスレッドは正常に取得できません。');
   }
 
   return parseDatFile(content, threadInfo);
