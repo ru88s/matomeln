@@ -173,8 +173,11 @@ function hasMojibake(text: string): boolean {
   if ((text.match(sjisPattern) || []).length > 30) return true;
 
   // 日本語文字が少なすぎる（DATなのに）
-  const japaneseChars = (text.substring(0, 500).match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
-  if (text.length > 100 && japaneseChars < 10) return true;
+  const sample = text.substring(0, 500);
+  const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  const alphanumeric = (sample.match(/[a-zA-Z0-9\s<>]/g) || []).length;
+  const normalChars = japaneseChars + alphanumeric;
+  if (sample.length > 100 && normalChars / sample.length < 0.2) return true;
 
   return false;
 }

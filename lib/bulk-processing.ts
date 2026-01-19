@@ -7,6 +7,13 @@ export interface UnsummarizedUrlsResponse {
   count: number;
 }
 
+export interface GirlsChannelUrlsResponse {
+  urls: string[];
+  count: number;
+  totalFound: number;
+  page: number;
+}
+
 export interface BulkProcessStatus {
   isProcessing: boolean;
   currentIndex: number;
@@ -100,6 +107,50 @@ export async function markThreadAsSkipped(url: string, reason: string): Promise<
 export function extractThreadId(url: string): string | null {
   // 5ch URL format: https://hayabusa9.5ch.net/test/read.cgi/news/1234567890/
   const match = url.match(/\/(\d{10,})\/?$/);
+  return match ? match[1] : null;
+}
+
+/**
+ * ガールズちゃんねる新着トピックURL一覧を取得
+ */
+export async function fetchGirlsChannelUrls(options?: {
+  limit?: number;
+  page?: number;
+}): Promise<GirlsChannelUrlsResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.page) params.append('page', options.page.toString());
+
+  const response = await fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to fetch GirlsChannel URLs');
+  }
+
+  const data = await response.json() as GirlsChannelUrlsResponse;
+
+  // トピックIDで降順ソート（新しい順）
+  const sortedUrls = data.urls.sort((a, b) => {
+    const idA = extractGirlsChannelTopicId(a);
+    const idB = extractGirlsChannelTopicId(b);
+    if (!idA || !idB) return 0;
+    return parseInt(idB) - parseInt(idA);
+  });
+
+  return {
+    urls: sortedUrls,
+    count: sortedUrls.length,
+    totalFound: data.totalFound,
+    page: data.page,
+  };
+}
+
+/**
+ * ガールズちゃんねるURLからトピックIDを抽出
+ */
+export function extractGirlsChannelTopicId(url: string): string | null {
+  const match = url.match(/\/topics\/(\d+)/);
   return match ? match[1] : null;
 }
 

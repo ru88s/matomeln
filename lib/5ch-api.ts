@@ -105,11 +105,13 @@ function isMojibake(text: string): boolean {
     return true;
   }
 
-  // 3. 同じ文字の異常な連続（◇◇◇◇のような）
-  // 10文字以上同じ文字が連続している場合は異常
-  const repeatedCharPattern = /(.)\1{9,}/;
-  if (repeatedCharPattern.test(text)) {
-    console.log(`[mojibake] 同一文字の異常連続を検出`);
+  // 3. 同じ文字の異常な連続（◇◇◇◇のような文字化け特有パターン）
+  // ただし、5chでよく使われる文字は除外（w, ー, -, =, _, ・, 草, 笑, !,?など）
+  const commonRepeatChars = /[wWｗＷー\-=_・草笑!?！？\s。、\.]/;
+  const repeatedCharMatches = text.match(/(.)\1{14,}/g) || []; // 15文字以上に緩和
+  const suspiciousRepeats = repeatedCharMatches.filter(match => !commonRepeatChars.test(match[0]));
+  if (suspiciousRepeats.length > 0) {
+    console.log(`[mojibake] 同一文字の異常連続を検出: ${suspiciousRepeats[0]?.substring(0, 20)}`);
     return true;
   }
 
@@ -645,8 +647,14 @@ export async function fetchGirlsChannelThread(url: string): Promise<{ talk: Talk
     const response = await fetch(`/api/proxy/getGirlsChannel?url=${encodeURIComponent(url)}`);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as { error?: string };
-      throw new Error(errorData.error || 'トピックの取得に失敗しました');
+      const errorData = await response.json().catch(() => ({})) as { error?: unknown };
+      // errorData.errorがオブジェクトの場合は文字列に変換
+      const errorMsg = typeof errorData.error === 'string'
+        ? errorData.error
+        : errorData.error
+          ? JSON.stringify(errorData.error)
+          : 'トピックの取得に失敗しました';
+      throw new Error(errorMsg);
     }
 
     const data = await response.json() as { content: string };

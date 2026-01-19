@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { fetchUnsummarizedUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
+import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
 import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
@@ -17,6 +17,7 @@ export default function BulkProcessPanel({
   const [urls, setUrls] = useState<string>('');
   const [status, setStatus] = useState<BulkProcessStatus>(getInitialBulkStatus());
   const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingGC, setIsFetchingGC] = useState(false);
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
 
@@ -30,7 +31,7 @@ export default function BulkProcessPanel({
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
 
-  // 未まとめURL取得
+  // 未まとめURL取得（5ch）
   const handleFetchUrls = useCallback(async () => {
     setIsFetching(true);
     const toastId = toast.loading('未まとめURLを取得中...');
@@ -44,6 +45,23 @@ export default function BulkProcessPanel({
       toast.error(error instanceof Error ? error.message : 'URL取得に失敗しました', { id: toastId });
     } finally {
       setIsFetching(false);
+    }
+  }, []);
+
+  // ガールズちゃんねる新着URL取得
+  const handleFetchGirlsChannelUrls = useCallback(async () => {
+    setIsFetchingGC(true);
+    const toastId = toast.loading('ガルちゃん新着を取得中...');
+
+    try {
+      const result = await fetchGirlsChannelUrls({ limit: 100 });
+      setUrls(result.urls.join('\n'));
+      toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
+    } catch (error) {
+      console.error('Fetch GirlsChannel error:', error);
+      toast.error(error instanceof Error ? error.message : 'URL取得に失敗しました', { id: toastId });
+    } finally {
+      setIsFetchingGC(false);
     }
   }, []);
 
@@ -164,7 +182,14 @@ export default function BulkProcessPanel({
           break;
         } catch (error) {
           console.error(`Bulk process error (attempt ${attempt}):`, error);
-          lastError = error instanceof Error ? error.message : 'Unknown error';
+          // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
+          lastError = error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : typeof error === 'object' && error !== null
+                ? JSON.stringify(error)
+                : 'Unknown error';
 
           // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -325,7 +350,14 @@ export default function BulkProcessPanel({
             break;
           } catch (error) {
             console.error(`Auto run error (attempt ${attempt}):`, error);
-            lastError = error instanceof Error ? error.message : 'Unknown error';
+            // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
+            lastError = error instanceof Error
+              ? error.message
+              : typeof error === 'string'
+                ? error
+                : typeof error === 'object' && error !== null
+                  ? JSON.stringify(error)
+                  : 'Unknown error';
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -414,7 +446,14 @@ export default function BulkProcessPanel({
       // 停止されていなければ、まだURLがある可能性を返す
       return !shouldStopRef.current;
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
+      const errorMsg = error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : typeof error === 'object' && error !== null
+            ? JSON.stringify(error)
+            : 'Unknown error';
       console.error('Auto run cycle error:', errorMsg);
       toast.error(`定期実行エラー: ${errorMsg}`, { id: 'auto-run' });
 
@@ -537,11 +576,11 @@ export default function BulkProcessPanel({
       </div>
 
       {/* ボタン群 */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={handleFetchUrls}
-          disabled={isProcessing || isFetching}
-          className="flex-1 bg-white border border-indigo-300 text-indigo-700 font-bold py-2 px-4 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
+          disabled={isProcessing || isFetching || isFetchingGC}
+          className="flex-1 min-w-[140px] bg-white border border-indigo-300 text-indigo-700 font-bold py-2 px-3 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer text-sm"
         >
           {isFetching ? (
             <>
@@ -556,7 +595,30 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              未まとめURL取得
+              5ch未まとめ
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleFetchGirlsChannelUrls}
+          disabled={isProcessing || isFetching || isFetchingGC}
+          className="flex-1 min-w-[140px] bg-white border border-pink-300 text-pink-700 font-bold py-2 px-3 rounded-lg hover:bg-pink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer text-sm"
+        >
+          {isFetchingGC ? (
+            <>
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              取得中...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              ガルちゃん新着
             </>
           )}
         </button>
