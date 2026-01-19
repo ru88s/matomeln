@@ -262,12 +262,24 @@ export default function SettingsPage() {
                 HTMLタグをそのまま記述してください。引用元リンクなどに使用できます。
               </p>
             </div>
-            <button
-              onClick={saveCustomFooterHtml}
-              className="bg-orange-500 text-white hover:bg-orange-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-            >
-              保存
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setCustomFooterHtml('');
+                  localStorage.removeItem('matomeln_custom_footer_html');
+                  toast.success('フッターHTMLを削除しました');
+                }}
+                className="bg-gray-400 text-white hover:bg-gray-500 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+              >
+                クリア
+              </button>
+              <button
+                onClick={saveCustomFooterHtml}
+                className="bg-orange-500 text-white hover:bg-orange-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+              >
+                保存
+              </button>
+            </div>
           </div>
         </div>
 

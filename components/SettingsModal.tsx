@@ -503,12 +503,24 @@ export default function SettingsModal({
                 <p className="text-xs text-gray-500">
                   生成HTMLの最後に追加されます
                 </p>
-                <button
-                  onClick={saveCustomFooterHtml}
-                  className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
-                >
-                  保存
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setCustomFooterHtml('');
+                      localStorage.removeItem('matomeln_custom_footer_html');
+                      toast.success('カスタムフッターHTMLを削除しました');
+                    }}
+                    className="text-sm bg-gray-400 text-white hover:bg-gray-500 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                  >
+                    クリア
+                  </button>
+                  <button
+                    onClick={saveCustomFooterHtml}
+                    className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                  >
+                    保存
+                  </button>
+                </div>
               </div>
             </div>
 
