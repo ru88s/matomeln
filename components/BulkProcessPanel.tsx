@@ -7,46 +7,61 @@ import toast from 'react-hot-toast';
 
 // エラーを確実に文字列に変換するヘルパー関数
 function stringifyError(error: unknown): string {
-  // 既に文字列なら（[object Object]でも）そのまま返す
+  // null/undefined
+  if (error == null) {
+    return 'エラーが発生しました（詳細不明）';
+  }
+
+  // 既に文字列の場合
   if (typeof error === 'string') {
-    // ただし "[object Object]" という文字列なら詳細不明に変換
-    if (error === '[object Object]') {
+    // "[object Object]" という文字列なら詳細不明に変換
+    if (error === '[object Object]' || error.includes('[object ')) {
       return 'エラーの詳細を取得できませんでした';
     }
     return error;
   }
 
-  // null/undefined
-  if (error == null) {
-    return 'Unknown error';
-  }
-
   // Errorインスタンス
   if (error instanceof Error) {
-    return error.message || error.name || 'Error';
+    const msg = error.message || error.name || 'Error';
+    // messageが[object Object]を含む場合もチェック
+    if (msg.includes('[object ')) {
+      return `エラー: ${error.name || 'Error'}`;
+    }
+    return msg;
   }
 
   // Response オブジェクト（fetch APIのエラー）
-  if (error instanceof Response) {
-    return `HTTP Error: ${error.status} ${error.statusText}`;
+  if (typeof Response !== 'undefined' && error instanceof Response) {
+    return `HTTP Error: ${error.status} ${error.statusText || 'Unknown'}`;
   }
 
   // オブジェクトの場合
   if (typeof error === 'object') {
     const obj = error as Record<string, unknown>;
 
-    // よくあるエラーオブジェクトのプロパティをチェック
-    if (typeof obj.message === 'string') return obj.message;
-    if (typeof obj.error === 'string') return obj.error;
-    if (typeof obj.msg === 'string') return obj.msg;
-    if (typeof obj.detail === 'string') return obj.detail;
-    if (typeof obj.details === 'string') return obj.details;
+    // よくあるエラーオブジェクトのプロパティをチェック（再帰的に文字列化）
+    if (typeof obj.message === 'string' && !obj.message.includes('[object ')) return obj.message;
+    if (typeof obj.error === 'string' && !obj.error.includes('[object ')) return obj.error;
+    if (typeof obj.msg === 'string' && !obj.msg.includes('[object ')) return obj.msg;
+    if (typeof obj.detail === 'string' && !obj.detail.includes('[object ')) return obj.detail;
+    if (typeof obj.details === 'string' && !obj.details.includes('[object ')) return obj.details;
+
+    // ネストしたerrorプロパティもチェック
+    if (obj.error && typeof obj.error === 'object') {
+      const nestedError = obj.error as Record<string, unknown>;
+      if (typeof nestedError.message === 'string') return nestedError.message;
+    }
 
     // JSON.stringifyを試す
     try {
       const json = JSON.stringify(error, null, 0);
       // 空オブジェクトや短すぎる場合
       if (json === '{}' || json.length < 3) {
+        return 'エラーの詳細を取得できませんでした';
+      }
+      // [object Object]を含まないか確認
+      if (json.includes('[object ')) {
         return 'エラーの詳細を取得できませんでした';
       }
       return json;
@@ -57,7 +72,21 @@ function stringifyError(error: unknown): string {
   }
 
   // その他（number, booleanなど）
-  return String(error);
+  const str = String(error);
+  if (str.includes('[object ')) {
+    return 'エラーの詳細を取得できませんでした';
+  }
+  return str;
+}
+
+// エラーメッセージを安全に表示用文字列に変換
+function safeErrorDisplay(error: unknown): string {
+  const str = stringifyError(error);
+  // 最終チェック: [object を含む場合は置換
+  if (str.includes('[object ')) {
+    return 'エラーの詳細を取得できませんでした';
+  }
+  return str;
 }
 
 interface BulkProcessPanelProps {
@@ -97,7 +126,7 @@ export default function BulkProcessPanel({
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
       console.error('Fetch error:', error);
-      toast.error(error instanceof Error ? error.message : 'URL取得に失敗しました', { id: toastId });
+      toast.error(stringifyError(error), { id: toastId });
     } finally {
       setIsFetching(false);
     }
@@ -114,7 +143,7 @@ export default function BulkProcessPanel({
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
       console.error('Fetch GirlsChannel error:', error);
-      toast.error(error instanceof Error ? error.message : 'URL取得に失敗しました', { id: toastId });
+      toast.error(stringifyError(error), { id: toastId });
     } finally {
       setIsFetchingGC(false);
     }
@@ -728,7 +757,7 @@ export default function BulkProcessPanel({
                 {status.failedUrls.map((f, i) => (
                   <li key={i} className="bg-red-50 rounded p-2 border border-red-200">
                     <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-mono text-xs break-all mb-1 block">{f.url}</a>
-                    <div className="text-red-600 break-words">{typeof f.error === 'string' ? f.error : stringifyError(f.error)}</div>
+                    <div className="text-red-600 break-words">{safeErrorDisplay(f.error)}</div>
                   </li>
                 ))}
               </ul>

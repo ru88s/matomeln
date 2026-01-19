@@ -883,12 +883,35 @@ export default function Home() {
 
     } catch (error) {
       console.error('一括処理エラー:', error);
-      // エラー時はtoastをエラー表示に変更
-      const errorMsg = error instanceof Error ? error.message : '一括処理に失敗しました';
+      // エラーメッセージを確実に文字列として取得
+      let errorMsg: string;
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (error && typeof error === 'object') {
+        const obj = error as Record<string, unknown>;
+        if (typeof obj.message === 'string') {
+          errorMsg = obj.message;
+        } else if (typeof obj.error === 'string') {
+          errorMsg = obj.error;
+        } else {
+          try {
+            errorMsg = JSON.stringify(error);
+            if (errorMsg === '{}' || errorMsg.includes('[object ')) {
+              errorMsg = '一括処理に失敗しました';
+            }
+          } catch {
+            errorMsg = '一括処理に失敗しました';
+          }
+        }
+      } else if (typeof error === 'string') {
+        errorMsg = error.includes('[object ') ? '一括処理に失敗しました' : error;
+      } else {
+        errorMsg = '一括処理に失敗しました';
+      }
       toast.error(errorMsg, { id: 'bulk-step' });
       logError(errorMsg, { action: 'bulk_process', threadUrl: url });
-      // エラーを再スローして呼び出し元でキャッチできるようにする
-      throw error;
+      // エラーを文字列メッセージ付きのErrorとして再スロー
+      throw new Error(errorMsg);
     } finally {
       // 処理完了後の状態をクリーンアップ
       setGeneratingAI(false);

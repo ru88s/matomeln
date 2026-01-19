@@ -661,7 +661,20 @@ export async function fetchGirlsChannelThread(url: string): Promise<{ talk: Talk
     return parseGirlsChannelHtml(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching GirlsChannel thread:', error);
-    throw error;
+    // エラーを適切なError形式で再スロー
+    if (error instanceof Error) {
+      throw error;
+    }
+    // Error以外のオブジェクトの場合は文字列に変換
+    let errorMsg = 'トピックの取得に失敗しました';
+    if (error && typeof error === 'object') {
+      const obj = error as Record<string, unknown>;
+      if (typeof obj.message === 'string') errorMsg = obj.message;
+      else if (typeof obj.error === 'string') errorMsg = obj.error;
+    } else if (typeof error === 'string') {
+      errorMsg = error;
+    }
+    throw new Error(errorMsg);
   }
 }
 
@@ -933,7 +946,19 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
       return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
     } catch (fallbackError) {
       console.error('2ch.sc fallback also failed:', fallbackError);
-      throw error; // 元のエラーを投げる
+      // エラーを適切なError形式で再スロー
+      if (error instanceof Error) {
+        throw error;
+      }
+      let errorMsg = '5chスレッドの取得に失敗しました';
+      if (error && typeof error === 'object') {
+        const obj = error as Record<string, unknown>;
+        if (typeof obj.message === 'string') errorMsg = obj.message;
+        else if (typeof obj.error === 'string') errorMsg = obj.error;
+      } else if (typeof error === 'string') {
+        errorMsg = error;
+      }
+      throw new Error(errorMsg);
     }
   }
 }
@@ -995,7 +1020,19 @@ export async function fetchOpen2chThread(url: string): Promise<{ talk: Talk; com
     return parseOpen2chDatFile(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching open2ch thread:', error);
-    throw error;
+    // エラーを適切なError形式で再スロー
+    if (error instanceof Error) {
+      throw error;
+    }
+    let errorMsg = 'open2chスレッドの取得に失敗しました';
+    if (error && typeof error === 'object') {
+      const obj = error as Record<string, unknown>;
+      if (typeof obj.message === 'string') errorMsg = obj.message;
+      else if (typeof obj.error === 'string') errorMsg = obj.error;
+    } else if (typeof error === 'string') {
+      errorMsg = error;
+    }
+    throw new Error(errorMsg);
   }
 }
 
@@ -1019,6 +1056,18 @@ export async function fetch2chscThread(url: string): Promise<{ talk: Talk; comme
     return parse2chscDatFile(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching 2ch.sc thread:', error);
-    throw error;
+    // エラーを適切なError形式で再スロー
+    if (error instanceof Error) {
+      throw error;
+    }
+    let errorMsg = '2ch.scスレッドの取得に失敗しました';
+    if (error && typeof error === 'object') {
+      const obj = error as Record<string, unknown>;
+      if (typeof obj.message === 'string') errorMsg = obj.message;
+      else if (typeof obj.error === 'string') errorMsg = obj.error;
+    } else if (typeof error === 'string') {
+      errorMsg = error;
+    }
+    throw new Error(errorMsg);
   }
 }

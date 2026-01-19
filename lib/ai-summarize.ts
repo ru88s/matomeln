@@ -549,7 +549,19 @@ export async function callClaudeAPI(
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('AI分析がタイムアウトしました（60秒）。スキップします。');
     }
-    throw error;
+    // エラーを適切なError形式で再スロー
+    if (error instanceof Error) {
+      throw error;
+    }
+    let errorMsg = 'AI API呼び出しに失敗しました';
+    if (error && typeof error === 'object') {
+      const obj = error as Record<string, unknown>;
+      if (typeof obj.message === 'string') errorMsg = obj.message;
+      else if (typeof obj.error === 'string') errorMsg = obj.error;
+    } else if (typeof error === 'string') {
+      errorMsg = error;
+    }
+    throw new Error(errorMsg);
   } finally {
     clearTimeout(timeoutId);
   }
