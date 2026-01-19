@@ -1,7 +1,8 @@
 /**
- * ガールズちゃんねる新着トピック取得API
- * 新着ページをスクレイピングしてトピックURLを取得
+ * ガールズちゃんねる未まとめURL取得API（スレメモくん経由）
  */
+
+const THREAD_MEMO_BASE_URL = 'https://thread-memo.starcrown.co.jp';
 
 // CORSヘッダー
 const corsHeaders = {
@@ -35,26 +36,28 @@ export async function onRequest(context: { request: Request }) {
   }
 
   const url = new URL(request.url);
-  const limit = parseInt(url.searchParams.get('limit') || '100', 10);
-  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const limit = url.searchParams.get('limit') || '1000';
 
   try {
-    // ガールズちゃんねるの新着トピックページを取得
-    const targetUrl = `https://girlschannel.net/topics/new/?page=${page}`;
+    // スレメモくんから未まとめURL一覧を取得
+    const params = new URLSearchParams();
+    params.append('limit', limit);
+    params.append('source', 'girlschannel'); // ガルちゃんのみ
 
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
-      },
-    });
+    const response = await fetch(
+      `${THREAD_MEMO_BASE_URL}/api/threads/unsummarized?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     if (!response.ok) {
+      const errorText = await response.text();
       return new Response(
-        JSON.stringify({
-          error: `Failed to fetch: ${response.status} ${response.statusText}`,
-        }),
+        JSON.stringify({ error: `HTTP ${response.status}: ${errorText}` }),
         {
           status: response.status,
           headers: {
@@ -65,32 +68,15 @@ export async function onRequest(context: { request: Request }) {
       );
     }
 
-    const html = await response.text();
+    const data = await response.json() as { urls: string[]; count: number };
 
-    // トピックURLを抽出
-    // パターン: <a href="/topics/1234567/" class="topic-link">
-    const topicPattern = /href="(\/topics\/(\d+)\/)"/g;
-    const urls: string[] = [];
-    const seenIds = new Set<string>();
-    let match;
-
-    while ((match = topicPattern.exec(html)) !== null) {
-      const topicId = match[2];
-      if (!seenIds.has(topicId)) {
-        seenIds.add(topicId);
-        urls.push(`https://girlschannel.net/topics/${topicId}/`);
-      }
-    }
-
-    // limitで制限
-    const limitedUrls = urls.slice(0, limit);
+    // ガルちゃんURLのみフィルタ（念のため）
+    const filteredUrls = data.urls.filter((u: string) => u.includes('girlschannel.net'));
 
     return new Response(
       JSON.stringify({
-        urls: limitedUrls,
-        count: limitedUrls.length,
-        totalFound: urls.length,
-        page,
+        urls: filteredUrls,
+        count: filteredUrls.length,
       }),
       {
         status: 200,
@@ -101,7 +87,7 @@ export async function onRequest(context: { request: Request }) {
       }
     );
   } catch (error) {
-    console.error('Error fetching GirlsChannel new topics:', error);
+    console.error('Error fetching GirlsChannel URLs from thread-memo:', error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',

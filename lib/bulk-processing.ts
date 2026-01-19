@@ -10,8 +10,6 @@ export interface UnsummarizedUrlsResponse {
 export interface GirlsChannelUrlsResponse {
   urls: string[];
   count: number;
-  totalFound: number;
-  page: number;
 }
 
 export interface BulkProcessStatus {
@@ -111,15 +109,13 @@ export function extractThreadId(url: string): string | null {
 }
 
 /**
- * ガールズちゃんねる新着トピックURL一覧を取得
+ * ガールズちゃんねる未まとめURL一覧を取得（スレメモくん経由）
  */
 export async function fetchGirlsChannelUrls(options?: {
   limit?: number;
-  page?: number;
 }): Promise<GirlsChannelUrlsResponse> {
   const params = new URLSearchParams();
   if (options?.limit) params.append('limit', options.limit.toString());
-  if (options?.page) params.append('page', options.page.toString());
 
   const response = await fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`);
 
@@ -141,8 +137,6 @@ export async function fetchGirlsChannelUrls(options?: {
   return {
     urls: sortedUrls,
     count: sortedUrls.length,
-    totalFound: data.totalFound,
-    page: data.page,
   };
 }
 

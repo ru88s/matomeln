@@ -48,10 +48,10 @@ export default function BulkProcessPanel({
     }
   }, []);
 
-  // ガールズちゃんねる新着URL取得
+  // ガールズちゃんねる未まとめURL取得
   const handleFetchGirlsChannelUrls = useCallback(async () => {
     setIsFetchingGC(true);
-    const toastId = toast.loading('ガルちゃん新着を取得中...');
+    const toastId = toast.loading('ガルちゃん未まとめURLを取得中...');
 
     try {
       const result = await fetchGirlsChannelUrls({ limit: 100 });
@@ -618,7 +618,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              ガルちゃん新着
+              ガルちゃん未まとめ
             </>
           )}
         </button>
