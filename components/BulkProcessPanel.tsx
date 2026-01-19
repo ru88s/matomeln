@@ -701,7 +701,7 @@ export default function BulkProcessPanel({
                 {status.failedUrls.map((f, i) => (
                   <li key={i} className="bg-red-50 rounded p-2 border border-red-200">
                     <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-mono text-xs break-all mb-1 block">{f.url}</a>
-                    <div className="text-red-600 break-words">{f.error}</div>
+                    <div className="text-red-600 break-words">{typeof f.error === 'string' ? f.error : stringifyError(f.error)}</div>
                   </li>
                 ))}
               </ul>
