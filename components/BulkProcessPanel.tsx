@@ -23,12 +23,21 @@ function stringifyError(error: unknown): string {
 
   // Errorインスタンス
   if (error instanceof Error) {
-    const msg = error.message || error.name || 'Error';
-    // messageが[object Object]を含む場合もチェック
-    if (msg.includes('[object ')) {
-      return `エラー: ${error.name || 'Error'}`;
+    // メッセージがある場合
+    if (error.message && error.message.trim() && !error.message.includes('[object ')) {
+      return error.message;
     }
-    return msg;
+    // メッセージが空の場合、スタックトレースから情報を抽出
+    if (error.stack) {
+      const stackLines = error.stack.split('\n');
+      // 最初の行（エラー名: メッセージ）を取得
+      const firstLine = stackLines[0];
+      if (firstLine && firstLine.trim() && firstLine !== 'Error') {
+        return firstLine.trim();
+      }
+    }
+    // nameだけでも返す
+    return `エラー: ${error.name || 'Unknown'}`;
   }
 
   // Response オブジェクト（fetch APIのエラー）
@@ -208,6 +217,17 @@ export default function BulkProcessPanel({
       '制限中の可能性',
       // 文字化け
       '文字化け',
+      // 汎用エラー（スキップして次へ進む）
+      'エラー: Error',
+      'エラーの詳細を取得できませんでした',
+      'エラーが発生しました',
+      '一括処理に失敗しました',
+      'API呼び出しに失敗',
+      'fetch failed',
+      'Load failed',
+      'NetworkError',
+      'TypeError',
+      'SyntaxError',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
