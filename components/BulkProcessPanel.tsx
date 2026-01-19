@@ -183,13 +183,12 @@ export default function BulkProcessPanel({
         } catch (error) {
           console.error(`Bulk process error (attempt ${attempt}):`, error);
           // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-          lastError = error instanceof Error
-            ? error.message
-            : typeof error === 'string'
-              ? error
-              : typeof error === 'object' && error !== null
-                ? JSON.stringify(error)
-                : 'Unknown error';
+          const rawError = error instanceof Error ? error.message : error;
+          lastError = typeof rawError === 'string'
+            ? rawError
+            : typeof rawError === 'object' && rawError !== null
+              ? JSON.stringify(rawError)
+              : String(rawError || 'Unknown error');
 
           // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -351,13 +350,12 @@ export default function BulkProcessPanel({
           } catch (error) {
             console.error(`Auto run error (attempt ${attempt}):`, error);
             // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-            lastError = error instanceof Error
-              ? error.message
-              : typeof error === 'string'
-                ? error
-                : typeof error === 'object' && error !== null
-                  ? JSON.stringify(error)
-                  : 'Unknown error';
+            const rawError = error instanceof Error ? error.message : error;
+            lastError = typeof rawError === 'string'
+              ? rawError
+              : typeof rawError === 'object' && rawError !== null
+                ? JSON.stringify(rawError)
+                : String(rawError || 'Unknown error');
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -447,13 +445,12 @@ export default function BulkProcessPanel({
       return !shouldStopRef.current;
     } catch (error) {
       // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-      const errorMsg = error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-          ? error
-          : typeof error === 'object' && error !== null
-            ? JSON.stringify(error)
-            : 'Unknown error';
+      const rawError = error instanceof Error ? error.message : error;
+      const errorMsg = typeof rawError === 'string'
+        ? rawError
+        : typeof rawError === 'object' && rawError !== null
+          ? JSON.stringify(rawError)
+          : String(rawError || 'Unknown error');
       console.error('Auto run cycle error:', errorMsg);
       toast.error(`定期実行エラー: ${errorMsg}`, { id: 'auto-run' });
 
