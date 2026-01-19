@@ -5,6 +5,37 @@ import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, BulkProcessStatus, getIni
 import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
+// エラーを確実に文字列に変換するヘルパー関数
+function stringifyError(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) {
+    // Error.messageがオブジェクトの場合も処理
+    const msg = error.message;
+    if (typeof msg === 'string') return msg;
+    try {
+      return JSON.stringify(msg);
+    } catch {
+      return String(msg);
+    }
+  }
+  if (error && typeof error === 'object') {
+    // エラーオブジェクトの場合
+    const anyError = error as Record<string, unknown>;
+    if ('message' in anyError && typeof anyError.message === 'string') {
+      return anyError.message;
+    }
+    if ('error' in anyError && typeof anyError.error === 'string') {
+      return anyError.error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return '[Error object]';
+    }
+  }
+  return String(error || 'Unknown error');
+}
+
 interface BulkProcessPanelProps {
   onBulkProcess: (url: string) => Promise<void>;
   isProcessingAI: boolean;
@@ -182,13 +213,8 @@ export default function BulkProcessPanel({
           break;
         } catch (error) {
           console.error(`Bulk process error (attempt ${attempt}):`, error);
-          // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-          const rawError = error instanceof Error ? error.message : error;
-          lastError = typeof rawError === 'string'
-            ? rawError
-            : typeof rawError === 'object' && rawError !== null
-              ? JSON.stringify(rawError)
-              : String(rawError || 'Unknown error');
+          // エラーを確実に文字列に変換
+          lastError = stringifyError(error);
 
           // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -349,13 +375,8 @@ export default function BulkProcessPanel({
             break;
           } catch (error) {
             console.error(`Auto run error (attempt ${attempt}):`, error);
-            // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-            const rawError = error instanceof Error ? error.message : error;
-            lastError = typeof rawError === 'string'
-              ? rawError
-              : typeof rawError === 'object' && rawError !== null
-                ? JSON.stringify(rawError)
-                : String(rawError || 'Unknown error');
+            // エラーを確実に文字列に変換
+            lastError = stringifyError(error);
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -444,13 +465,8 @@ export default function BulkProcessPanel({
       // 停止されていなければ、まだURLがある可能性を返す
       return !shouldStopRef.current;
     } catch (error) {
-      // エラーを文字列に変換（オブジェクトの場合はJSON.stringify）
-      const rawError = error instanceof Error ? error.message : error;
-      const errorMsg = typeof rawError === 'string'
-        ? rawError
-        : typeof rawError === 'object' && rawError !== null
-          ? JSON.stringify(rawError)
-          : String(rawError || 'Unknown error');
+      // エラーを確実に文字列に変換
+      const errorMsg = stringifyError(error);
       console.error('Auto run cycle error:', errorMsg);
       toast.error(`定期実行エラー: ${errorMsg}`, { id: 'auto-run' });
 
