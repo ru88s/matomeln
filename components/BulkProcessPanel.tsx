@@ -228,6 +228,17 @@ export default function BulkProcessPanel({
       'NetworkError',
       'TypeError',
       'SyntaxError',
+      // JSONパースエラー（HTMLが返ってきた場合など）
+      'Unexpected token',
+      'is not valid JSON',
+      '<!DOCTYPE',
+      'JSON.parse',
+      'JSON Parse error',
+      // CAPTCHAやブロック
+      'CAPTCHA',
+      'アクセスをブロック',
+      'ブロックされている',
+      '応答を解析できませんでした',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };

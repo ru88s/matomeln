@@ -657,7 +657,22 @@ export async function fetchGirlsChannelThread(url: string): Promise<{ talk: Talk
       throw new Error(errorMsg);
     }
 
-    const data = await response.json() as { content: string };
+    // JSONパースを試みる（HTMLが返ってきた場合のエラーハンドリング）
+    let data: { content: string };
+    try {
+      const text = await response.text();
+      // HTMLが返ってきた場合（CAPTCHAやエラーページ）
+      if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+        throw new Error('ガールズちゃんねるがアクセスをブロックしています（CAPTCHA等）。しばらく待ってから再試行してください。');
+      }
+      data = JSON.parse(text);
+    } catch (parseError) {
+      if (parseError instanceof SyntaxError) {
+        throw new Error('ガールズちゃんねるからの応答を解析できませんでした。アクセスがブロックされている可能性があります。');
+      }
+      throw parseError;
+    }
+
     return parseGirlsChannelHtml(data.content, threadInfo);
   } catch (error) {
     console.error('Error fetching GirlsChannel thread:', error);
