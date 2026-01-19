@@ -89,6 +89,17 @@ function safeErrorDisplay(error: unknown): string {
   return str;
 }
 
+// 状態保存用に安全な文字列を返す
+function sanitizeErrorForState(error: string): string {
+  if (typeof error !== 'string') {
+    return 'エラーの詳細を取得できませんでした';
+  }
+  if (error.includes('[object ')) {
+    return 'エラーの詳細を取得できませんでした';
+  }
+  return error;
+}
+
 interface BulkProcessPanelProps {
   onBulkProcess: (url: string) => Promise<void>;
   isProcessingAI: boolean;
@@ -270,6 +281,11 @@ export default function BulkProcessPanel({
           console.error(`Error keys:`, error && typeof error === 'object' ? Object.keys(error) : 'N/A');
           // エラーを確実に文字列に変換
           lastError = stringifyError(error);
+          // 追加チェック: [object が含まれていたら置換
+          if (lastError.includes('[object ')) {
+            console.error('CRITICAL: stringifyError returned [object], original error:', error);
+            lastError = 'エラーの詳細を取得できませんでした';
+          }
           console.error(`Stringified error: ${lastError}`);
 
           // スキップ可能なエラーの場合はリトライ
@@ -282,12 +298,13 @@ export default function BulkProcessPanel({
           // スキップ不可のエラー（投稿エラーなど）の場合は即座に中断
           if (!isSkippableError(lastError)) {
             failedCount++;
-            failedUrlsList.push({ url, error: lastError });
+            const safeError = sanitizeErrorForState(lastError);
+            failedUrlsList.push({ url, error: safeError });
             setStatus(prev => ({
               ...prev,
-              failedUrls: [...prev.failedUrls, { url, error: lastError }],
+              failedUrls: [...prev.failedUrls, { url, error: safeError }],
             }));
-            toast.error(`(${i + 1}/${urlList.length}) エラー: ${lastError}`, { id: 'bulk-progress' });
+            toast.error(`(${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
             toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
             shouldStopRef.current = true;
             break;
@@ -316,12 +333,13 @@ export default function BulkProcessPanel({
       } else if (!shouldStopRef.current) {
         // リトライ後も失敗した場合（スキップして次へ進む）
         failedCount++;
-        failedUrlsList.push({ url, error: lastError });
+        const safeError = sanitizeErrorForState(lastError);
+        failedUrlsList.push({ url, error: safeError });
         setStatus(prev => ({
           ...prev,
-          failedUrls: [...prev.failedUrls, { url, error: lastError }],
+          failedUrls: [...prev.failedUrls, { url, error: safeError }],
         }));
-        toast.error(`(${i + 1}/${urlList.length}) 取得失敗: ${lastError}（スキップ）`, { id: 'bulk-progress' });
+        toast.error(`(${i + 1}/${urlList.length}) 取得失敗: ${safeError}（スキップ）`, { id: 'bulk-progress' });
 
         // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
         try {
@@ -433,6 +451,11 @@ export default function BulkProcessPanel({
             console.error(`Auto run error (attempt ${attempt}):`, error);
             // エラーを確実に文字列に変換
             lastError = stringifyError(error);
+            // 追加チェック: [object が含まれていたら置換
+            if (lastError.includes('[object ')) {
+              console.error('CRITICAL: stringifyError returned [object], original error:', error);
+              lastError = 'エラーの詳細を取得できませんでした';
+            }
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -446,11 +469,12 @@ export default function BulkProcessPanel({
               failedCount++;
               consecutiveFailures++;
               consecutiveErrorsRef.current++;
+              const safeError = sanitizeErrorForState(lastError);
               setStatus(prev => ({
                 ...prev,
-                failedUrls: [...prev.failedUrls, { url, error: lastError }],
+                failedUrls: [...prev.failedUrls, { url, error: safeError }],
               }));
-              toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${lastError}`, { id: 'bulk-progress' });
+              toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
               toast.error('投稿エラーが発生したため定期実行を停止しました', { duration: 5000 });
               setAutoRunEnabled(false);
               shouldStopRef.current = true;
@@ -482,15 +506,16 @@ export default function BulkProcessPanel({
           // リトライ後も失敗した場合（スキップして次へ進む）
           failedCount++;
           consecutiveFailures++;
+          const safeError = sanitizeErrorForState(lastError);
           setStatus(prev => ({
             ...prev,
-            failedUrls: [...prev.failedUrls, { url, error: lastError }],
+            failedUrls: [...prev.failedUrls, { url, error: safeError }],
           }));
-          toast.error(`定期実行 (${i + 1}/${urlList.length}) 取得失敗: ${lastError}（スキップ）`, { id: 'bulk-progress' });
+          toast.error(`定期実行 (${i + 1}/${urlList.length}) 取得失敗: ${safeError}（スキップ）`, { id: 'bulk-progress' });
 
           // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
           try {
-            await markThreadAsSkipped(url, lastError);
+            await markThreadAsSkipped(url, safeError);
           } catch (skipError) {
             console.error('Failed to mark as skipped:', skipError);
           }
