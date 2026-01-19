@@ -48,14 +48,16 @@ function normalize5chUrl(url: string): string {
   return url;
 }
 
-// 試行するURLを生成（5ch.net直接 + 2ch.scフォールバック）
-function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; isHtml?: boolean }[] {
+// 試行するURLを生成（5ch.net直接 + 2ch.scフォールバック + CORSプロキシ）
+function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; isHtml?: boolean; useProxy?: string }[] {
   const { server, board, threadKey } = info;
   const keyPrefix = threadKey.substring(0, 4);
+  const datUrl = `https://${server}.5ch.net/${board}/dat/${threadKey}.dat`;
+  const htmlUrl = `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`;
 
   return [
     // 1. 5ch.net 直接アクセス（Cloudflare Workers経由）
-    { url: `https://${server}.5ch.net/${board}/dat/${threadKey}.dat`, source: '5ch.net' },
+    { url: datUrl, source: '5ch.net' },
     // 2. tomcat.2ch.sc（5chミラー）
     { url: `https://tomcat.2ch.sc/${board}/dat/${threadKey}.dat`, source: '2ch.sc' },
     // 3. サーバー名.2ch.sc
@@ -64,8 +66,16 @@ function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; is
     { url: `https://tomcat.2ch.sc/${board}/oyster/${keyPrefix}/${threadKey}.dat`, source: '2ch.sc-kako' },
     // 5. DAT落ち過去ログ（サーバー名）
     { url: `https://${server}.2ch.sc/${board}/oyster/${keyPrefix}/${threadKey}.dat`, source: '2ch.sc-kako' },
-    // 6. 5ch.net HTML版（最後の手段）
-    { url: `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`, source: '5ch.net-html', isHtml: true },
+    // 6. CORSプロキシ経由でDAT取得（allorigins）
+    { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(datUrl)}`, source: 'allorigins-dat' },
+    // 7. CORSプロキシ経由でDAT取得（corsproxy）
+    { url: `https://corsproxy.io/?${encodeURIComponent(datUrl)}`, source: 'corsproxy-dat' },
+    // 8. 5ch.net HTML版（直接）
+    { url: htmlUrl, source: '5ch.net-html', isHtml: true },
+    // 9. CORSプロキシ経由でHTML取得（allorigins）
+    { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(htmlUrl)}`, source: 'allorigins-html', isHtml: true },
+    // 10. CORSプロキシ経由でHTML取得（corsproxy）
+    { url: `https://corsproxy.io/?${encodeURIComponent(htmlUrl)}`, source: 'corsproxy-html', isHtml: true },
   ];
 }
 
