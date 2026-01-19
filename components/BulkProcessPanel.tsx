@@ -7,33 +7,57 @@ import toast from 'react-hot-toast';
 
 // エラーを確実に文字列に変換するヘルパー関数
 function stringifyError(error: unknown): string {
-  if (typeof error === 'string') return error;
+  // 既に文字列なら（[object Object]でも）そのまま返す
+  if (typeof error === 'string') {
+    // ただし "[object Object]" という文字列なら詳細不明に変換
+    if (error === '[object Object]') {
+      return 'エラーの詳細を取得できませんでした';
+    }
+    return error;
+  }
+
+  // null/undefined
+  if (error == null) {
+    return 'Unknown error';
+  }
+
+  // Errorインスタンス
   if (error instanceof Error) {
-    // Error.messageがオブジェクトの場合も処理
-    const msg = error.message;
-    if (typeof msg === 'string') return msg;
+    return error.message || error.name || 'Error';
+  }
+
+  // Response オブジェクト（fetch APIのエラー）
+  if (error instanceof Response) {
+    return `HTTP Error: ${error.status} ${error.statusText}`;
+  }
+
+  // オブジェクトの場合
+  if (typeof error === 'object') {
+    const obj = error as Record<string, unknown>;
+
+    // よくあるエラーオブジェクトのプロパティをチェック
+    if (typeof obj.message === 'string') return obj.message;
+    if (typeof obj.error === 'string') return obj.error;
+    if (typeof obj.msg === 'string') return obj.msg;
+    if (typeof obj.detail === 'string') return obj.detail;
+    if (typeof obj.details === 'string') return obj.details;
+
+    // JSON.stringifyを試す
     try {
-      return JSON.stringify(msg);
+      const json = JSON.stringify(error, null, 0);
+      // 空オブジェクトや短すぎる場合
+      if (json === '{}' || json.length < 3) {
+        return 'エラーの詳細を取得できませんでした';
+      }
+      return json;
     } catch {
-      return String(msg);
+      // 循環参照などでJSON化できない場合
+      return 'エラーの詳細を取得できませんでした';
     }
   }
-  if (error && typeof error === 'object') {
-    // エラーオブジェクトの場合
-    const anyError = error as Record<string, unknown>;
-    if ('message' in anyError && typeof anyError.message === 'string') {
-      return anyError.message;
-    }
-    if ('error' in anyError && typeof anyError.error === 'string') {
-      return anyError.error;
-    }
-    try {
-      return JSON.stringify(error);
-    } catch {
-      return '[Error object]';
-    }
-  }
-  return String(error || 'Unknown error');
+
+  // その他（number, booleanなど）
+  return String(error);
 }
 
 interface BulkProcessPanelProps {
@@ -213,8 +237,11 @@ export default function BulkProcessPanel({
           break;
         } catch (error) {
           console.error(`Bulk process error (attempt ${attempt}):`, error);
+          console.error(`Error type: ${typeof error}, constructor: ${error?.constructor?.name}`);
+          console.error(`Error keys:`, error && typeof error === 'object' ? Object.keys(error) : 'N/A');
           // エラーを確実に文字列に変換
           lastError = stringifyError(error);
+          console.error(`Stringified error: ${lastError}`);
 
           // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
