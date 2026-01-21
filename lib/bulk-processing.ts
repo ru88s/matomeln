@@ -109,7 +109,7 @@ export function extractThreadId(url: string): string | null {
 }
 
 /**
- * ガールズちゃんねる未まとめURL一覧を取得（スレメモくん経由）
+ * ガールズちゃんねる + Shikutoku 未まとめURL一覧を取得（スレメモくん経由）
  */
 export async function fetchGirlsChannelUrls(options?: {
   limit?: number;
@@ -117,27 +117,62 @@ export async function fetchGirlsChannelUrls(options?: {
   const params = new URLSearchParams();
   if (options?.limit) params.append('limit', options.limit.toString());
 
-  const response = await fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`);
+  // ガールズちゃんねるとShikutokuを並行取得
+  const [gcResponse, shikutokuResponse] = await Promise.all([
+    fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`),
+    fetch(`/api/proxy/getShikutokuNew?${params.toString()}`),
+  ]);
 
-  if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to fetch GirlsChannel URLs');
+  const allUrls: string[] = [];
+
+  // ガールズちゃんねる
+  if (gcResponse.ok) {
+    const gcData = await gcResponse.json() as GirlsChannelUrlsResponse;
+    allUrls.push(...gcData.urls);
   }
 
-  const data = await response.json() as GirlsChannelUrlsResponse;
+  // Shikutoku
+  if (shikutokuResponse.ok) {
+    const shikutokuData = await shikutokuResponse.json() as { urls: string[]; count: number };
+    allUrls.push(...shikutokuData.urls);
+  }
 
-  // トピックIDで降順ソート（新しい順）
-  const sortedUrls = data.urls.sort((a, b) => {
-    const idA = extractGirlsChannelTopicId(a);
-    const idB = extractGirlsChannelTopicId(b);
-    if (!idA || !idB) return 0;
-    return parseInt(idB) - parseInt(idA);
+  if (allUrls.length === 0) {
+    throw new Error('未まとめURLの取得に失敗しました');
+  }
+
+  // URLをソート（ガルちゃんはトピックID、ShikutokuはトークID）
+  const sortedUrls = allUrls.sort((a, b) => {
+    // ガルちゃんURL
+    if (a.includes('girlschannel.net') && b.includes('girlschannel.net')) {
+      const idA = extractGirlsChannelTopicId(a);
+      const idB = extractGirlsChannelTopicId(b);
+      if (idA && idB) return parseInt(idB) - parseInt(idA);
+    }
+    // ShikutokuURL
+    if (a.includes('shikutoku.me') && b.includes('shikutoku.me')) {
+      const idA = extractShikutokuTalkId(a);
+      const idB = extractShikutokuTalkId(b);
+      if (idA && idB) return parseInt(idB) - parseInt(idA);
+    }
+    // 異なるソースの場合はガルちゃんを先に
+    if (a.includes('girlschannel.net')) return -1;
+    if (b.includes('girlschannel.net')) return 1;
+    return 0;
   });
 
   return {
     urls: sortedUrls,
     count: sortedUrls.length,
   };
+}
+
+/**
+ * ShikutokuURLからトークIDを抽出
+ */
+export function extractShikutokuTalkId(url: string): string | null {
+  const match = url.match(/\/talks\/(\d+)/);
+  return match ? match[1] : null;
 }
 
 /**
