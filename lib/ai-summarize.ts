@@ -342,13 +342,6 @@ export function enhanceAIResponse(
     }
   }
 
-  // 最後のレス（落ちコメント）を赤色に
-  const lastPostNum = totalPosts;
-  const lastPost = selectedPosts.find(p => p.post_number === lastPostNum);
-  if (lastPost) {
-    lastPost.decorations.color = '#ef4444';
-  }
-
   // レス番号順にソート（画面表示と一致させる）
   console.log('🔢 ソート前:', selectedPosts.map(p => p.post_number).join(', '));
   selectedPosts.sort((a, b) => a.post_number - b.post_number);
@@ -359,6 +352,16 @@ export function enhanceAIResponse(
     const comment = comments[post.post_number - 1];
     if (comment?.is_talk_owner) {
       post.decorations.color = '#a855f7'; // 紫色
+    }
+  }
+
+  // 最後の選択レス（落ちコメント）を赤色に（スレ主以外）
+  if (selectedPosts.length > 0) {
+    const lastSelectedPost = selectedPosts[selectedPosts.length - 1];
+    const lastComment = comments[lastSelectedPost.post_number - 1];
+    // スレ主の場合は紫色を維持、それ以外は赤色に
+    if (!lastComment?.is_talk_owner) {
+      lastSelectedPost.decorations.color = '#ef4444';
     }
   }
 
