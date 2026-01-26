@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
-import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
+import { generateMatomeHTML, GeneratedHTML, ArticleSummary } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import toast from 'react-hot-toast';
 
@@ -30,9 +30,11 @@ interface HTMLGeneratorProps {
   isDevMode?: boolean;
   blogs?: BlogSettings[];
   selectedBlogId?: string;
+  articleSummary?: ArticleSummary | null;
+  editorialSummary?: string | null;
 }
 
-export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', selectedBlogType = 'livedoor', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '' }: HTMLGeneratorProps) {
+export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', selectedBlogType = 'livedoor', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '', articleSummary = null, editorialSummary = null }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
     style: 'simple',
@@ -90,11 +92,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // デバッグ: 渡されたコメントを確認
       console.log('📝 HTMLGenerator: selectedComments順序:', selectedComments.map(c => `${c.res_id}`).join(', '));
       // 並べ替えた順番をそのまま使用（ソートしない）
-      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType).then(html => {
+      generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType, articleSummary, editorialSummary).then(html => {
         setGeneratedHTML(html);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, customFooterHtml]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, customFooterHtml, articleSummary, editorialSummary]);
 
   const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {
@@ -103,7 +105,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
     }
 
     // 並べ替えた順番をそのまま使用（ソートしない）
-    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType);
+    const html = await generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType, articleSummary, editorialSummary);
     setGeneratedHTML(html);
     toast.success('HTMLタグを生成しました');
   };

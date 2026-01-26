@@ -11,7 +11,7 @@ import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/Loading
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
-import { callClaudeAPI } from '@/lib/ai-summarize';
+import { callClaudeAPI, AISummarizeResponse } from '@/lib/ai-summarize';
 import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
@@ -131,6 +131,9 @@ export default function Home() {
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理後にモーダルを開くための期待するコメント数
   const [pendingModalCommentCount, setPendingModalCommentCount] = useState<number | null>(null);
+  // AI生成の記事要点・編集部まとめ（AdSense対策用）
+  const [articleSummary, setArticleSummary] = useState<AISummarizeResponse['article_summary'] | null>(null);
+  const [editorialSummary, setEditorialSummary] = useState<string | null>(null);
 
   // 設定をローカルストレージから読み込み
   useEffect(() => {
@@ -431,6 +434,10 @@ export default function Home() {
       setCommentSizes(newCommentSizes);
       setSelectedComments(newSelectedComments);
 
+      // 記事要点と編集部まとめを保存
+      setArticleSummary(aiResponse.article_summary || null);
+      setEditorialSummary(aiResponse.editorial_summary || null);
+
       toast.success(`${newSelectedComments.length}件のレスを選択しました`, { id: toastId });
 
       // ログ記録
@@ -457,6 +464,8 @@ export default function Home() {
     setLoading(true);
     setComments([]); // 既存のコメントをクリア
     resetHistory(); // 履歴もリセット
+    setArticleSummary(null); // AI生成の要点をリセット
+    setEditorialSummary(null); // AI生成の編集部まとめをリセット
 
     try {
       const { talk, comments: loadedComments, source } = await fetchThreadData(input);
@@ -689,7 +698,7 @@ export default function Home() {
       // アンカー順に並び替え
       const sortedComments = sortByAnchorOrder(newSelectedComments);
 
-      // HTML生成
+      // HTML生成（記事要点・編集部まとめを含む）
       const generatedHTML = await generateMatomeHTML(
         talk,
         sortedComments,
@@ -713,7 +722,9 @@ export default function Home() {
         true, // isDevMode
         false, // skipOgp
         customFooterHtml,
-        blogSettings.blogType // blogType
+        blogSettings.blogType, // blogType
+        aiResponse.article_summary || null, // articleSummary
+        aiResponse.editorial_summary || null // editorialSummary
       );
 
       // 本文と続きを読むを組み合わせてブログ記事の内容を作成
@@ -1074,6 +1085,8 @@ export default function Home() {
                   isDevMode={isDevMode}
                   blogs={blogs}
                   selectedBlogId={selectedBlogId || ''}
+                  articleSummary={articleSummary}
+                  editorialSummary={editorialSummary}
                 />
               </div>
             </div>

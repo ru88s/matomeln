@@ -6,6 +6,13 @@ export interface GeneratedHTML {
   footer: string;
 }
 
+// 記事要点（AdSense対策用）
+export interface ArticleSummary {
+  topic_reason: string;      // 話題になっている理由
+  sympathy_points: string;   // 共感されているポイント
+  divided_opinions: string;  // 意見が分かれている点
+}
+
 export interface SourceInfo {
   source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
   originalUrl: string;
@@ -24,15 +31,17 @@ export async function generateMatomeHTML(
   isDevMode?: boolean,
   skipOgp?: boolean,
   customFooterHtml?: string,
-  blogType?: BlogType
+  blogType?: BlogType,
+  articleSummary?: ArticleSummary | null,
+  editorialSummary?: string | null
 ): Promise<GeneratedHTML> {
   const { includeImages, style, includeTimestamp, includeName } = options;
 
   let result: GeneratedHTML;
   if (style === 'rich') {
-    result = await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp, blogType);
+    result = await generateRichHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp, blogType, articleSummary, editorialSummary);
   } else {
-    result = await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp, blogType);
+    result = await generateSimpleHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, skipOgp, blogType, articleSummary, editorialSummary);
   }
 
   // DEVモードの場合はタイトルの頭に§を追加（ストック記事とわかるように）
@@ -118,6 +127,30 @@ function generateThumbnailHTML(thumbnailUrl: string): string {
   return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailSmallUrl}" width="400" height="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
 }
 
+// 記事要点HTMLを生成
+function generateArticleSummaryHTML(summary: ArticleSummary | null | undefined): string {
+  if (!summary) return '';
+
+  return `<div style="background:#f8f9fa;border-left:4px solid #e91e63;padding:15px 20px;margin:15px 0;border-radius:0 8px 8px 0;">
+<p style="font-weight:bold;color:#e91e63;margin:0 0 10px 0;font-size:16px;">この記事のポイント</p>
+<ul style="margin:0;padding-left:20px;color:#333;line-height:1.8;">
+<li style="margin-bottom:5px;"><strong>注目の理由：</strong>${escapeHtml(summary.topic_reason)}</li>
+<li style="margin-bottom:5px;"><strong>共感ポイント：</strong>${escapeHtml(summary.sympathy_points)}</li>
+<li style="margin-bottom:0;"><strong>意見が分かれる点：</strong>${escapeHtml(summary.divided_opinions)}</li>
+</ul>
+</div>\n\n`;
+}
+
+// 編集部まとめHTMLを生成
+function generateEditorialSummaryHTML(summary: string | null | undefined): string {
+  if (!summary) return '';
+
+  return `\n\n<div style="background:#fff3e0;border-left:4px solid #ff9800;padding:15px 20px;margin:15px 0;border-radius:0 8px 8px 0;">
+<p style="font-weight:bold;color:#ff9800;margin:0 0 10px 0;font-size:16px;">編集部より</p>
+<p style="margin:0;color:#333;line-height:1.8;">${escapeHtml(summary)}</p>
+</div>`;
+}
+
 // シンプルなHTML
 async function generateSimpleHTML(
   talk: Talk,
@@ -130,7 +163,9 @@ async function generateSimpleHTML(
   thumbnailUrl?: string,
   showIdInHtml?: boolean,
   skipOgp?: boolean,
-  blogType?: BlogType
+  blogType?: BlogType,
+  articleSummary?: ArticleSummary | null,
+  editorialSummary?: string | null
 ): Promise<GeneratedHTML> {
   const { includeTimestamp, includeName, includeImages } = options;
 
@@ -201,8 +236,12 @@ ${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
     }
   };
 
-  // 本文（サムネイル + 最初のコメント）
+  // 本文（記事要点 + サムネイル + 最初のコメント）
   let bodyHTML = '';
+
+  // 記事要点を冒頭に追加
+  bodyHTML += generateArticleSummaryHTML(articleSummary);
+
   if (thumbnailUrl) {
     bodyHTML += generateThumbnailHTML(thumbnailUrl);
   }
@@ -210,12 +249,16 @@ ${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
     bodyHTML += await formatComment(selectedComments[0]);
   }
 
-  // フッター（2つめ以降のコメント + 引用元リンク）
+  // フッター（2つめ以降のコメント + 編集部まとめ + 引用元リンク）
   let footerHTML = '';
   if (selectedComments.length > 1) {
     const footerComments = await Promise.all(selectedComments.slice(1).map(comment => formatComment(comment)));
     footerHTML = footerComments.join('\n\n');
   }
+
+  // 編集部まとめを追加
+  footerHTML += generateEditorialSummaryHTML(editorialSummary);
+
   if (footerHTML) {
     footerHTML += '\n\n';
   }
@@ -245,7 +288,9 @@ async function generateRichHTML(
   thumbnailUrl?: string,
   showIdInHtml?: boolean,
   skipOgp?: boolean,
-  blogType?: BlogType
+  blogType?: BlogType,
+  articleSummary?: ArticleSummary | null,
+  editorialSummary?: string | null
 ): Promise<GeneratedHTML> {
   const { includeImages, includeTimestamp, includeName } = options;
 
@@ -337,8 +382,12 @@ ${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
     }
   };
 
-  // 本文（スタイル + サムネイル + 最初のコメント）
+  // 本文（スタイル + 記事要点 + サムネイル + 最初のコメント）
   let bodyHTML = styleHTML + '\n';
+
+  // 記事要点を冒頭に追加
+  bodyHTML += generateArticleSummaryHTML(articleSummary);
+
   if (thumbnailUrl) {
     bodyHTML += generateThumbnailHTML(thumbnailUrl);
   }
@@ -346,12 +395,16 @@ ${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
     bodyHTML += await formatComment(selectedComments[0]);
   }
 
-  // フッター（2つめ以降のコメント + 引用元リンク）
+  // フッター（2つめ以降のコメント + 編集部まとめ + 引用元リンク）
   let footerHTML = '';
   if (selectedComments.length > 1) {
     const footerComments = await Promise.all(selectedComments.slice(1).map(comment => formatComment(comment)));
     footerHTML = footerComments.join('\n\n');
   }
+
+  // 編集部まとめを追加
+  footerHTML += generateEditorialSummaryHTML(editorialSummary);
+
   if (footerHTML) {
     footerHTML += '\n\n';
   }

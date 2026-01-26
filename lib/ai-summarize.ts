@@ -24,6 +24,14 @@ export interface AISummarizeResponse {
     };
     reason: string;
   }[];
+  // 記事冒頭の要点（AdSense対策用）
+  article_summary?: {
+    topic_reason: string;      // 話題になっている理由
+    sympathy_points: string;   // 共感されているポイント
+    divided_opinions: string;  // 意見が分かれている点
+  };
+  // 編集部まとめ（AdSense対策用）
+  editorial_summary?: string;
 }
 
 // キーワードスパムを検出（同じ単語の繰り返し）
@@ -158,8 +166,18 @@ ${postsText}
 - null: 通常（デフォルト）
 - "small": 補足的なレス（使用は控えめに）
 
+【記事要点の生成（重要）】
+スレッドを読んで、以下の3点を簡潔に（各20〜40文字程度）まとめてください：
+- topic_reason: なぜこの話題が注目されているか
+- sympathy_points: 読者が共感しているポイント
+- divided_opinions: 意見が分かれている点（なければ「特になし」）
+
+【編集部まとめの生成（重要）】
+editorial_summary: スレッド全体を読んだ感想を1〜2文で（40〜80文字程度）
+例: 「今回は○○という話題で盛り上がりました。△△という意見が多い一方、□□という声も。」
+
 以下のJSON形式で返答してください：
-{"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}]}
+{"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}],"article_summary":{"topic_reason":"話題になっている理由","sympathy_points":"共感ポイント","divided_opinions":"意見が分かれている点"},"editorial_summary":"編集部まとめ文"}
 
 JSONのみを返してください。説明文は不要です。`;
 
@@ -368,7 +386,11 @@ export function enhanceAIResponse(
   // 色とサイズの分布を改善
   improveColorAndSizeDistribution(selectedPosts, comments);
 
-  return { selected_posts: selectedPosts };
+  return {
+    selected_posts: selectedPosts,
+    article_summary: aiResponse.article_summary,
+    editorial_summary: aiResponse.editorial_summary,
+  };
 }
 
 // 色とサイズの分布を改善する
