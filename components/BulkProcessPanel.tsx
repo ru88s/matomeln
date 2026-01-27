@@ -126,14 +126,18 @@ export default function BulkProcessPanel({
   const shouldStopRef = useRef(false);
 
   // 定期実行機能
-  const [autoRunEnabled, setAutoRunEnabled] = useState(false);
+  const [autoRun5chEnabled, setAutoRun5chEnabled] = useState(false);
+  const [autoRunGCEnabled, setAutoRunGCEnabled] = useState(false);
   const [autoRunInterval, setAutoRunInterval] = useState(30); // 分
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
+  const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
+  // どちらかが有効かどうか
+  const autoRunEnabled = autoRun5chEnabled || autoRunGCEnabled;
 
   // 未まとめURL取得（5ch）
   const handleFetchUrls = useCallback(async () => {
@@ -410,27 +414,33 @@ export default function BulkProcessPanel({
   }, []);
 
   // 定期実行: 1サイクル実行（処理完了後に再度URL取得して続行）
-  const runAutoProcessCycle = useCallback(async (): Promise<boolean> => {
+  const runAutoProcessCycle = useCallback(async (source: '5ch' | 'gc'): Promise<boolean> => {
     // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
     if (isAutoRunningRef.current) return false;
     isAutoRunningRef.current = true;
+    setCurrentAutoRunSource(source);
+
+    const sourceLabel = source === '5ch' ? '5ch' : 'ガルちゃん';
 
     try {
-      // 1. 未まとめURLを取得
-      toast.loading('定期実行: URL取得中...', { id: 'auto-run' });
-      const result = await fetchUnsummarizedUrls({ limit: 1000 });
+      // 1. 未まとめURLを取得（ソースに応じて異なるAPI）
+      toast.loading(`定期実行[${sourceLabel}]: URL取得中...`, { id: 'auto-run' });
+      const result = source === '5ch'
+        ? await fetchUnsummarizedUrls({ limit: 1000 })
+        : await fetchGirlsChannelUrls({ limit: 100 });
 
       if (result.urls.length === 0) {
-        toast.success('定期実行: 未まとめURLがありません。待機中...', { id: 'auto-run' });
+        toast.success(`定期実行[${sourceLabel}]: 未まとめURLがありません`, { id: 'auto-run' });
         setLastRunTime(new Date());
         consecutiveErrorsRef.current = 0; // エラーカウントリセット
         isAutoRunningRef.current = false;
+        setCurrentAutoRunSource(null);
         return false; // URLがない
       }
 
       // 2. URLをセット
       setUrls(result.urls.join('\n'));
-      toast.success(`定期実行: ${result.count}件のURLを処理開始`, { id: 'auto-run' });
+      toast.success(`定期実行[${sourceLabel}]: ${result.count}件のURLを処理開始`, { id: 'auto-run' });
 
       // 3. 一括処理を開始
       const urlList = result.urls;
@@ -453,7 +463,7 @@ export default function BulkProcessPanel({
 
       for (let i = 0; i < urlList.length; i++) {
         if (shouldStopRef.current) {
-          toast('定期実行を停止しました', { icon: '⏹️' });
+          toast(`定期実行[${sourceLabel}]を停止しました`, { icon: '⏹️' });
           break;
         }
 
@@ -471,7 +481,7 @@ export default function BulkProcessPanel({
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             const attemptMsg = attempt > 1 ? ` (リトライ ${attempt - 1}回目)` : '';
-            toast.loading(`定期実行 (${i + 1}/${urlList.length}) 処理中...${attemptMsg}`, { id: 'bulk-progress' });
+            toast.loading(`[${sourceLabel}] (${i + 1}/${urlList.length}) 処理中...${attemptMsg}`, { id: 'bulk-progress' });
             await onBulkProcess(url);
 
             if (shouldStopRef.current) break;
@@ -490,7 +500,7 @@ export default function BulkProcessPanel({
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
-              toast(`定期実行 (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
+              toast(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
               await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
               continue;
             }
@@ -505,9 +515,13 @@ export default function BulkProcessPanel({
                 ...prev,
                 failedUrls: [...prev.failedUrls, { url, error: safeError }],
               }));
-              toast.error(`定期実行 (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-              toast.error('投稿エラーが発生したため定期実行を停止しました', { duration: 5000 });
-              setAutoRunEnabled(false);
+              toast.error(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
+              toast.error(`投稿エラーが発生したため定期実行[${sourceLabel}]を停止しました`, { duration: 5000 });
+              if (source === '5ch') {
+                setAutoRun5chEnabled(false);
+              } else {
+                setAutoRunGCEnabled(false);
+              }
               shouldStopRef.current = true;
               break;
             }
@@ -528,7 +542,7 @@ export default function BulkProcessPanel({
             completedUrls: [...prev.completedUrls, url],
           }));
 
-          toast.success(`定期実行 (${i + 1}/${urlList.length}) 完了`, { id: 'bulk-progress' });
+          toast.success(`[${sourceLabel}] (${i + 1}/${urlList.length}) 完了`, { id: 'bulk-progress' });
 
           if (i < urlList.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -542,7 +556,7 @@ export default function BulkProcessPanel({
             ...prev,
             failedUrls: [...prev.failedUrls, { url, error: safeError }],
           }));
-          toast.error(`定期実行 (${i + 1}/${urlList.length}) 取得失敗: ${safeError}（スキップ）`, { id: 'bulk-progress' });
+          toast.error(`[${sourceLabel}] (${i + 1}/${urlList.length}) 取得失敗: ${safeError}（スキップ）`, { id: 'bulk-progress' });
 
           // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
           try {
@@ -565,7 +579,8 @@ export default function BulkProcessPanel({
       }));
 
       setLastRunTime(new Date());
-      toast.success(`定期実行完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
+      setCurrentAutoRunSource(null);
+      toast.success(`[${sourceLabel}]完了: ${completedCount}件成功, ${failedCount}件失敗`, { id: 'bulk-progress' });
 
       // ログ記録
       logActivity('bulk_process', {
@@ -580,7 +595,7 @@ export default function BulkProcessPanel({
       // エラーを確実に文字列に変換
       const errorMsg = stringifyError(error);
       console.error('Auto run cycle error:', errorMsg);
-      toast.error(`定期実行エラー: ${errorMsg}`, { id: 'auto-run' });
+      toast.error(`定期実行[${sourceLabel}]エラー: ${errorMsg}`, { id: 'auto-run' });
 
       // スキップ可能なエラーはカウントしない
       if (!isSkippableError(errorMsg)) {
@@ -588,45 +603,67 @@ export default function BulkProcessPanel({
 
         // 連続エラーが上限に達したら停止
         if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-          toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回の致命的エラーが発生したため、定期実行を停止します`, { duration: 5000 });
-          setAutoRunEnabled(false);
+          toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回の致命的エラーが発生したため、定期実行[${sourceLabel}]を停止します`, { duration: 5000 });
+          if (source === '5ch') {
+            setAutoRun5chEnabled(false);
+          } else {
+            setAutoRunGCEnabled(false);
+          }
         }
       }
       return false;
     } finally {
       isAutoRunningRef.current = false;
+      setCurrentAutoRunSource(null);
     }
   }, [onBulkProcess]);
 
   // 定期実行のメインループ（処理完了後に再チェック）
   const startAutoRunLoop = useCallback(async () => {
-    if (!autoRunEnabled) return;
+    if (!autoRun5chEnabled && !autoRunGCEnabled) return;
 
-    // 処理を実行
-    const hasMoreUrls = await runAutoProcessCycle();
+    let hasMoreUrls = false;
 
-    if (!autoRunEnabled) return; // 途中で無効化された場合
-
-    if (hasMoreUrls) {
-      // まだURLがある可能性があるので、すぐに再チェック
-      toast('未まとめURLを再チェック中...', { icon: '🔄' });
-      await new Promise(resolve => setTimeout(resolve, 3000)); // 少し待ってから再チェック
-      startAutoRunLoop(); // 再帰的に呼び出し
-    } else {
-      // URLがないので、指定時間待機
-      const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
-      setNextRunTime(nextRun);
+    // 5chが有効なら5chを処理
+    if (autoRun5chEnabled) {
+      hasMoreUrls = await runAutoProcessCycle('5ch');
+      if (hasMoreUrls) {
+        toast('5ch未まとめを再チェック中...', { icon: '🔄' });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        startAutoRunLoop();
+        return;
+      }
     }
-  }, [autoRunEnabled, autoRunInterval, runAutoProcessCycle]);
+
+    // ガルちゃんが有効ならガルちゃんを処理
+    if (autoRunGCEnabled) {
+      hasMoreUrls = await runAutoProcessCycle('gc');
+      if (hasMoreUrls) {
+        toast('ガルちゃん未まとめを再チェック中...', { icon: '🔄' });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        startAutoRunLoop();
+        return;
+      }
+    }
+
+    // どちらもURLがないので、指定時間待機
+    const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
+    setNextRunTime(nextRun);
+  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval, runAutoProcessCycle]);
 
   // 定期実行のタイマー管理
   useEffect(() => {
-    if (autoRunEnabled) {
+    const anyEnabled = autoRun5chEnabled || autoRunGCEnabled;
+
+    if (anyEnabled) {
       // エラーカウントをリセット
       consecutiveErrorsRef.current = 0;
 
-      // すぐに1回目を実行開始
-      toast.success(`定期実行を開始しました（未まとめがなくなったら${autoRunInterval}分ごとに再チェック）`);
+      // 有効なソースの表示
+      const sources = [];
+      if (autoRun5chEnabled) sources.push('5ch');
+      if (autoRunGCEnabled) sources.push('ガルちゃん');
+      toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
       startAutoRunLoop();
 
       // 指定間隔でも定期的に実行（バックアップ用）
@@ -650,7 +687,7 @@ export default function BulkProcessPanel({
         clearInterval(autoRunTimerRef.current);
       }
     };
-  }, [autoRunEnabled, autoRunInterval, startAutoRunLoop]);
+  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval, startAutoRunLoop]);
 
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
@@ -831,20 +868,34 @@ export default function BulkProcessPanel({
           定期自動処理
         </h4>
 
-        <div className="flex items-center gap-4 mb-3">
+        <div className="space-y-2 mb-3">
+          {/* 5ch */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={autoRunEnabled}
-              onChange={(e) => setAutoRunEnabled(e.target.checked)}
-              className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+              checked={autoRun5chEnabled}
+              onChange={(e) => setAutoRun5chEnabled(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               disabled={isProcessing}
             />
-            <span className="text-sm font-medium text-gray-700">
-              {autoRunInterval}分ごとに自動実行
-            </span>
+            <span className="text-sm font-medium text-gray-700">5ch未まとめ</span>
           </label>
 
+          {/* ガルちゃん・Shikutoku */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRunGCEnabled}
+              onChange={(e) => setAutoRunGCEnabled(e.target.checked)}
+              className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
+              disabled={isProcessing}
+            />
+            <span className="text-sm font-medium text-gray-700">ガルちゃん・Shikutoku</span>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm text-gray-600">チェック間隔:</span>
           <select
             value={autoRunInterval}
             onChange={(e) => setAutoRunInterval(Number(e.target.value))}
@@ -861,8 +912,16 @@ export default function BulkProcessPanel({
         {autoRunEnabled && (
           <div className="bg-white rounded-lg p-3 border border-green-200 text-sm space-y-1">
             <p className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                {status.isProcessing ? '処理中' : '待機中'}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                status.isProcessing
+                  ? currentAutoRunSource === '5ch'
+                    ? 'bg-indigo-100 text-indigo-800'
+                    : 'bg-pink-100 text-pink-800'
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {status.isProcessing
+                  ? currentAutoRunSource === '5ch' ? '5ch処理中' : 'ガルちゃん処理中'
+                  : '待機中'}
               </span>
               <span className="text-gray-600">
                 {status.isProcessing
