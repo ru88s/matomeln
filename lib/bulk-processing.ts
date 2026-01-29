@@ -124,21 +124,25 @@ export async function fetchGirlsChannelUrls(options?: {
   ]);
 
   const allUrls: string[] = [];
+  let anySuccess = false;
 
   // ガールズちゃんねる
   if (gcResponse.ok) {
+    anySuccess = true;
     const gcData = await gcResponse.json() as GirlsChannelUrlsResponse;
     allUrls.push(...gcData.urls);
   }
 
   // Shikutoku
   if (shikutokuResponse.ok) {
+    anySuccess = true;
     const shikutokuData = await shikutokuResponse.json() as { urls: string[]; count: number };
     allUrls.push(...shikutokuData.urls);
   }
 
-  if (allUrls.length === 0) {
-    throw new Error('未まとめURLの取得に失敗しました');
+  // 両方のAPIが失敗した場合のみエラー（0件は正常）
+  if (!anySuccess) {
+    throw new Error('未まとめURLの取得に失敗しました（API接続エラー）');
   }
 
   // URLをソート（ガルちゃんはトピックID、ShikutokuはトークID）
