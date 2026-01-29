@@ -618,8 +618,11 @@ export default function BulkProcessPanel({
     }
   }, [onBulkProcess]);
 
+  // 定期実行のメインループをrefで保持（useEffect依存を避ける）
+  const startAutoRunLoopRef = useRef<(() => Promise<void>) | null>(null);
+
   // 定期実行のメインループ（処理完了後に再チェック）
-  const startAutoRunLoop = useCallback(async () => {
+  startAutoRunLoopRef.current = async () => {
     if (!autoRun5chEnabled && !autoRunGCEnabled) return;
 
     let hasMoreUrls = false;
@@ -630,7 +633,7 @@ export default function BulkProcessPanel({
       if (hasMoreUrls) {
         toast('5ch未まとめを再チェック中...', { icon: '🔄' });
         await new Promise(resolve => setTimeout(resolve, 3000));
-        startAutoRunLoop();
+        startAutoRunLoopRef.current?.();
         return;
       }
     }
@@ -641,7 +644,7 @@ export default function BulkProcessPanel({
       if (hasMoreUrls) {
         toast('ガルちゃん未まとめを再チェック中...', { icon: '🔄' });
         await new Promise(resolve => setTimeout(resolve, 3000));
-        startAutoRunLoop();
+        startAutoRunLoopRef.current?.();
         return;
       }
     }
@@ -649,37 +652,52 @@ export default function BulkProcessPanel({
     // どちらもURLがないので、指定時間待機
     const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
     setNextRunTime(nextRun);
-  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval, runAutoProcessCycle]);
+  };
 
-  // 定期実行のタイマー管理
+  // 定期実行のタイマー管理（チェックボックス変更時のみ発火）
+  const prevAutoRun5chRef = useRef(false);
+  const prevAutoRunGCRef = useRef(false);
+
   useEffect(() => {
     const anyEnabled = autoRun5chEnabled || autoRunGCEnabled;
+    const wasEnabled = prevAutoRun5chRef.current || prevAutoRunGCRef.current;
 
-    if (anyEnabled) {
-      // エラーカウントをリセット
+    // チェックボックスが変更された場合のみ処理
+    const changed5ch = autoRun5chEnabled !== prevAutoRun5chRef.current;
+    const changedGC = autoRunGCEnabled !== prevAutoRunGCRef.current;
+
+    // 状態を更新
+    prevAutoRun5chRef.current = autoRun5chEnabled;
+    prevAutoRunGCRef.current = autoRunGCEnabled;
+
+    // チェックボックスが変更されていない場合は何もしない（初回マウント時も含む）
+    if (!changed5ch && !changedGC) return;
+
+    if (anyEnabled && !wasEnabled) {
+      // 無効→有効に変更された場合のみ開始
       consecutiveErrorsRef.current = 0;
 
-      // 有効なソースの表示
       const sources = [];
       if (autoRun5chEnabled) sources.push('5ch');
       if (autoRunGCEnabled) sources.push('ガルちゃん');
       toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
-      startAutoRunLoop();
+      startAutoRunLoopRef.current?.();
 
       // 指定間隔でも定期的に実行（バックアップ用）
       autoRunTimerRef.current = setInterval(() => {
         if (!isAutoRunningRef.current) {
-          startAutoRunLoop();
+          startAutoRunLoopRef.current?.();
         }
       }, autoRunInterval * 60 * 1000);
-    } else {
-      // タイマー停止
+    } else if (!anyEnabled && wasEnabled) {
+      // 有効→無効に変更された場合のみ停止
       if (autoRunTimerRef.current) {
         clearInterval(autoRunTimerRef.current);
         autoRunTimerRef.current = null;
       }
       setNextRunTime(null);
       consecutiveErrorsRef.current = 0;
+      toast('定期実行を停止しました', { icon: '⏹️' });
     }
 
     return () => {
@@ -687,7 +705,7 @@ export default function BulkProcessPanel({
         clearInterval(autoRunTimerRef.current);
       }
     };
-  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval, startAutoRunLoop]);
+  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval]);
 
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
