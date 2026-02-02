@@ -887,8 +887,23 @@ export default function BulkProcessPanel({
         </h4>
 
         <div className="space-y-2 mb-3">
-          {/* 5ch */}
+          {/* すべて */}
           <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRun5chEnabled && autoRunGCEnabled}
+              onChange={(e) => {
+                setAutoRun5chEnabled(e.target.checked);
+                setAutoRunGCEnabled(e.target.checked);
+              }}
+              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+              disabled={isProcessing}
+            />
+            <span className="text-sm font-medium text-gray-700">すべて（5ch + ガルちゃん・Shikutoku）</span>
+          </label>
+
+          {/* 5ch */}
+          <label className="flex items-center gap-2 cursor-pointer ml-4">
             <input
               type="checkbox"
               checked={autoRun5chEnabled}
@@ -900,7 +915,7 @@ export default function BulkProcessPanel({
           </label>
 
           {/* ガルちゃん・Shikutoku */}
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer ml-4">
             <input
               type="checkbox"
               checked={autoRunGCEnabled}
