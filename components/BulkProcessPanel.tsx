@@ -204,6 +204,8 @@ export default function BulkProcessPanel({
       '500',
       '502',
       '503',
+      'Internal server error',
+      'Server error',
       'network error',
       'ECONNREFUSED',
       'ETIMEDOUT',
