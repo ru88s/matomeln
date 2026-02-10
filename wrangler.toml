@@ -3,6 +3,10 @@ compatibility_date = "2024-12-27"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "out"
 
+# Smart Placement - WorkerをD1/KVの近くに自動配置してレイテンシ改善
+[placement]
+mode = "smart"
+
 # D1 Database for authentication
 [[d1_databases]]
 binding = "DB"
