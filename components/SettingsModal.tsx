@@ -54,7 +54,7 @@ export default function SettingsModal({
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
-  const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor' });
+  const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType; disabled: boolean }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
   const [thumbnailCharacters, setThumbnailCharacters] = useState<ThumbnailCharacter[]>([]);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
@@ -304,14 +304,14 @@ export default function SettingsModal({
   // ブログ追加モーダルを開く
   const openAddBlogModal = () => {
     setEditingBlog(null);
-    setBlogForm({ name: '', blogId: '', apiKey: '', blogType: 'livedoor' });
+    setBlogForm({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
     setShowBlogModal(true);
   };
 
   // ブログ編集モーダルを開く
   const openEditBlogModal = (blog: BlogSettings) => {
     setEditingBlog(blog);
-    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey, blogType: blog.blogType || 'livedoor' });
+    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey, blogType: blog.blogType || 'livedoor', disabled: blog.disabled || false });
     setShowBlogModal(true);
   };
 
@@ -326,7 +326,7 @@ export default function SettingsModal({
       // 編集
       const updated = blogs.map(b =>
         b.id === editingBlog.id
-          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey, blogType: blogForm.blogType }
+          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey, blogType: blogForm.blogType, disabled: blogForm.disabled }
           : b
       );
       onBlogsChange(updated);
@@ -339,6 +339,7 @@ export default function SettingsModal({
         blogId: blogForm.blogId,
         apiKey: blogForm.apiKey,
         blogType: blogForm.blogType,
+        disabled: blogForm.disabled,
       };
       onBlogsChange([...blogs, newBlog]);
       onSelectedBlogIdChange(newBlog.id);
@@ -398,7 +399,7 @@ export default function SettingsModal({
                     className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
                   >
                     {blogs.map(blog => (
-                      <option key={blog.id} value={blog.id}>{blog.name}</option>
+                      <option key={blog.id} value={blog.id} disabled={blog.disabled}>{blog.name}{blog.disabled ? '（更新中止）' : ''}</option>
                     ))}
                   </select>
                   <div className="flex gap-2">
@@ -920,6 +921,18 @@ export default function SettingsModal({
                   placeholder="APIキー"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="blog-disabled"
+                  checked={blogForm.disabled}
+                  onChange={(e) => setBlogForm({ ...blogForm, disabled: e.target.checked })}
+                  className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-400 cursor-pointer"
+                />
+                <label htmlFor="blog-disabled" className="text-sm text-gray-700 cursor-pointer">
+                  更新中止（選択不可にする）
+                </label>
               </div>
               <div className="flex gap-2 pt-2">
                 {editingBlog && (

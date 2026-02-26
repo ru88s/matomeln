@@ -11,7 +11,7 @@ import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/Loading
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
-import { callClaudeAPI, AISummarizeResponse } from '@/lib/ai-summarize';
+import { callClaudeAPI, AISummarizeResponse, isAdultContent } from '@/lib/ai-summarize';
 import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
@@ -550,6 +550,15 @@ export default function Home() {
 
       const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : 'Shikutoku';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
+
+      // =====================
+      // アダルトコンテンツチェック
+      // =====================
+      const adultCheck = isAdultContent(talk.title, loadedComments);
+      if (adultCheck.isAdult) {
+        console.log(`🔞 アダルトコンテンツをスキップ: ${talk.title}`);
+        throw new Error(`アダルトコンテンツのためスキップ: ${adultCheck.reason}`);
+      }
 
       // =====================
       // 2. AIまとめを実行

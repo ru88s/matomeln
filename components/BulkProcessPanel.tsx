@@ -125,10 +125,20 @@ export default function BulkProcessPanel({
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
 
-  // 定期実行機能
-  const [autoRun5chEnabled, setAutoRun5chEnabled] = useState(false);
-  const [autoRunGCEnabled, setAutoRunGCEnabled] = useState(false);
-  const [autoRunInterval, setAutoRunInterval] = useState(30); // 分
+  // 定期実行機能（localStorageから初期値を読み込み）
+  const [autoRun5chEnabled, setAutoRun5chEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('autoRun5chEnabled') === 'true';
+  });
+  const [autoRunGCEnabled, setAutoRunGCEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('autoRunGCEnabled') === 'true';
+  });
+  const [autoRunInterval, setAutoRunInterval] = useState(() => {
+    if (typeof window === 'undefined') return 30;
+    const saved = localStorage.getItem('autoRunInterval');
+    return saved ? Number(saved) : 30;
+  }); // 分
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
@@ -138,6 +148,50 @@ export default function BulkProcessPanel({
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
   // どちらかが有効かどうか
   const autoRunEnabled = autoRun5chEnabled || autoRunGCEnabled;
+
+  // 初回マウント完了フラグ（ハイドレーション問題を回避）
+  const isInitialMountRef = useRef(true);
+
+  // クライアントサイドでlocalStorageから状態を復元（ハイドレーション後）
+  useEffect(() => {
+    const saved5ch = localStorage.getItem('autoRun5chEnabled') === 'true';
+    const savedGC = localStorage.getItem('autoRunGCEnabled') === 'true';
+    const savedInterval = localStorage.getItem('autoRunInterval');
+
+    if (saved5ch !== autoRun5chEnabled) {
+      setAutoRun5chEnabled(saved5ch);
+    }
+    if (savedGC !== autoRunGCEnabled) {
+      setAutoRunGCEnabled(savedGC);
+    }
+    if (savedInterval && Number(savedInterval) !== autoRunInterval) {
+      setAutoRunInterval(Number(savedInterval));
+    }
+
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 定期実行設定をlocalStorageに保存（初回マウント後のみ）
+  // 重要: これらのeffectは復元effectの後に宣言すること
+  useEffect(() => {
+    if (isInitialMountRef.current) return;
+    localStorage.setItem('autoRun5chEnabled', String(autoRun5chEnabled));
+  }, [autoRun5chEnabled]);
+
+  useEffect(() => {
+    if (isInitialMountRef.current) return;
+    localStorage.setItem('autoRunGCEnabled', String(autoRunGCEnabled));
+  }, [autoRunGCEnabled]);
+
+  useEffect(() => {
+    if (isInitialMountRef.current) return;
+    localStorage.setItem('autoRunInterval', String(autoRunInterval));
+  }, [autoRunInterval]);
+
+  // 初回マウント完了フラグをセット（保存effectの後に宣言することで、
+  // 初回レンダーの保存effectがisInitialMountRef=trueを見てスキップすることを保証）
+  useEffect(() => {
+    isInitialMountRef.current = false;
+  }, []);
 
   // 未まとめURL取得（5ch）
   const handleFetchUrls = useCallback(async () => {
@@ -183,6 +237,7 @@ export default function BulkProcessPanel({
       'overloaded',
       'rate_limit',
       'timeout',
+      'タイムアウト',
       // 5ch取得エラー（スレッドが存在しない・削除済み）
       'スレッドが見つかりませんでした',
       '見つかりませんでした',
@@ -245,6 +300,9 @@ export default function BulkProcessPanel({
       'アクセスをブロック',
       'ブロックされている',
       '応答を解析できませんでした',
+      // コンテンツフィルター
+      'アダルトコンテンツ',
+      'スキップ',
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
@@ -508,6 +566,7 @@ export default function BulkProcessPanel({
             }
 
             // スキップ不可のエラー（投稿エラーなど）の場合は即座に中断
+            // ただしチェックボックスは外さない（ユーザー設定を尊重）
             if (!isSkippableError(lastError)) {
               failedCount++;
               consecutiveFailures++;
@@ -518,12 +577,8 @@ export default function BulkProcessPanel({
                 failedUrls: [...prev.failedUrls, { url, error: safeError }],
               }));
               toast.error(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-              toast.error(`投稿エラーが発生したため定期実行[${sourceLabel}]を停止しました`, { duration: 5000 });
-              if (source === '5ch') {
-                setAutoRun5chEnabled(false);
-              } else {
-                setAutoRunGCEnabled(false);
-              }
+              toast.error(`投稿エラーが発生したため処理を一時停止しました。次回チェック時に再試行します`, { duration: 5000 });
+              // チェックボックスは外さない（次回チェック時に再試行）
               shouldStopRef.current = true;
               break;
             }
@@ -603,14 +658,10 @@ export default function BulkProcessPanel({
       if (!isSkippableError(errorMsg)) {
         consecutiveErrorsRef.current++;
 
-        // 連続エラーが上限に達したら停止
+        // 連続エラーが上限に達したら一時停止（チェックボックスは外さない）
         if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-          toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回の致命的エラーが発生したため、定期実行[${sourceLabel}]を停止します`, { duration: 5000 });
-          if (source === '5ch') {
-            setAutoRun5chEnabled(false);
-          } else {
-            setAutoRunGCEnabled(false);
-          }
+          toast.error(`連続${MAX_CONSECUTIVE_ERRORS}回のエラーが発生したため一時停止します。次回チェック時に再試行します`, { duration: 5000 });
+          // チェックボックスは外さない（ユーザー設定を尊重）
         }
       }
       return false;

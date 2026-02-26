@@ -26,6 +26,77 @@ export interface AISummarizeResponse {
   }[];
 }
 
+// アダルト/エロ系コンテンツを検出
+export function isAdultContent(title: string, comments: Comment[]): { isAdult: boolean; reason: string } {
+  // タイトルとコメント本文を結合
+  const allText = [title, ...comments.slice(0, 50).map(c => c.body)].join(' ').toLowerCase();
+
+  // 明らかなアダルトキーワード（直接的な性的表現）
+  const explicitKeywords = [
+    'セックス', 'せっくす', 'sex',
+    'オナニー', 'おなにー', 'オナ二ー',
+    '手コキ', '手こき', 'てこき',
+    'フェラ', 'ふぇら',
+    'パイズリ', 'ぱいずり',
+    '中出し', 'なかだし',
+    '潮吹き', 'しおふき',
+    '乱交', 'らんこう',
+    '3P', '３P', '3p',
+    'AV女優', 'av女優',
+    '風俗', 'ソープ', 'デリヘル', 'ヘルス',
+    'エロ動画', 'エロ画像', 'エロ漫画',
+    '巨乳', '爆乳', '貧乳',
+    'おっぱい', 'オッパイ',
+    'ちんこ', 'チンコ', 'ちんぽ', 'チンポ',
+    'まんこ', 'マンコ',
+    '勃起', 'ぼっき',
+    '射精', 'しゃせい',
+    '精子', 'ザーメン',
+    'イク', 'いく', 'イッた', 'いった',
+    '挿入', 'そうにゅう',
+    'ハメ撮り', 'はめどり',
+    '童貞卒業', '処女喪失',
+    'やりまん', 'ヤリマン',
+    'エッチ', 'えっち', 'H',
+    'ヤる', 'やる', 'ヤった', 'やった',
+    '抜いた', 'ぬいた',
+    '全裸', 'ぜんら',
+    '下着姿', '裸',
+  ];
+
+  // スレッドタイトルに直接的なキーワードがある場合
+  const titleLower = title.toLowerCase();
+  for (const keyword of explicitKeywords) {
+    if (titleLower.includes(keyword.toLowerCase())) {
+      return { isAdult: true, reason: `タイトルにアダルトキーワード「${keyword}」を検出` };
+    }
+  }
+
+  // コメント内のキーワード出現回数をカウント
+  let keywordCount = 0;
+  const foundKeywords: string[] = [];
+  for (const keyword of explicitKeywords) {
+    const regex = new RegExp(keyword, 'gi');
+    const matches = allText.match(regex);
+    if (matches) {
+      keywordCount += matches.length;
+      if (!foundKeywords.includes(keyword)) {
+        foundKeywords.push(keyword);
+      }
+    }
+  }
+
+  // 複数のアダルトキーワードが頻出する場合（5回以上、または3種類以上）
+  if (keywordCount >= 5 || foundKeywords.length >= 3) {
+    return {
+      isAdult: true,
+      reason: `アダルトキーワードを${keywordCount}回検出（${foundKeywords.slice(0, 3).join('、')}など）`
+    };
+  }
+
+  return { isAdult: false, reason: '' };
+}
+
 // キーワードスパムを検出（同じ単語の繰り返し）
 export function isKeywordSpam(text: string): boolean {
   // 本文が短すぎる場合はスパムではない
@@ -60,6 +131,36 @@ export function isKeywordSpam(text: string): boolean {
   }
 
   return false;
+}
+
+// アンカー（>>数字）を抽出（全角・半角両対応）
+function extractAnchors(text: string): number[] {
+  const anchors: number[] = [];
+
+  // 半角 >> と数字
+  const halfWidthMatches = text.match(/>>(\d+)/g);
+  if (halfWidthMatches) {
+    for (const match of halfWidthMatches) {
+      const num = parseInt(match.replace('>>', ''));
+      if (!isNaN(num) && num > 0) anchors.push(num);
+    }
+  }
+
+  // 全角 ＞＞ と数字（全角・半角両方）
+  const fullWidthMatches = text.match(/＞＞([０-９\d]+)/g);
+  if (fullWidthMatches) {
+    for (const match of fullWidthMatches) {
+      // 全角数字を半角に変換
+      const numStr = match.replace('＞＞', '').replace(/[０-９]/g, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+      );
+      const num = parseInt(numStr);
+      if (!isNaN(num) && num > 0) anchors.push(num);
+    }
+  }
+
+  // 重複を除去
+  return [...new Set(anchors)];
 }
 
 // 不正なUnicode文字（孤立サロゲート）を除去
@@ -113,6 +214,12 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
   // 1000レス: 100文字、500レス: 200文字、100レス以下: 制限なし
   const maxBodyLength = totalPosts > 500 ? 100 : totalPosts > 100 ? 200 : 1000;
 
+  // レス数に応じて選択数を調整（長いスレッドでも200以内に収める）
+  // アンカー先・後方参照で増えることを考慮して、AI選択は控えめに
+  const minSelection = Math.min(15, Math.floor(totalPosts * 0.1));
+  const maxSelection = Math.min(40, Math.floor(totalPosts * 0.15)); // 最大40個（アンカー追加後も200以内）
+  const selectionRange = `${Math.max(10, minSelection)}〜${Math.max(20, maxSelection)}`;
+
   // タイトルもサニタイズ
   const sanitizedTitle = sanitizeText(title);
 
@@ -140,12 +247,13 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
 ${postsText}
 
 【選択ルール】
-- 必ず15〜25個のレスを選択してください（重要：全部選ばないでください）
+- 必ず${selectionRange}個のレスを選択してください（重要：全部選ばないでください）
 - 面白い、印象的、重要なレスのみを厳選してください
 - ストーリーの流れが分かるように選んでください
 - レス1は含めないでください（自動追加されます）
 - スレ主[主]のレスは優先的に選んでください
 - 10文字未満の短いレスは選ばないでください（「あ」「草」など）
+- アンカー（>>数字）付きレスを選ぶ場合、参照先も重要なら選んでください
 
 【色の使用ルール】
 - 使用できる色: "red", "blue", "green", "pink", "orange", "purple", null
@@ -293,19 +401,17 @@ export function enhanceAIResponse(
       const comment = comments[post.post_number - 1];
       if (!comment) continue;
 
-      // >>数字 のパターンを検出
-      const anchorMatches = comment.body.match(/>>(\d+)/g);
-      if (anchorMatches) {
-        for (const match of anchorMatches) {
-          const targetNum = parseInt(match.replace('>>', ''));
-          if (targetNum > 0 && targetNum <= totalPosts && !selectedNumbers.has(targetNum)) {
-            newPosts.push({
-              post_number: targetNum,
-              decorations: { color: null, size_boost: null },
-              reason: `アンカー先（>>から自動追加）`
-            });
-            selectedNumbers.add(targetNum);
-          }
+      // >>数字 のパターンを検出（全角・半角両対応）
+      const anchorNums = extractAnchors(comment.body);
+      for (const targetNum of anchorNums) {
+        if (targetNum > 0 && targetNum <= totalPosts && !selectedNumbers.has(targetNum)) {
+          console.log(`🔗 アンカー先追加: >>${targetNum} (参照元: ${post.post_number})`);
+          newPosts.push({
+            post_number: targetNum,
+            decorations: { color: null, size_boost: null },
+            reason: `アンカー先（>>から自動追加）`
+          });
+          selectedNumbers.add(targetNum);
         }
       }
     }
@@ -325,21 +431,50 @@ export function enhanceAIResponse(
 
     if (selectedNumbers.has(postNum)) continue;
 
-    const anchorMatches = comment.body.match(/>>(\d+)/g);
-    if (anchorMatches) {
-      for (const match of anchorMatches) {
-        const targetNum = parseInt(match.replace('>>', ''));
-        if (selectedNumbers.has(targetNum)) {
-          selectedPosts.push({
-            post_number: postNum,
-            decorations: { color: null, size_boost: null },
-            reason: `後方参照（自動追加）`
-          });
-          selectedNumbers.add(postNum);
-          break;
-        }
+    // 全角・半角両対応でアンカーを検出
+    const anchorNums = extractAnchors(comment.body);
+    for (const targetNum of anchorNums) {
+      if (selectedNumbers.has(targetNum)) {
+        console.log(`🔗 後方参照追加: ${postNum} (参照先: >>${targetNum})`);
+        selectedPosts.push({
+          post_number: postNum,
+          decorations: { color: null, size_boost: null },
+          reason: `後方参照（自動追加）`
+        });
+        selectedNumbers.add(postNum);
+        break;
       }
     }
+  }
+
+  // 200レス制限（読者の読み疲れ防止）
+  const MAX_SELECTED_POSTS = 200;
+  if (selectedPosts.length > MAX_SELECTED_POSTS) {
+    console.warn(`⚠️ 選択レスが${selectedPosts.length}個 → ${MAX_SELECTED_POSTS}個に制限`);
+
+    // 優先度順にソート: レス1 > AI選択 > アンカー先 > 後方参照
+    const prioritized = selectedPosts.sort((a, b) => {
+      // レス1は最優先
+      if (a.post_number === 1) return -1;
+      if (b.post_number === 1) return 1;
+
+      // AI選択（reasonが短い or reasonがない）を優先
+      const aIsAI = !a.reason || (!a.reason.includes('自動追加'));
+      const bIsAI = !b.reason || (!b.reason.includes('自動追加'));
+      if (aIsAI && !bIsAI) return -1;
+      if (!aIsAI && bIsAI) return 1;
+
+      // アンカー先を後方参照より優先
+      const aIsAnchor = a.reason?.includes('アンカー先');
+      const bIsAnchor = b.reason?.includes('アンカー先');
+      if (aIsAnchor && !bIsAnchor) return -1;
+      if (!aIsAnchor && bIsAnchor) return 1;
+
+      // それ以外はレス番号順
+      return a.post_number - b.post_number;
+    });
+
+    selectedPosts = prioritized.slice(0, MAX_SELECTED_POSTS);
   }
 
   // レス番号順にソート（画面表示と一致させる）

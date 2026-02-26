@@ -53,6 +53,7 @@ export interface BlogSettings {
   blogId: string;  // Livedoor: ブログID, girls-matome: APIのURL
   apiKey: string;
   blogType?: BlogType;  // デフォルト: 'livedoor'（後方互換性）
+  disabled?: boolean;  // true: 選択不可（更新中止など）
 }
 
 // AIサムネイル用キャラクター設定
