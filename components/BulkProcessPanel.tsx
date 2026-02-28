@@ -811,12 +811,15 @@ export default function BulkProcessPanel({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
         一括AIまとめ
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
+          まとめ: Claude
+        </span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
           thumbnailProvider === 'openai'
             ? 'bg-green-100 text-green-700'
             : 'bg-blue-100 text-blue-700'
         }`}>
-          {thumbnailProvider === 'openai' ? 'OpenAI' : 'Gemini'}
+          サムネ: {thumbnailProvider === 'openai' ? 'OpenAI' : 'Gemini'}
         </span>
       </h3>
 
