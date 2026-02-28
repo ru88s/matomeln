@@ -139,6 +139,11 @@ export default function BulkProcessPanel({
     const saved = localStorage.getItem('autoRunInterval');
     return saved ? Number(saved) : 30;
   }); // 分
+  // サムネイルプロバイダー表示用
+  const [thumbnailProvider, setThumbnailProvider] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'gemini';
+    return localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
+  });
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
@@ -191,6 +196,20 @@ export default function BulkProcessPanel({
   // 初回レンダーの保存effectがisInitialMountRef=trueを見てスキップすることを保証）
   useEffect(() => {
     isInitialMountRef.current = false;
+  }, []);
+
+  // サムネイルプロバイダーの変更を監視
+  useEffect(() => {
+    const handleStorage = () => {
+      setThumbnailProvider(localStorage.getItem('matomeln_thumbnail_provider') || 'gemini');
+    };
+    window.addEventListener('storage', handleStorage);
+    // 同一タブでの変更も検知するためintervalで定期チェック
+    const interval = setInterval(handleStorage, 2000);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
   }, []);
 
   // 未まとめURL取得（5ch）
@@ -792,6 +811,13 @@ export default function BulkProcessPanel({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
         一括AIまとめ
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+          thumbnailProvider === 'openai'
+            ? 'bg-green-100 text-green-700'
+            : 'bg-blue-100 text-blue-700'
+        }`}>
+          {thumbnailProvider === 'openai' ? 'OpenAI' : 'Gemini'}
+        </span>
       </h3>
 
       {/* URL入力エリア */}

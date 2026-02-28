@@ -890,11 +890,21 @@ export default function SettingsModal({
                     OpenAI（テスト版）
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {thumbnailProvider === 'gemini'
-                    ? 'Gemini 2.5 Flash Image（$0.039/画像）を使用中'
-                    : 'GPT Image 1 Mini（$0.011/画像）を使用中'}
-                </p>
+                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Gemini 2.5 Flash Image</span>
+                    <span className="font-mono">$0.039/枚（約5.9円）</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>OpenAI GPT Image 1 Mini</span>
+                    <span className="font-mono">$0.011/枚（約1.7円）</span>
+                  </div>
+                  <p className="text-gray-400 pt-1">
+                    {thumbnailProvider === 'gemini'
+                      ? 'Gemini を使用中'
+                      : 'OpenAI を使用中（約72%コスト削減）'}
+                  </p>
+                </div>
               </div>
             )}
 
