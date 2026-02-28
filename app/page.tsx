@@ -11,6 +11,7 @@ import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/Loading
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { useSettings } from '@/hooks/useSettings';
 import { callClaudeAPI, AISummarizeResponse, isAdultContent } from '@/lib/ai-summarize';
 import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML } from '@/lib/html-templates';
@@ -132,6 +133,9 @@ export default function Home() {
   // 一括処理後にモーダルを開くための期待するコメント数
   const [pendingModalCommentCount, setPendingModalCommentCount] = useState<number | null>(null);
 
+  // サーバー同期
+  const { saveSettings } = useSettings();
+
   // 設定をローカルストレージから読み込み
   useEffect(() => {
     const savedNameSettings = localStorage.getItem('customNameSettings');
@@ -196,12 +200,10 @@ export default function Home() {
 
   // レス名設定をローカルストレージに保存
   useEffect(() => {
-    localStorage.setItem('customNameSettings', JSON.stringify({
-      name: customName,
-      bold: customNameBold,
-      color: customNameColor
-    }));
-  }, [customName, customNameBold, customNameColor]);
+    const value = JSON.stringify({ name: customName, bold: customNameBold, color: customNameColor });
+    localStorage.setItem('customNameSettings', value);
+    saveSettings({ customNameSettings: value });
+  }, [customName, customNameBold, customNameColor, saveSettings]);
 
   // 選択中のブログ設定
   const selectedBlog = blogs.find(b => b.id === selectedBlogId);
@@ -213,25 +215,27 @@ export default function Home() {
   const handleBlogsChange = useCallback((newBlogs: BlogSettings[]) => {
     setBlogs(newBlogs);
     localStorage.setItem('blogSettingsList', JSON.stringify(newBlogs));
-  }, []);
+    saveSettings({ blogSettingsList: JSON.stringify(newBlogs) });
+  }, [saveSettings]);
 
   // 選択中のブログIDの更新（sessionStorageを使用してタブごとに独立）
   const handleSelectedBlogIdChange = useCallback((id: string | null) => {
     setSelectedBlogId(id);
     if (id) {
       sessionStorage.setItem('selectedBlogId', id);
-      // localStorageにも保存（新しいタブを開いた時のデフォルト値として）
       localStorage.setItem('selectedBlogId', id);
+      saveSettings({ selectedBlogId: id });
     } else {
       sessionStorage.removeItem('selectedBlogId');
     }
-  }, []);
+  }, [saveSettings]);
 
   // ID表示設定の更新
   const handleShowIdInHtmlChange = useCallback((show: boolean) => {
     setShowIdInHtml(show);
     localStorage.setItem('showIdInHtml', String(show));
-  }, []);
+    saveSettings({ showIdInHtml: String(show) });
+  }, [saveSettings]);
 
   // 一括処理後、selectedCommentsが期待する件数に達したらモーダルを開く
   useEffect(() => {
@@ -1130,6 +1134,7 @@ export default function Home() {
         selectedBlogId={selectedBlogId}
         onBlogsChange={handleBlogsChange}
         onSelectedBlogIdChange={handleSelectedBlogIdChange}
+        onSaveSettings={saveSettings}
       />
     </div>
   );

@@ -509,7 +509,8 @@ ${prompt}`
 }
 
 /**
- * OpenAI GPT Image 1 Mini APIで画像を生成
+ * OpenAI Responses API + gpt-image-1 で画像を生成
+ * 参考画像がある場合はマルチモーダル入力で忠実にキャラクターを再現
  */
 export async function generateThumbnailWithOpenAI(
   apiKey: string,
@@ -520,8 +521,11 @@ export async function generateThumbnailWithOpenAI(
   // プロンプトを生成
   const basePrompt = generatePromptFromTitle(title, character, sanitize);
 
-  // 参考画像を取得
-  const imageInputs: Array<{ type: 'input_image'; image_url: string }> = [];
+  // マルチモーダル入力のcontentを構築
+  const content: Array<{ type: string; text?: string; image_url?: string }> = [];
+
+  // 参考画像を取得して先頭に追加
+  let hasReferenceImages = false;
   if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
     console.log('📷 [OpenAI] 参考画像を読み込み中...', imagesToUse.length, '枚');
@@ -529,11 +533,12 @@ export async function generateThumbnailWithOpenAI(
     for (const imageUrl of imagesToUse) {
       const imageData = await fetchImageAsBase64(imageUrl);
       if (imageData) {
-        imageInputs.push({
+        content.push({
           type: 'input_image',
           image_url: `data:${imageData.mimeType};base64,${imageData.data}`
         });
         console.log('✓ [OpenAI] 参考画像を追加しました:', imageUrl);
+        hasReferenceImages = true;
       } else {
         console.warn('⚠️ [OpenAI] 参考画像の読み込みに失敗:', imageUrl);
       }
@@ -542,7 +547,7 @@ export async function generateThumbnailWithOpenAI(
 
   // プロンプトを構築
   let fullPrompt = basePrompt;
-  if (imageInputs.length > 0) {
+  if (hasReferenceImages) {
     fullPrompt = `⚠️ CRITICAL CHARACTER CONSISTENCY INSTRUCTION ⚠️
 
 The reference image(s) provided show the EXACT character "${character?.name || 'キャラクター'}" that MUST appear in the thumbnail.
@@ -560,34 +565,62 @@ Now create a thumbnail following these rules:
 ${basePrompt}`;
   }
 
-  // リクエストボディを構築
-  const input: Array<{ type: string; text?: string; image_url?: string }> = [];
+  let apiUrl: string;
+  let fetchOptions: RequestInit;
 
-  // 参考画像を先に追加
-  for (const img of imageInputs) {
-    input.push(img);
-  }
+  if (hasReferenceImages) {
+    // 参考画像あり: /v1/images/edits（multipart/form-data）
+    apiUrl = 'https://api.openai.com/v1/images/edits';
+    const formData = new FormData();
+    formData.append('model', 'gpt-image-1');
+    formData.append('prompt', fullPrompt);
+    formData.append('size', '1024x1024');
+    formData.append('quality', 'medium');
 
-  // テキストプロンプトを追加
-  input.push({ type: 'text', text: fullPrompt });
+    for (const imgInput of content) {
+      if (imgInput.type === 'input_image' && imgInput.image_url) {
+        const base64Match = imgInput.image_url.match(/^data:([^;]+);base64,(.+)$/);
+        if (base64Match) {
+          const mimeType = base64Match[1];
+          const base64Data = base64Match[2];
+          const binaryStr = atob(base64Data);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          const ext = mimeType.split('/')[1] || 'png';
+          const blob = new Blob([bytes], { type: mimeType });
+          formData.append('image[]', blob, `ref.${ext}`);
+        }
+      }
+    }
 
-  const requestBody = {
-    model: 'gpt-image-1-mini',
-    input: input,
-    quality: 'medium',
-    size: '1024x1024',
-    response_format: 'b64_json'
-  };
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    fetchOptions = {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: formData
+    };
+  } else {
+    // 参考画像なし: /v1/images/generations（JSON）
+    apiUrl = 'https://api.openai.com/v1/images/generations';
+    fetchOptions = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(requestBody)
-    });
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt: fullPrompt,
+        quality: 'medium',
+        size: '1024x1024',
+        response_format: 'b64_json',
+      })
+    };
+  }
+
+  try {
+    const response = await fetch(apiUrl, fetchOptions);
 
     if (!response.ok) {
       const errorText = await response.text();

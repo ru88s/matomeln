@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
@@ -27,6 +27,8 @@ interface SettingsModalProps {
   selectedBlogId: string | null;
   onBlogsChange: (blogs: BlogSettings[]) => void;
   onSelectedBlogIdChange: (id: string | null) => void;
+  // サーバー同期
+  onSaveSettings?: (updates: Record<string, string | null>) => void;
 }
 
 export default function SettingsModal({
@@ -46,6 +48,7 @@ export default function SettingsModal({
   selectedBlogId,
   onBlogsChange,
   onSelectedBlogIdChange,
+  onSaveSettings,
 }: SettingsModalProps) {
   const isAdmin = useIsAdmin();
   const [claudeApiKey, setClaudeApiKey] = useState('');
@@ -72,6 +75,18 @@ export default function SettingsModal({
   const [testTitle, setTestTitle] = useState('');
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+
+  // localStorage書き込み + サーバー同期のヘルパー
+  const persistSettings = useCallback((updates: Record<string, string | null>) => {
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, value);
+      }
+    }
+    onSaveSettings?.(updates);
+  }, [onSaveSettings]);
 
   // 管理者なら開発者モードを自動で有効化
   useEffect(() => {
@@ -131,10 +146,10 @@ export default function SettingsModal({
   // Claude APIキーを保存
   const saveClaudeApiKey = () => {
     if (claudeApiKey.trim()) {
-      localStorage.setItem('matomeln_claude_api_key', claudeApiKey.trim());
+      persistSettings({ matomeln_claude_api_key: claudeApiKey.trim() });
       toast.success('Claude APIキーを保存しました');
     } else {
-      localStorage.removeItem('matomeln_claude_api_key');
+      persistSettings({ matomeln_claude_api_key: null });
       toast.success('Claude APIキーを削除しました');
     }
   };
@@ -142,10 +157,10 @@ export default function SettingsModal({
   // Gemini APIキーを保存
   const saveGeminiApiKey = () => {
     if (geminiApiKey.trim()) {
-      localStorage.setItem('matomeln_gemini_api_key', geminiApiKey.trim());
+      persistSettings({ matomeln_gemini_api_key: geminiApiKey.trim() });
       toast.success('Gemini APIキーを保存しました');
     } else {
-      localStorage.removeItem('matomeln_gemini_api_key');
+      persistSettings({ matomeln_gemini_api_key: null });
       toast.success('Gemini APIキーを削除しました');
     }
   };
@@ -153,10 +168,10 @@ export default function SettingsModal({
   // OpenAI APIキーを保存
   const saveOpenaiApiKey = () => {
     if (openaiApiKey.trim()) {
-      localStorage.setItem('matomeln_openai_api_key', openaiApiKey.trim());
+      persistSettings({ matomeln_openai_api_key: openaiApiKey.trim() });
       toast.success('OpenAI APIキーを保存しました');
     } else {
-      localStorage.removeItem('matomeln_openai_api_key');
+      persistSettings({ matomeln_openai_api_key: null });
       toast.success('OpenAI APIキーを削除しました');
     }
   };
@@ -164,7 +179,7 @@ export default function SettingsModal({
   // サムネイルプロバイダーを保存
   const saveThumbnailProvider = (provider: ThumbnailProvider) => {
     setThumbnailProvider(provider);
-    localStorage.setItem('matomeln_thumbnail_provider', provider);
+    persistSettings({ matomeln_thumbnail_provider: provider });
     toast.success(`サムネイルプロバイダーを${provider === 'gemini' ? 'Gemini' : 'OpenAI'}に変更しました`);
   };
 
@@ -172,15 +187,15 @@ export default function SettingsModal({
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
     setPostToOtherBlogs(newPostToOtherBlogs);
     setSelectedOtherBlogIds(newSelectedOtherBlogIds);
-    localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
+    persistSettings({ matomeln_other_blogs_settings: JSON.stringify({
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
-    }));
+    }) });
   };
 
   // カスタムフッターHTMLを保存
   const saveCustomFooterHtml = () => {
-    localStorage.setItem('matomeln_custom_footer_html', customFooterHtml);
+    persistSettings({ matomeln_custom_footer_html: customFooterHtml });
     toast.success('カスタムフッターHTMLを保存しました');
   };
 
@@ -290,7 +305,7 @@ export default function SettingsModal({
     }
 
     setThumbnailCharacters(updatedCharacters);
-    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    persistSettings({ matomeln_thumbnail_characters: JSON.stringify(updatedCharacters) });
     setShowCharacterModal(false);
   };
 
@@ -298,7 +313,7 @@ export default function SettingsModal({
   const deleteCharacter = (id: string) => {
     const updatedCharacters = thumbnailCharacters.filter(c => c.id !== id);
     setThumbnailCharacters(updatedCharacters);
-    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    persistSettings({ matomeln_thumbnail_characters: JSON.stringify(updatedCharacters) });
     toast.success('キャラクターを削除しました');
     setShowCharacterModal(false);
   };
@@ -313,7 +328,7 @@ export default function SettingsModal({
         : c
     );
     setThumbnailCharacters(updatedCharacters);
-    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    persistSettings({ matomeln_thumbnail_characters: JSON.stringify(updatedCharacters) });
     toast.success('参考画像を追加しました');
   };
 
@@ -325,7 +340,7 @@ export default function SettingsModal({
         : c
     );
     setThumbnailCharacters(updatedCharacters);
-    localStorage.setItem('matomeln_thumbnail_characters', JSON.stringify(updatedCharacters));
+    persistSettings({ matomeln_thumbnail_characters: JSON.stringify(updatedCharacters) });
     // 編集中のキャラクターも更新（リアルタイム反映）
     if (editingCharacter && editingCharacter.id === characterId) {
       const updated = updatedCharacters.find(c => c.id === characterId);
@@ -543,7 +558,7 @@ export default function SettingsModal({
                   <button
                     onClick={() => {
                       setCustomFooterHtml('');
-                      localStorage.removeItem('matomeln_custom_footer_html');
+                      persistSettings({ matomeln_custom_footer_html: null });
                       toast.success('カスタムフッターHTMLを削除しました');
                     }}
                     className="text-sm bg-gray-400 text-white hover:bg-gray-500 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
