@@ -29,7 +29,8 @@ export async function selectCharacterForArticle(
   const prompt = `あなたはまとめブログのサムネイル画像に使うキャラクターを選ぶアシスタントです。
 
 以下の記事タイトルに最も適したキャラクターを1つ選んでください。
-記事の内容、雰囲気、トーンに合うキャラクターを選んでください。
+同じキャラクターばかり選ばないよう、バリエーションを意識してください。
+迷ったらランダムに選んでOKです。
 
 【記事タイトル】
 ${title}
@@ -48,7 +49,7 @@ ${characterList}
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.3,
+            temperature: 1.0,
             maxOutputTokens: 10
           }
         })
@@ -189,16 +190,19 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 "炎上した発言..." → News studio or social media visual metaphor (fire effects stylized)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 CHARACTER REQUIREMENTS (HIGHEST PRIORITY!)
+🎨 CHARACTER IDENTITY (keep same)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
-⚠️ CRITICAL - The character MUST match the reference image EXACTLY:
-- SAME art style (if anime → anime, if illustration → illustration)
-- SAME face shape, eye shape, eye color
-- SAME hair color, hair style, hair length
-- SAME accessories (glasses, ribbons, cat ears, hair clips, earrings)
-- DO NOT make anime characters look realistic/photorealistic
-- OUTFIT can change to match the scene, but character identity must be preserved
+Keep the character's IDENTITY from reference:
+- Same art style, face shape, eye color
+- Same hair color, hair style, hair length
+- Same accessories (glasses, ribbons, cat ears, hair clips)
+
+🔄 MUST BE DIFFERENT (create variety!):
+- Create a BRAND NEW POSE different from the reference!
+- Change the outfit to match the article's scene
+- Use a different camera angle
+- Show the character actively doing something related to the article
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 😊 EXPRESSION & POSE (MATCH THE MOOD!)
@@ -325,25 +329,24 @@ export async function generateThumbnail(
   if (hasReferenceImages) {
     // 参考画像がある場合は強力なキャラクター指定を追加
     parts.push({
-      text: `⚠️ CRITICAL CHARACTER CONSISTENCY INSTRUCTION ⚠️
+      text: `⚠️ CHARACTER IDENTITY INSTRUCTION ⚠️
 
-The above reference image(s) show the EXACT character "${character?.name || 'キャラクター'}" that MUST appear in the thumbnail.
+The above reference image(s) show the character "${character?.name || 'キャラクター'}" that must appear in the thumbnail.
 
-🔒 ABSOLUTE REQUIREMENTS - DO NOT DEVIATE:
-1. COPY the EXACT art style (anime/illustration/realistic) from reference
-2. COPY the EXACT face features, hair color, hair style from reference
-3. COPY ALL accessories (glasses, ribbons, hair clips, cat ears, etc.)
-4. The character in output MUST be recognizable as the SAME character
-5. If reference is anime-style → output MUST be anime-style
-6. If reference is illustration → output MUST be illustration
-7. NEVER change the character to realistic/photorealistic style unless reference is realistic
+🔒 KEEP THE SAME (identity only):
+- Art style (anime/illustration)
+- Face shape, eye shape, eye color
+- Hair color, hair style, hair length
+- All accessories (glasses, ribbons, cat ears, hair clips)
 
-❌ FORBIDDEN:
-- Creating a different character
-- Changing art style (anime → realistic is FORBIDDEN)
-- Changing hair color or style
-- Removing or changing accessories
-- Making the character look like a real person if reference is anime
+🔄 MUST BE DIFFERENT FROM REFERENCE (create variety!):
+- POSE: Create a completely NEW and DIFFERENT pose! Do NOT copy the reference pose!
+- EXPRESSION: Match the article's mood (happy, shocked, angry, etc.)
+- OUTFIT: Change clothing to match the scene/article theme
+- ANGLE: Use a different camera angle than the reference
+- ACTION: Show the character DOING something related to the article
+
+The reference is ONLY for character identity. Everything else should be fresh and unique!
 
 Now create a thumbnail following these rules:
 
@@ -548,17 +551,24 @@ export async function generateThumbnailWithOpenAI(
   // プロンプトを構築
   let fullPrompt = basePrompt;
   if (hasReferenceImages) {
-    fullPrompt = `⚠️ CRITICAL CHARACTER CONSISTENCY INSTRUCTION ⚠️
+    fullPrompt = `⚠️ CHARACTER IDENTITY INSTRUCTION ⚠️
 
-The reference image(s) provided show the EXACT character "${character?.name || 'キャラクター'}" that MUST appear in the thumbnail.
+The reference image(s) show the character "${character?.name || 'キャラクター'}" that must appear in the thumbnail.
 
-🔒 ABSOLUTE REQUIREMENTS - DO NOT DEVIATE:
-1. COPY the EXACT art style (anime/illustration/realistic) from reference
-2. COPY the EXACT face features, hair color, hair style from reference
-3. COPY ALL accessories (glasses, ribbons, hair clips, cat ears, etc.)
-4. The character in output MUST be recognizable as the SAME character
-5. If reference is anime-style → output MUST be anime-style
-6. NEVER change the character to realistic/photorealistic style unless reference is realistic
+🔒 KEEP THE SAME (identity only):
+- Art style (anime/illustration)
+- Face shape, eye shape, eye color
+- Hair color, hair style, hair length
+- All accessories (glasses, ribbons, cat ears, hair clips)
+
+🔄 MUST BE DIFFERENT FROM REFERENCE (create variety!):
+- POSE: Create a completely NEW and DIFFERENT pose! Do NOT copy the reference pose!
+- EXPRESSION: Match the article's mood (happy, shocked, angry, etc.)
+- OUTFIT: Change clothing to match the scene/article theme
+- ANGLE: Use a different camera angle than the reference
+- ACTION: Show the character DOING something related to the article
+
+The reference is ONLY for character identity. Everything else should be fresh and unique!
 
 Now create a thumbnail following these rules:
 

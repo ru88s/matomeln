@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
 import { Talk, ThumbnailCharacter } from '@/lib/types';
-import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
+import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -122,9 +122,21 @@ export default function TalkLoader({
       return;
     }
 
-    if (!geminiApiKey) {
-      toast.error('設定画面でGemini APIキーを設定してください');
-      return;
+    // プロバイダー設定を読み込み
+    const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
+    const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
+    const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
+
+    if (useOpenAI) {
+      if (!openaiApiKey) {
+        toast.error('設定画面でOpenAI APIキーを設定してください');
+        return;
+      }
+    } else {
+      if (!geminiApiKey) {
+        toast.error('設定画面でGemini APIキーを設定してください');
+        return;
+      }
     }
 
     if (!apiSettings.blogUrl || !apiSettings.apiKey) {
@@ -133,20 +145,23 @@ export default function TalkLoader({
     }
 
     setIsGeneratingAI(true);
-    const toastId = toast.loading('AIサムネイルを生成中...');
+    const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+    const toastId = toast.loading(`AIサムネイルを生成中（${providerLabel}）...`);
 
     try {
-      // AIが記事に合うキャラクターを選択
+      // AIが記事に合うキャラクターを選択（常にGemini使用）
       let character: ThumbnailCharacter | undefined;
-      if (thumbnailCharacters.length > 0) {
+      if (thumbnailCharacters.length > 0 && geminiApiKey) {
         toast.loading('キャラクターを選択中...', { id: toastId });
         character = await selectCharacterForArticle(geminiApiKey, currentTalk.title, thumbnailCharacters);
         if (character) {
           console.log('📷 選択されたキャラクター:', character.name);
         }
-        toast.loading('AIサムネイルを生成中...', { id: toastId });
+        toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: toastId });
       }
-      const result = await generateThumbnail(geminiApiKey, currentTalk.title, character);
+      const result = useOpenAI
+        ? await generateThumbnailWithOpenAI(openaiApiKey, currentTalk.title, character)
+        : await generateThumbnail(geminiApiKey, currentTalk.title, character);
 
       if (!result.success || !result.imageBase64) {
         throw new Error(result.error || '画像生成に失敗しました');
