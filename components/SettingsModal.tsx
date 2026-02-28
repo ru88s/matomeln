@@ -165,7 +165,7 @@ export default function SettingsModal({
   const saveThumbnailProvider = (provider: ThumbnailProvider) => {
     setThumbnailProvider(provider);
     localStorage.setItem('matomeln_thumbnail_provider', provider);
-    toast.success(`サムネイルプロバイダーを${provider === 'gemini' ? 'Gemini（安定版）' : 'OpenAI GPT Image（テスト版）'}に変更しました`);
+    toast.success(`サムネイルプロバイダーを${provider === 'gemini' ? 'Gemini' : 'OpenAI'}に変更しました`);
   };
 
   // 他のブログにも投稿設定を保存
@@ -645,7 +645,7 @@ export default function SettingsModal({
                             : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                         }`}
                       >
-                        Gemini（安定版）
+                        Gemini
                       </button>
                       <button
                         type="button"
@@ -656,7 +656,7 @@ export default function SettingsModal({
                             : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                         }`}
                       >
-                        OpenAI（テスト版）
+                        OpenAI
                       </button>
                     </div>
                     <div className="mt-2 text-[10px] text-gray-400 space-y-0.5">
