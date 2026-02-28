@@ -31,7 +31,7 @@ export function isAdultContent(title: string, comments: Comment[]): { isAdult: b
   // タイトルとコメント本文を結合
   const allText = [title, ...comments.slice(0, 50).map(c => c.body)].join(' ').toLowerCase();
 
-  // 明らかなアダルトキーワード（直接的な性的表現）
+  // 明らかなアダルトキーワード（直接的な性的表現のみ、一般会話でヒットしやすい語は除外）
   const explicitKeywords = [
     'セックス', 'せっくす', 'sex',
     'オナニー', 'おなにー', 'オナ二ー',
@@ -45,23 +45,18 @@ export function isAdultContent(title: string, comments: Comment[]): { isAdult: b
     'AV女優', 'av女優',
     '風俗', 'ソープ', 'デリヘル', 'ヘルス',
     'エロ動画', 'エロ画像', 'エロ漫画',
-    '巨乳', '爆乳', '貧乳',
+    '巨乳', '爆乳',
     'おっぱい', 'オッパイ',
     'ちんこ', 'チンコ', 'ちんぽ', 'チンポ',
     'まんこ', 'マンコ',
     '勃起', 'ぼっき',
     '射精', 'しゃせい',
     '精子', 'ザーメン',
-    'イク', 'いく', 'イッた', 'いった',
     '挿入', 'そうにゅう',
     'ハメ撮り', 'はめどり',
     '童貞卒業', '処女喪失',
     'やりまん', 'ヤリマン',
-    'エッチ', 'えっち', 'H',
-    'ヤる', 'やる', 'ヤった', 'やった',
-    '抜いた', 'ぬいた',
     '全裸', 'ぜんら',
-    '下着姿', '裸',
   ];
 
   // スレッドタイトルに直接的なキーワードがある場合
@@ -86,8 +81,8 @@ export function isAdultContent(title: string, comments: Comment[]): { isAdult: b
     }
   }
 
-  // 複数のアダルトキーワードが頻出する場合（5回以上、または3種類以上）
-  if (keywordCount >= 5 || foundKeywords.length >= 3) {
+  // 複数のアダルトキーワードが頻出する場合（10回以上、または5種類以上）
+  if (keywordCount >= 10 || foundKeywords.length >= 5) {
     return {
       isAdult: true,
       reason: `アダルトキーワードを${keywordCount}回検出（${foundKeywords.slice(0, 3).join('、')}など）`

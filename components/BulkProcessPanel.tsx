@@ -727,8 +727,13 @@ export default function BulkProcessPanel({
   };
 
   // 定期実行のタイマー管理（チェックボックス変更時のみ発火）
-  const prevAutoRun5chRef = useRef(false);
-  const prevAutoRunGCRef = useRef(false);
+  // 初期値をlocalStorageから復元（リロード時に「無効→有効」と誤判定されるのを防止）
+  const prevAutoRun5chRef = useRef(
+    typeof window !== 'undefined' ? localStorage.getItem('autoRun5chEnabled') === 'true' : false
+  );
+  const prevAutoRunGCRef = useRef(
+    typeof window !== 'undefined' ? localStorage.getItem('autoRunGCEnabled') === 'true' : false
+  );
 
   useEffect(() => {
     const anyEnabled = autoRun5chEnabled || autoRunGCEnabled;
