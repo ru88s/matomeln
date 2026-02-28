@@ -21,24 +21,29 @@ export async function selectCharacterForArticle(
     return characters[0];
   }
 
-  // キャラクター情報をプロンプト用にフォーマット
-  const characterList = characters.map((c, i) =>
-    `${i + 1}. "${c.name}": ${c.description || '説明なし'}`
+  // 50%の確率でランダム選択（AI偏り防止）
+  if (Math.random() < 0.5) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    console.log(`🎲 ランダムでキャラクター選択: ${characters[randomIndex].name}`);
+    return characters[randomIndex];
+  }
+
+  // キャラクター情報をプロンプト用にフォーマット（順序をシャッフル）
+  const shuffledIndices = characters.map((_, i) => i);
+  for (let i = shuffledIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
+  }
+
+  const characterList = shuffledIndices.map((originalIndex, displayIndex) =>
+    `${displayIndex + 1}. "${characters[originalIndex].name}": ${characters[originalIndex].description || '説明なし'}`
   ).join('\n');
 
-  const prompt = `あなたはまとめブログのサムネイル画像に使うキャラクターを選ぶアシスタントです。
+  const prompt = `記事タイトルに合うキャラクターを1つ選んで番号のみ回答。
 
-以下の記事タイトルに最も適したキャラクターを1つ選んでください。
-同じキャラクターばかり選ばないよう、バリエーションを意識してください。
-迷ったらランダムに選んでOKです。
+【記事】${title}
 
-【記事タイトル】
-${title}
-
-【キャラクター一覧】
-${characterList}
-
-回答は選んだキャラクターの番号のみを返してください（例: 1）`;
+${characterList}`;
 
   try {
     const response = await fetch(
@@ -49,7 +54,7 @@ ${characterList}
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 1.0,
+            temperature: 2.0,
             maxOutputTokens: 10
           }
         })
@@ -57,8 +62,8 @@ ${characterList}
     );
 
     if (!response.ok) {
-      console.warn('キャラクター選択API失敗、最初のキャラクターを使用');
-      return characters[0];
+      console.warn('キャラクター選択API失敗、ランダム選択');
+      return characters[Math.floor(Math.random() * characters.length)];
     }
 
     const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
@@ -67,18 +72,20 @@ ${characterList}
     // 数字を抽出
     const match = text.match(/\d+/);
     if (match) {
-      const index = parseInt(match[0], 10) - 1;
-      if (index >= 0 && index < characters.length) {
-        console.log(`🎭 AIがキャラクター選択: ${characters[index].name}`);
-        return characters[index];
+      const displayIndex = parseInt(match[0], 10) - 1;
+      if (displayIndex >= 0 && displayIndex < characters.length) {
+        // シャッフルされた表示順→元のインデックスに変換
+        const originalIndex = shuffledIndices[displayIndex];
+        console.log(`🎭 AIがキャラクター選択: ${characters[originalIndex].name}`);
+        return characters[originalIndex];
       }
     }
 
-    console.warn('キャラクター選択結果をパースできず、最初のキャラクターを使用:', text);
-    return characters[0];
+    console.warn('キャラクター選択結果をパースできず、ランダム選択:', text);
+    return characters[Math.floor(Math.random() * characters.length)];
   } catch (error) {
-    console.warn('キャラクター選択エラー、最初のキャラクターを使用:', error);
-    return characters[0];
+    console.warn('キャラクター選択エラー、ランダム選択:', error);
+    return characters[Math.floor(Math.random() * characters.length)];
   }
 }
 
