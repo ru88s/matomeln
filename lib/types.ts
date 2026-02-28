@@ -56,6 +56,9 @@ export interface BlogSettings {
   disabled?: boolean;  // true: 選択不可（更新中止など）
 }
 
+// サムネイルプロバイダー
+export type ThumbnailProvider = 'gemini' | 'openai';
+
 // AIサムネイル用キャラクター設定
 export interface ThumbnailCharacter {
   id: string;

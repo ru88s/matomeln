@@ -509,6 +509,149 @@ ${prompt}`
 }
 
 /**
+ * OpenAI GPT Image 1 Mini APIで画像を生成
+ */
+export async function generateThumbnailWithOpenAI(
+  apiKey: string,
+  title: string,
+  character?: ThumbnailCharacter,
+  sanitize = false
+): Promise<ThumbnailGenerationResult> {
+  // プロンプトを生成
+  const basePrompt = generatePromptFromTitle(title, character, sanitize);
+
+  // 参考画像を取得
+  const imageInputs: Array<{ type: 'input_image'; image_url: string }> = [];
+  if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
+    const imagesToUse = character.referenceImageUrls.slice(0, 3);
+    console.log('📷 [OpenAI] 参考画像を読み込み中...', imagesToUse.length, '枚');
+
+    for (const imageUrl of imagesToUse) {
+      const imageData = await fetchImageAsBase64(imageUrl);
+      if (imageData) {
+        imageInputs.push({
+          type: 'input_image',
+          image_url: `data:${imageData.mimeType};base64,${imageData.data}`
+        });
+        console.log('✓ [OpenAI] 参考画像を追加しました:', imageUrl);
+      } else {
+        console.warn('⚠️ [OpenAI] 参考画像の読み込みに失敗:', imageUrl);
+      }
+    }
+  }
+
+  // プロンプトを構築
+  let fullPrompt = basePrompt;
+  if (imageInputs.length > 0) {
+    fullPrompt = `⚠️ CRITICAL CHARACTER CONSISTENCY INSTRUCTION ⚠️
+
+The reference image(s) provided show the EXACT character "${character?.name || 'キャラクター'}" that MUST appear in the thumbnail.
+
+🔒 ABSOLUTE REQUIREMENTS - DO NOT DEVIATE:
+1. COPY the EXACT art style (anime/illustration/realistic) from reference
+2. COPY the EXACT face features, hair color, hair style from reference
+3. COPY ALL accessories (glasses, ribbons, hair clips, cat ears, etc.)
+4. The character in output MUST be recognizable as the SAME character
+5. If reference is anime-style → output MUST be anime-style
+6. NEVER change the character to realistic/photorealistic style unless reference is realistic
+
+Now create a thumbnail following these rules:
+
+${basePrompt}`;
+  }
+
+  // リクエストボディを構築
+  const input: Array<{ type: string; text?: string; image_url?: string }> = [];
+
+  // 参考画像を先に追加
+  for (const img of imageInputs) {
+    input.push(img);
+  }
+
+  // テキストプロンプトを追加
+  input.push({ type: 'text', text: fullPrompt });
+
+  const requestBody = {
+    model: 'gpt-image-1-mini',
+    input: input,
+    quality: 'medium',
+    size: '1024x1024',
+    response_format: 'b64_json'
+  };
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: { message: errorText } };
+      }
+
+      if (response.status === 429) {
+        return {
+          success: false,
+          error: 'APIのレート制限に達しました。しばらく時間をおいてから再度お試しください。'
+        };
+      }
+
+      const errorMessage = errorData.error?.message || errorText;
+
+      // コンテンツポリシー違反
+      if (errorMessage.includes('safety') || errorMessage.includes('content_policy') || errorMessage.includes('blocked')) {
+        if (!sanitize) {
+          console.log('[OpenAI] コンテンツポリシー違反。サニタイズして再試行...');
+          return generateThumbnailWithOpenAI(apiKey, title, character, true);
+        }
+        return {
+          success: false,
+          error: 'コンテンツポリシーにより画像を生成できませんでした。タイトルの表現を変更してください。'
+        };
+      }
+
+      return {
+        success: false,
+        error: errorData.error?.message || `API Error: ${response.status}`
+      };
+    }
+
+    interface OpenAIImageResponse {
+      data?: Array<{ b64_json?: string }>;
+    }
+    const data = await response.json() as OpenAIImageResponse;
+
+    if (!data.data?.[0]?.b64_json) {
+      return {
+        success: false,
+        error: '画像データが返されませんでした'
+      };
+    }
+
+    return {
+      success: true,
+      imageBase64: data.data[0].b64_json
+    };
+
+  } catch (error) {
+    console.error('[OpenAI] Thumbnail generation error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '画像生成に失敗しました'
+    };
+  }
+}
+
+/**
  * Base64画像をData URLに変換
  */
 export function base64ToDataUrl(base64: string, mimeType = 'image/png'): string {

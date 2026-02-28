@@ -12,7 +12,7 @@ import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { callClaudeAPI, AISummarizeResponse, isAdultContent } from '@/lib/ai-summarize';
-import { generateThumbnail, selectCharacterForArticle } from '@/lib/ai-thumbnail';
+import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
@@ -626,9 +626,15 @@ export default function Home() {
       // =====================
       let generatedThumbnailUrl = '';
       let generatedThumbnailBase64 = '';  // girls-matome用のbase64
-      if (geminiApiKey && blogSettings) {
-        // キャラクターが複数ある場合、AIが記事に合うキャラを選択
-        if (allCharacters.length > 0) {
+      // サムネイルプロバイダーを読み込み
+      const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
+      const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
+      const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
+      const thumbnailApiKey = useOpenAI ? openaiApiKey : geminiApiKey;
+
+      if (thumbnailApiKey && blogSettings) {
+        // キャラクターが複数ある場合、AIが記事に合うキャラを選択（常にGemini使用）
+        if (allCharacters.length > 0 && geminiApiKey) {
           toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
           thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
           if (thumbnailCharacter) {
@@ -636,13 +642,12 @@ export default function Home() {
           }
         }
 
-        toast.loading('AIサムネイルを生成中...', { id: 'bulk-step' });
+        const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+        toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: 'bulk-step' });
         try {
-          const thumbnailResult = await generateThumbnail(
-            geminiApiKey,
-            talk.title,
-            thumbnailCharacter
-          );
+          const thumbnailResult = useOpenAI
+            ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter)
+            : await generateThumbnail(geminiApiKey!, talk.title, thumbnailCharacter);
 
           if (thumbnailResult.success && thumbnailResult.imageBase64) {
             // girls-matomeの場合はbase64を保持（postGirlsMatomeで直接アップロード）

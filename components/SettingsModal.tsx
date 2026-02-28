@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { BlogSettings, ThumbnailCharacter, BlogType } from '@/lib/types';
-import { generateThumbnail, base64ToDataUrl } from '@/lib/ai-thumbnail';
+import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider } from '@/lib/types';
+import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { useIsAdmin } from '@/lib/auth-context';
 
 interface SettingsModalProps {
@@ -52,6 +52,9 @@ export default function SettingsModal({
   const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
+  const [thumbnailProvider, setThumbnailProvider] = useState<ThumbnailProvider>('gemini');
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType; disabled: boolean }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
@@ -89,6 +92,14 @@ export default function SettingsModal({
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
+      }
+      const savedOpenaiApiKey = localStorage.getItem('matomeln_openai_api_key');
+      if (savedOpenaiApiKey) {
+        setOpenaiApiKey(savedOpenaiApiKey);
+      }
+      const savedProvider = localStorage.getItem('matomeln_thumbnail_provider') as ThumbnailProvider | null;
+      if (savedProvider === 'gemini' || savedProvider === 'openai') {
+        setThumbnailProvider(savedProvider);
       }
       const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
       if (savedCharacters) {
@@ -139,6 +150,24 @@ export default function SettingsModal({
     }
   };
 
+  // OpenAI APIキーを保存
+  const saveOpenaiApiKey = () => {
+    if (openaiApiKey.trim()) {
+      localStorage.setItem('matomeln_openai_api_key', openaiApiKey.trim());
+      toast.success('OpenAI APIキーを保存しました');
+    } else {
+      localStorage.removeItem('matomeln_openai_api_key');
+      toast.success('OpenAI APIキーを削除しました');
+    }
+  };
+
+  // サムネイルプロバイダーを保存
+  const saveThumbnailProvider = (provider: ThumbnailProvider) => {
+    setThumbnailProvider(provider);
+    localStorage.setItem('matomeln_thumbnail_provider', provider);
+    toast.success(`サムネイルプロバイダーを${provider === 'gemini' ? 'Gemini（安定版）' : 'OpenAI GPT Image（テスト版）'}に変更しました`);
+  };
+
   // 他のブログにも投稿設定を保存
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
     setPostToOtherBlogs(newPostToOtherBlogs);
@@ -169,8 +198,11 @@ export default function SettingsModal({
 
   // テスト生成を実行
   const handleTestGenerate = async (character: ThumbnailCharacter, title: string) => {
-    if (!geminiApiKey) {
-      toast.error('Gemini APIキーを設定してください');
+    const useOpenAI = thumbnailProvider === 'openai';
+    const activeApiKey = useOpenAI ? openaiApiKey : geminiApiKey;
+
+    if (!activeApiKey) {
+      toast.error(useOpenAI ? 'OpenAI APIキーを設定してください' : 'Gemini APIキーを設定してください');
       return;
     }
 
@@ -182,18 +214,21 @@ export default function SettingsModal({
     setTestGenerating(character.id);
     setTestPreviewImage(null);
     setTestPreviewCharacter(character);
-    const toastId = toast.loading(`${character.name}でテスト生成中...`);
+    const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+    const toastId = toast.loading(`${character.name}でテスト生成中（${providerLabel}）...`);
 
     try {
-      const result = await generateThumbnail(geminiApiKey, title, character);
+      const result = useOpenAI
+        ? await generateThumbnailWithOpenAI(activeApiKey, title, character)
+        : await generateThumbnail(activeApiKey, title, character);
 
       if (result.success && result.imageBase64) {
         setTestPreviewImage(base64ToDataUrl(result.imageBase64));
-        toast.success('テスト生成完了', { id: toastId });
+        toast.success(`テスト生成完了（${providerLabel}）`, { id: toastId });
       } else {
         toast.error(result.error || '生成に失敗しました', { id: toastId });
       }
-    } catch (error) {
+    } catch {
       toast.error('生成中にエラーが発生しました', { id: toastId });
     } finally {
       setTestGenerating(null);
@@ -769,6 +804,97 @@ export default function SettingsModal({
                     記事タイトルからサムネイル画像を自動生成
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* OpenAI API設定（管理者のみ） */}
+            {isAdmin && (
+              <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-bold text-gray-800">OpenAI API</h3>
+                  <span className="text-[10px] bg-green-200 text-green-700 px-1.5 py-0.5 rounded-full font-bold">テスト版</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      APIキー
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type={showOpenaiApiKey ? 'text' : 'password'}
+                          value={openaiApiKey}
+                          onChange={(e) => setOpenaiApiKey(e.target.value)}
+                          placeholder="sk-..."
+                          className="w-full px-3 py-2 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOpenaiApiKey(!showOpenaiApiKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                        >
+                          {showOpenaiApiKey ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                      <button
+                        onClick={saveOpenaiApiKey}
+                        className="text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                      >
+                        保存
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-green-600">
+                    GPT Image 1 Mini（$0.011/画像）でサムネイル生成
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* サムネイルプロバイダー選択（管理者のみ） */}
+            {isAdmin && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-bold text-gray-800 mb-3">サムネイルプロバイダー</h3>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => saveThumbnailProvider('gemini')}
+                    className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      thumbnailProvider === 'gemini'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Gemini（安定版）
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => saveThumbnailProvider('openai')}
+                    className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      thumbnailProvider === 'openai'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    OpenAI（テスト版）
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {thumbnailProvider === 'gemini'
+                    ? 'Gemini 2.5 Flash Image（$0.039/画像）を使用中'
+                    : 'GPT Image 1 Mini（$0.011/画像）を使用中'}
+                </p>
               </div>
             )}
 
