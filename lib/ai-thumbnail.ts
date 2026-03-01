@@ -5,6 +5,36 @@
 
 import { ThumbnailCharacter } from './types';
 
+/** API呼び出しのタイムアウト（60秒） */
+const API_TIMEOUT_MS = 60000;
+/** リトライ回数 */
+const MAX_RETRIES = 2;
+
+/**
+ * タイムアウト付きfetch
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = API_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('APIリクエストがタイムアウトしました（60秒）');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * リトライ可能なエラーかどうか判定
+ */
+function isRetryableError(status: number): boolean {
+  return status === 429 || status === 503 || status === 502;
+}
+
 /**
  * 記事タイトルに最適なキャラクターをAIで選択
  */
@@ -21,10 +51,10 @@ export async function selectCharacterForArticle(
     return characters[0];
   }
 
-  // 50%の確率でランダム選択（AI偏り防止）
+  // 50%の確率でランダム選択（AI偏り防止・API呼び出し節約）
   if (Math.random() < 0.5) {
     const randomIndex = Math.floor(Math.random() * characters.length);
-    console.log(`🎲 ランダムでキャラクター選択: ${characters[randomIndex].name}`);
+    console.log(`🎲 ランダムでキャラクター選択: ${characters[randomIndex].name}（API呼び出しスキップ）`);
     return characters[randomIndex];
   }
 
@@ -46,7 +76,7 @@ export async function selectCharacterForArticle(
 ${characterList}`;
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -58,7 +88,8 @@ ${characterList}`;
             maxOutputTokens: 10
           }
         })
-      }
+      },
+      15000 // キャラクター選択は15秒で十分
     );
 
     if (!response.ok) {
@@ -259,6 +290,8 @@ export interface ThumbnailGenerationResult {
   success: boolean;
   imageBase64?: string;
   error?: string;
+  /** 参考画像の読み込みに失敗した数 */
+  referenceImageFailures?: number;
 }
 
 /**
@@ -268,7 +301,7 @@ async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mim
   try {
     // プロキシAPI経由で画像を取得（CORS回避）
     const proxyUrl = `/api/proxy/fetchImage?url=${encodeURIComponent(imageUrl)}`;
-    const response = await fetch(proxyUrl);
+    const response = await fetchWithTimeout(proxyUrl, {}, 15000);
 
     if (!response.ok) {
       console.warn('Proxy fetch failed:', response.status);
@@ -308,6 +341,9 @@ export async function generateThumbnail(
 
   // 参考画像がある場合は先頭に追加（最大3枚）
   let hasReferenceImages = false;
+  let referenceImageFailures = 0;
+  const totalReferenceImages = character?.referenceImageUrls?.length || 0;
+
   if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
     console.log('📷 参考画像を読み込み中...', imagesToUse.length, '枚');
@@ -325,8 +361,13 @@ export async function generateThumbnail(
         console.log('✓ 参考画像を追加しました:', imageUrl);
         hasReferenceImages = true;
       } else {
+        referenceImageFailures++;
         console.warn('⚠️ 参考画像の読み込みに失敗:', imageUrl);
       }
+    }
+
+    if (referenceImageFailures > 0 && !hasReferenceImages) {
+      console.warn(`⚠️ 全ての参考画像（${totalReferenceImages}枚）の読み込みに失敗。キャラクター一貫性が低下する可能性があります`);
     }
   }
 
@@ -403,119 +444,147 @@ ${prompt}`
     ]
   };
 
-  try {
-    // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ、Nano Banana対応）
-    const response: Response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { message: errorText };
-      }
-
-      // 429エラー（レート制限）
-      if (response.status === 429) {
-        return {
-          success: false,
-          error: 'APIのレート制限に達しました。しばらく時間をおいてから再度お試しください。'
-        };
-      }
-
-      // センシティブコンテンツエラー
-      const errorMessage = errorData.error?.message || errorText;
-      if (response.status === 400 && (
-        errorMessage.includes('SAFETY') ||
-        errorMessage.includes('blocked') ||
-        errorMessage.includes('HARM') ||
-        errorMessage.includes('prohibited')
-      )) {
-        // サニタイズしていない場合は再試行
-        if (!sanitize) {
-          console.log('センシティブコンテンツとして検出。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, character, true);
+  // リトライ付きでAPI呼び出し
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ、Nano Banana対応）
+      const response: Response = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
         }
-        return {
-          success: false,
-          error: 'センシティブなコンテンツのため画像を生成できませんでした。タイトルの表現を変更してください。'
-        };
-      }
+      );
 
-      return {
-        success: false,
-        error: errorData.error?.message || `API Error: ${response.status}`
-      };
-    }
-
-    interface GeminiCandidate {
-      finishReason?: string;
-      content?: {
-        parts?: Array<{ inlineData?: { data: string; mimeType: string } }>;
-      };
-    }
-    interface GeminiResponse {
-      candidates?: GeminiCandidate[];
-    }
-    const data = await response.json() as GeminiResponse;
-
-    // 安全フィルターでブロックされた場合
-    if (data.candidates && data.candidates[0]) {
-      const candidate = data.candidates[0];
-      const finishReason = candidate.finishReason;
-
-      if (finishReason === 'SAFETY' || finishReason === 'IMAGE_SAFETY') {
-        if (!sanitize) {
-          console.log('安全フィルターでブロック。サニタイズして再試行...');
-          return generateThumbnail(apiKey, title, character, true);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
         }
+
+        // リトライ可能なエラー
+        if (isRetryableError(response.status) && attempt < MAX_RETRIES) {
+          const waitSec = response.status === 429 ? 10 : 3;
+          console.warn(`⏳ API ${response.status}エラー。${waitSec}秒後にリトライ（${attempt + 1}/${MAX_RETRIES}）`);
+          await new Promise(resolve => setTimeout(resolve, waitSec * 1000));
+          continue;
+        }
+
+        // 429エラー（レート制限）リトライ失敗
+        if (response.status === 429) {
+          return {
+            success: false,
+            error: 'APIのレート制限に達しました。しばらく時間をおいてから再度お試しください。',
+            referenceImageFailures
+          };
+        }
+
+        // センシティブコンテンツエラー
+        const errorMessage = errorData.error?.message || errorText;
+        if (response.status === 400 && (
+          errorMessage.includes('SAFETY') ||
+          errorMessage.includes('blocked') ||
+          errorMessage.includes('HARM') ||
+          errorMessage.includes('prohibited')
+        )) {
+          // サニタイズしていない場合は再試行
+          if (!sanitize) {
+            console.log('センシティブコンテンツとして検出。サニタイズして再試行...');
+            return generateThumbnail(apiKey, title, character, true);
+          }
+          return {
+            success: false,
+            error: 'センシティブなコンテンツのため画像を生成できませんでした。タイトルの表現を変更してください。',
+            referenceImageFailures
+          };
+        }
+
         return {
           success: false,
-          error: 'センシティブなコンテンツのため画像を生成できませんでした。'
+          error: errorData.error?.message || `API Error: ${response.status}`,
+          referenceImageFailures
         };
       }
-    }
 
-    // 画像データを探す
-    if (!data.candidates?.[0]?.content?.parts) {
+      interface GeminiCandidate {
+        finishReason?: string;
+        content?: {
+          parts?: Array<{ inlineData?: { data: string; mimeType: string } }>;
+        };
+      }
+      interface GeminiResponse {
+        candidates?: GeminiCandidate[];
+      }
+      const data = await response.json() as GeminiResponse;
+
+      // 安全フィルターでブロックされた場合
+      if (data.candidates && data.candidates[0]) {
+        const candidate = data.candidates[0];
+        const finishReason = candidate.finishReason;
+
+        if (finishReason === 'SAFETY' || finishReason === 'IMAGE_SAFETY') {
+          if (!sanitize) {
+            console.log('安全フィルターでブロック。サニタイズして再試行...');
+            return generateThumbnail(apiKey, title, character, true);
+          }
+          return {
+            success: false,
+            error: 'センシティブなコンテンツのため画像を生成できませんでした。',
+            referenceImageFailures
+          };
+        }
+      }
+
+      // 画像データを探す
+      if (!data.candidates?.[0]?.content?.parts) {
+        return {
+          success: false,
+          error: '画像データが返されませんでした',
+          referenceImageFailures
+        };
+      }
+
+      const responseParts = data.candidates[0].content.parts;
+      const imagePart = responseParts.find((part) => part.inlineData);
+
+      if (!imagePart?.inlineData?.data) {
+        return {
+          success: false,
+          error: '画像データが見つかりませんでした',
+          referenceImageFailures
+        };
+      }
+
+      return {
+        success: true,
+        imageBase64: imagePart.inlineData.data,
+        referenceImageFailures
+      };
+
+    } catch (error) {
+      // タイムアウトやネットワークエラーのリトライ
+      if (attempt < MAX_RETRIES) {
+        console.warn(`⏳ ネットワークエラー。3秒後にリトライ（${attempt + 1}/${MAX_RETRIES}）:`, error);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        continue;
+      }
+      console.error('Thumbnail generation error:', error);
       return {
         success: false,
-        error: '画像データが返されませんでした'
+        error: error instanceof Error ? error.message : '画像生成に失敗しました',
+        referenceImageFailures
       };
     }
-
-    const responseParts = data.candidates[0].content.parts;
-    const imagePart = responseParts.find((part) => part.inlineData);
-
-    if (!imagePart?.inlineData?.data) {
-      return {
-        success: false,
-        error: '画像データが見つかりませんでした'
-      };
-    }
-
-    return {
-      success: true,
-      imageBase64: imagePart.inlineData.data
-    };
-
-  } catch (error) {
-    console.error('Thumbnail generation error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '画像生成に失敗しました'
-    };
   }
+
+  // ここには到達しないはずだが念のため
+  return { success: false, error: '予期しないエラーが発生しました', referenceImageFailures: 0 };
 }
 
 /**
@@ -539,6 +608,9 @@ export async function generateThumbnailWithOpenAI(
 
   // 参考画像を取得して先頭に追加
   let hasReferenceImages = false;
+  let referenceImageFailures = 0;
+  const totalReferenceImages = character?.referenceImageUrls?.length || 0;
+
   if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
     console.log('📷 [OpenAI] 参考画像を読み込み中...', imagesToUse.length, '枚');
@@ -553,8 +625,13 @@ export async function generateThumbnailWithOpenAI(
         console.log('✓ [OpenAI] 参考画像を追加しました:', imageUrl);
         hasReferenceImages = true;
       } else {
+        referenceImageFailures++;
         console.warn('⚠️ [OpenAI] 参考画像の読み込みに失敗:', imageUrl);
       }
+    }
+
+    if (referenceImageFailures > 0 && !hasReferenceImages) {
+      console.warn(`⚠️ [OpenAI] 全ての参考画像（${totalReferenceImages}枚）の読み込みに失敗。キャラクター一貫性が低下する可能性があります`);
     }
   }
 
@@ -639,69 +716,95 @@ ${basePrompt}`;
     };
   }
 
-  try {
-    const response = await fetch(apiUrl, fetchOptions);
+  // リトライ付きでAPI呼び出し
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetchWithTimeout(apiUrl, fetchOptions);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { error: { message: errorText } };
-      }
-
-      if (response.status === 429) {
-        return {
-          success: false,
-          error: 'APIのレート制限に達しました。しばらく時間をおいてから再度お試しください。'
-        };
-      }
-
-      const errorMessage = errorData.error?.message || errorText;
-
-      // コンテンツポリシー違反
-      if (errorMessage.includes('safety') || errorMessage.includes('content_policy') || errorMessage.includes('blocked')) {
-        if (!sanitize) {
-          console.log('[OpenAI] コンテンツポリシー違反。サニタイズして再試行...');
-          return generateThumbnailWithOpenAI(apiKey, title, character, true, model, quality);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: { message: errorText } };
         }
+
+        // リトライ可能なエラー
+        if (isRetryableError(response.status) && attempt < MAX_RETRIES) {
+          const waitSec = response.status === 429 ? 10 : 3;
+          console.warn(`⏳ [OpenAI] API ${response.status}エラー。${waitSec}秒後にリトライ（${attempt + 1}/${MAX_RETRIES}）`);
+          await new Promise(resolve => setTimeout(resolve, waitSec * 1000));
+          continue;
+        }
+
+        if (response.status === 429) {
+          return {
+            success: false,
+            error: 'APIのレート制限に達しました。しばらく時間をおいてから再度お試しください。',
+            referenceImageFailures
+          };
+        }
+
+        const errorMessage = errorData.error?.message || errorText;
+
+        // コンテンツポリシー違反
+        if (errorMessage.includes('safety') || errorMessage.includes('content_policy') || errorMessage.includes('blocked')) {
+          if (!sanitize) {
+            console.log('[OpenAI] コンテンツポリシー違反。サニタイズして再試行...');
+            return generateThumbnailWithOpenAI(apiKey, title, character, true, model, quality);
+          }
+          return {
+            success: false,
+            error: 'コンテンツポリシーにより画像を生成できませんでした。タイトルの表現を変更してください。',
+            referenceImageFailures
+          };
+        }
+
         return {
           success: false,
-          error: 'コンテンツポリシーにより画像を生成できませんでした。タイトルの表現を変更してください。'
+          error: errorData.error?.message || `API Error: ${response.status}`,
+          referenceImageFailures
+        };
+      }
+
+      interface OpenAIImageResponse {
+        data?: Array<{ b64_json?: string }>;
+      }
+      const data = await response.json() as OpenAIImageResponse;
+
+      if (!data.data?.[0]?.b64_json) {
+        return {
+          success: false,
+          error: '画像データが返されませんでした',
+          referenceImageFailures
         };
       }
 
       return {
-        success: false,
-        error: errorData.error?.message || `API Error: ${response.status}`
+        success: true,
+        imageBase64: data.data[0].b64_json,
+        referenceImageFailures
       };
-    }
 
-    interface OpenAIImageResponse {
-      data?: Array<{ b64_json?: string }>;
-    }
-    const data = await response.json() as OpenAIImageResponse;
-
-    if (!data.data?.[0]?.b64_json) {
+    } catch (error) {
+      // タイムアウトやネットワークエラーのリトライ
+      if (attempt < MAX_RETRIES) {
+        console.warn(`⏳ [OpenAI] ネットワークエラー。3秒後にリトライ（${attempt + 1}/${MAX_RETRIES}）:`, error);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        continue;
+      }
+      console.error('[OpenAI] Thumbnail generation error:', error);
       return {
         success: false,
-        error: '画像データが返されませんでした'
+        error: error instanceof Error ? error.message : '画像生成に失敗しました',
+        referenceImageFailures
       };
     }
-
-    return {
-      success: true,
-      imageBase64: data.data[0].b64_json
-    };
-
-  } catch (error) {
-    console.error('[OpenAI] Thumbnail generation error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '画像生成に失敗しました'
-    };
   }
+
+  // ここには到達しないはずだが念のため
+  return { success: false, error: '予期しないエラーが発生しました', referenceImageFailures: 0 };
 }
 
 /**

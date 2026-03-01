@@ -655,6 +655,10 @@ export default function Home() {
             ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter, false, openaiModel, openaiQuality)
             : await generateThumbnail(geminiApiKey!, talk.title, thumbnailCharacter);
 
+          if (thumbnailResult.referenceImageFailures && thumbnailResult.referenceImageFailures > 0) {
+            console.warn(`⚠️ 参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);
+          }
+
           if (thumbnailResult.success && thumbnailResult.imageBase64) {
             // girls-matomeの場合はbase64を保持（postGirlsMatomeで直接アップロード）
             if (blogSettings.blogType === 'girls-matome') {

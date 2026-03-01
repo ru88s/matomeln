@@ -169,6 +169,10 @@ export default function TalkLoader({
         throw new Error(result.error || '画像生成に失敗しました');
       }
 
+      if (result.referenceImageFailures && result.referenceImageFailures > 0) {
+        toast.error(`参考画像${result.referenceImageFailures}枚の読み込みに失敗しました。キャラクターの再現精度が低下している可能性があります。`, { duration: 5000 });
+      }
+
       // Base64画像をBlobに変換
       const binary = atob(result.imageBase64);
       const array = new Uint8Array(binary.length);
