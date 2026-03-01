@@ -144,6 +144,10 @@ export default function BulkProcessPanel({
     if (typeof window === 'undefined') return 'gemini';
     return localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
   });
+  const [openaiImageModel, setOpenaiImageModel] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'gpt-image-1';
+    return localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1';
+  });
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
@@ -202,6 +206,7 @@ export default function BulkProcessPanel({
   useEffect(() => {
     const handleStorage = () => {
       setThumbnailProvider(localStorage.getItem('matomeln_thumbnail_provider') || 'gemini');
+      setOpenaiImageModel(localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1');
     };
     window.addEventListener('storage', handleStorage);
     // 同一タブでの変更も検知するためintervalで定期チェック
@@ -824,7 +829,7 @@ export default function BulkProcessPanel({
             ? 'bg-green-100 text-green-700'
             : 'bg-blue-100 text-blue-700'
         }`}>
-          サムネ: {thumbnailProvider === 'openai' ? 'OpenAI' : 'Gemini'}
+          サムネ: {thumbnailProvider === 'openai' ? (openaiImageModel === 'gpt-image-1-mini' ? 'OpenAI Mini' : 'OpenAI') : 'Gemini'}
         </span>
       </h3>
 

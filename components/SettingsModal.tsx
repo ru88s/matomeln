@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider } from '@/lib/types';
+import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider, OpenAIImageModel, OpenAIImageQuality } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { useIsAdmin } from '@/lib/auth-context';
 
@@ -58,6 +58,8 @@ export default function SettingsModal({
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
   const [thumbnailProvider, setThumbnailProvider] = useState<ThumbnailProvider>('gemini');
+  const [openaiImageModel, setOpenaiImageModel] = useState<OpenAIImageModel>('gpt-image-1');
+  const [openaiImageQuality, setOpenaiImageQuality] = useState<OpenAIImageQuality>('medium');
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
   const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType; disabled: boolean }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
@@ -115,6 +117,14 @@ export default function SettingsModal({
       const savedProvider = localStorage.getItem('matomeln_thumbnail_provider') as ThumbnailProvider | null;
       if (savedProvider === 'gemini' || savedProvider === 'openai') {
         setThumbnailProvider(savedProvider);
+      }
+      const savedModel = localStorage.getItem('matomeln_openai_image_model') as OpenAIImageModel | null;
+      if (savedModel === 'gpt-image-1' || savedModel === 'gpt-image-1-mini') {
+        setOpenaiImageModel(savedModel);
+      }
+      const savedQuality = localStorage.getItem('matomeln_openai_image_quality') as OpenAIImageQuality | null;
+      if (savedQuality === 'low' || savedQuality === 'medium' || savedQuality === 'high') {
+        setOpenaiImageQuality(savedQuality);
       }
       const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
       if (savedCharacters) {
@@ -183,6 +193,18 @@ export default function SettingsModal({
     toast.success(`サムネイルプロバイダーを${provider === 'gemini' ? 'Gemini' : 'OpenAI'}に変更しました`);
   };
 
+  // OpenAIモデルを保存
+  const saveOpenaiImageModel = (model: OpenAIImageModel) => {
+    setOpenaiImageModel(model);
+    persistSettings({ matomeln_openai_image_model: model });
+  };
+
+  // OpenAI品質を保存
+  const saveOpenaiImageQuality = (quality: OpenAIImageQuality) => {
+    setOpenaiImageQuality(quality);
+    persistSettings({ matomeln_openai_image_quality: quality });
+  };
+
   // 他のブログにも投稿設定を保存
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
     setPostToOtherBlogs(newPostToOtherBlogs);
@@ -234,7 +256,7 @@ export default function SettingsModal({
 
     try {
       const result = useOpenAI
-        ? await generateThumbnailWithOpenAI(activeApiKey, title, character)
+        ? await generateThumbnailWithOpenAI(activeApiKey, title, character, false, openaiImageModel, openaiImageQuality)
         : await generateThumbnail(activeApiKey, title, character);
 
       if (result.success && result.imageBase64) {
@@ -674,15 +696,111 @@ export default function SettingsModal({
                         OpenAI
                       </button>
                     </div>
-                    <div className="mt-2 text-[10px] text-gray-400 space-y-0.5">
-                      <div className="flex justify-between">
+
+                    {/* OpenAI選択時: モデル・品質設定 */}
+                    {thumbnailProvider === 'openai' && (
+                      <div className="mt-2 space-y-2">
+                        {/* モデル選択 */}
+                        <div>
+                          <label className="block text-[10px] font-medium text-gray-500 mb-1">モデル</label>
+                          <div className="flex gap-1">
+                            {([
+                              { value: 'gpt-image-1' as const, label: 'GPT Image 1' },
+                              { value: 'gpt-image-1-mini' as const, label: 'GPT Image 1 Mini' },
+                            ]).map(({ value, label }) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => saveOpenaiImageModel(value)}
+                                className={`flex-1 px-2 py-1.5 text-[11px] rounded-lg font-bold cursor-pointer transition-colors ${
+                                  openaiImageModel === value
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 品質選択 */}
+                        <div>
+                          <label className="block text-[10px] font-medium text-gray-500 mb-1">品質</label>
+                          <div className="flex gap-1">
+                            {([
+                              { value: 'low' as const, label: 'Low' },
+                              { value: 'medium' as const, label: 'Medium' },
+                              { value: 'high' as const, label: 'High' },
+                            ]).map(({ value, label }) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => saveOpenaiImageQuality(value)}
+                                className={`flex-1 px-2 py-1.5 text-[11px] rounded-lg font-bold cursor-pointer transition-colors ${
+                                  openaiImageQuality === value
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* コスト表 */}
+                    <div className="mt-2 text-[10px] text-gray-400">
+                      <div className="flex justify-between border-b border-gray-200 pb-0.5 mb-0.5">
+                        <span className="font-bold text-gray-500">モデル</span>
+                        <span className="font-bold text-gray-500">1枚あたり</span>
+                      </div>
+                      <div className={`flex justify-between ${thumbnailProvider === 'gemini' ? 'text-blue-500 font-bold' : ''}`}>
                         <span>Gemini 2.5 Flash Image</span>
-                        <span className="font-mono">$0.039/枚（約5.9円）</span>
+                        <span className="font-mono">$0.039（約5.9円）</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>OpenAI GPT Image 1 Mini</span>
-                        <span className="font-mono">$0.011/枚（約1.7円）</span>
-                      </div>
+                      {thumbnailProvider === 'openai' ? (
+                        <>
+                          {openaiImageModel === 'gpt-image-1' ? (
+                            <>
+                              <div className={`flex justify-between ${openaiImageQuality === 'low' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 / Low</span>
+                                <span className="font-mono">$0.011（約1.7円）</span>
+                              </div>
+                              <div className={`flex justify-between ${openaiImageQuality === 'medium' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 / Medium</span>
+                                <span className="font-mono">$0.042（約6.3円）</span>
+                              </div>
+                              <div className={`flex justify-between ${openaiImageQuality === 'high' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 / High</span>
+                                <span className="font-mono">$0.167（約25円）</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className={`flex justify-between ${openaiImageQuality === 'low' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 Mini / Low</span>
+                                <span className="font-mono">$0.005（約0.8円）</span>
+                              </div>
+                              <div className={`flex justify-between ${openaiImageQuality === 'medium' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 Mini / Medium</span>
+                                <span className="font-mono">$0.011（約1.7円）</span>
+                              </div>
+                              <div className={`flex justify-between ${openaiImageQuality === 'high' ? 'text-green-600 font-bold' : ''}`}>
+                                <span>GPT Image 1 Mini / High</span>
+                                <span className="font-mono">$0.036（約5.4円）</span>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span>OpenAI GPT Image 1 Mini / Low</span>
+                          <span className="font-mono">$0.005（約0.8円）</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

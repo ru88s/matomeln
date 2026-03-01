@@ -633,6 +633,8 @@ export default function Home() {
       // サムネイルプロバイダーを読み込み
       const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
       const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
+      const openaiModel = (localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1') as 'gpt-image-1' | 'gpt-image-1-mini';
+      const openaiQuality = (localStorage.getItem('matomeln_openai_image_quality') || 'medium') as 'low' | 'medium' | 'high';
       const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
       const thumbnailApiKey = useOpenAI ? openaiApiKey : geminiApiKey;
 
@@ -650,7 +652,7 @@ export default function Home() {
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: 'bulk-step' });
         try {
           const thumbnailResult = useOpenAI
-            ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter)
+            ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter, false, openaiModel, openaiQuality)
             : await generateThumbnail(geminiApiKey!, talk.title, thumbnailCharacter);
 
           if (thumbnailResult.success && thumbnailResult.imageBase64) {

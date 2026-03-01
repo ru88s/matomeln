@@ -125,6 +125,8 @@ export default function TalkLoader({
     // プロバイダー設定を読み込み
     const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
     const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
+    const openaiModel = (localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1') as 'gpt-image-1' | 'gpt-image-1-mini';
+    const openaiQuality = (localStorage.getItem('matomeln_openai_image_quality') || 'medium') as 'low' | 'medium' | 'high';
     const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
 
     if (useOpenAI) {
@@ -160,7 +162,7 @@ export default function TalkLoader({
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: toastId });
       }
       const result = useOpenAI
-        ? await generateThumbnailWithOpenAI(openaiApiKey, currentTalk.title, character)
+        ? await generateThumbnailWithOpenAI(openaiApiKey, currentTalk.title, character, false, openaiModel, openaiQuality)
         : await generateThumbnail(geminiApiKey, currentTalk.title, character);
 
       if (!result.success || !result.imageBase64) {

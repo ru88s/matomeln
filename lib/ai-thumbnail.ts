@@ -519,14 +519,17 @@ ${prompt}`
 }
 
 /**
- * OpenAI Responses API + gpt-image-1 で画像を生成
+ * OpenAI API で画像を生成
+ * モデル: gpt-image-1 または gpt-image-1-mini
  * 参考画像がある場合はマルチモーダル入力で忠実にキャラクターを再現
  */
 export async function generateThumbnailWithOpenAI(
   apiKey: string,
   title: string,
   character?: ThumbnailCharacter,
-  sanitize = false
+  sanitize = false,
+  model: 'gpt-image-1' | 'gpt-image-1-mini' = 'gpt-image-1',
+  quality: 'low' | 'medium' | 'high' = 'medium'
 ): Promise<ThumbnailGenerationResult> {
   // プロンプトを生成
   const basePrompt = generatePromptFromTitle(title, character, sanitize);
@@ -589,10 +592,10 @@ ${basePrompt}`;
     // 参考画像あり: /v1/images/edits（multipart/form-data）
     apiUrl = 'https://api.openai.com/v1/images/edits';
     const formData = new FormData();
-    formData.append('model', 'gpt-image-1');
+    formData.append('model', model);
     formData.append('prompt', fullPrompt);
     formData.append('size', '1024x1024');
-    formData.append('quality', 'medium');
+    formData.append('quality', quality);
 
     for (const imgInput of content) {
       if (imgInput.type === 'input_image' && imgInput.image_url) {
@@ -627,9 +630,9 @@ ${basePrompt}`;
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: model,
         prompt: fullPrompt,
-        quality: 'medium',
+        quality: quality,
         size: '1024x1024',
         response_format: 'b64_json',
       })
@@ -661,7 +664,7 @@ ${basePrompt}`;
       if (errorMessage.includes('safety') || errorMessage.includes('content_policy') || errorMessage.includes('blocked')) {
         if (!sanitize) {
           console.log('[OpenAI] コンテンツポリシー違反。サニタイズして再試行...');
-          return generateThumbnailWithOpenAI(apiKey, title, character, true);
+          return generateThumbnailWithOpenAI(apiKey, title, character, true, model, quality);
         }
         return {
           success: false,

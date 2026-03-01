@@ -12,6 +12,8 @@ const SYNCED_KEYS = [
   'matomeln_gemini_api_key',
   'matomeln_openai_api_key',
   'matomeln_thumbnail_provider',
+  'matomeln_openai_image_model',
+  'matomeln_openai_image_quality',
   'matomeln_thumbnail_characters',
   'matomeln_other_blogs_settings',
   'matomeln_custom_footer_html',

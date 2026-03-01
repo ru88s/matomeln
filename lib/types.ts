@@ -59,6 +59,12 @@ export interface BlogSettings {
 // サムネイルプロバイダー
 export type ThumbnailProvider = 'gemini' | 'openai';
 
+// OpenAI画像生成モデル
+export type OpenAIImageModel = 'gpt-image-1' | 'gpt-image-1-mini';
+
+// OpenAI画像品質
+export type OpenAIImageQuality = 'low' | 'medium' | 'high';
+
 // AIサムネイル用キャラクター設定
 export interface ThumbnailCharacter {
   id: string;
