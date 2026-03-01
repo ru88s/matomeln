@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
 import toast from 'react-hot-toast';
@@ -645,68 +645,6 @@ function extractAnchor(body: string): number | null {
   return null;
 }
 
-// コメントを階層的に並び替える関数
-function arrangeCommentsByAnchor(comments: Comment[]): Comment[] {
-  const result: Comment[] = [];
-  const processed = new Set<string>();
-
-  // アンカーによる返信関係をマップ化
-  const repliesMap = new Map<number, Comment[]>();
-
-  comments.forEach(comment => {
-    const anchorId = extractAnchor(comment.body);
-    if (anchorId !== null) {
-      // アンカーがある場合、該当番号への返信としてマップに追加
-      if (!repliesMap.has(anchorId)) {
-        repliesMap.set(anchorId, []);
-      }
-      repliesMap.get(anchorId)!.push(comment);
-    }
-  });
-
-  // 再帰的にコメントとその返信を追加する関数
-  const addCommentWithReplies = (comment: Comment) => {
-    if (processed.has(comment.id)) return;
-
-    result.push(comment);
-    processed.add(comment.id);
-
-    // このコメントへの返信を追加
-    const replies = repliesMap.get(Number(comment.res_id));
-    if (replies) {
-      // 返信をres_id順でソート
-      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-      replies.forEach(reply => {
-        addCommentWithReplies(reply);
-      });
-    }
-  };
-
-  // res_id順でソート
-  const sortedComments = [...comments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
-
-  // すべてのコメントを処理
-  sortedComments.forEach(comment => {
-    if (!processed.has(comment.id)) {
-      // アンカーがない、または参照先が存在しないコメントから開始
-      const anchorId = extractAnchor(comment.body);
-      if (anchorId === null || !comments.some(c => Number(c.res_id) === anchorId)) {
-        addCommentWithReplies(comment);
-      }
-    }
-  });
-
-  // 処理されていないコメントがあれば追加（孤立したコメント）
-  sortedComments.forEach(comment => {
-    if (!processed.has(comment.id)) {
-      result.push(comment);
-      processed.add(comment.id);
-    }
-  });
-
-  return result;
-}
-
 export default function CommentPicker({
   comments,
   selectedComments,
@@ -849,6 +787,78 @@ export default function CommentPicker({
   // スレ主のID
   const firstPosterId = comments[0]?.name_id;
 
+  // コメント配列の整列（メモ化）
+  const arrangedComments = useMemo(() => {
+    if (showOnlySelected) {
+      return selectedComments
+        .map(sc => {
+          const found = comments.find(c => c.id === sc.id);
+          if (!found) return null;
+          return { ...found, body: editedComments[sc.id] || sc.body };
+        })
+        .filter((c): c is NonNullable<typeof c> => c !== null);
+    } else {
+      const selectedIds = new Set(selectedComments.map(sc => sc.id));
+      const resIdToComment = new Map<number, Comment>();
+      comments.forEach(c => {
+        resIdToComment.set(Number(c.res_id), c);
+      });
+
+      const repliesMap = new Map<number, Comment[]>();
+      const commentsWithAnchor = new Set<string>();
+
+      comments.forEach(comment => {
+        const body = editedComments[comment.id] || comment.body;
+        const anchorId = extractAnchor(body);
+        if (anchorId !== null && resIdToComment.has(anchorId)) {
+          if (!repliesMap.has(anchorId)) {
+            repliesMap.set(anchorId, []);
+          }
+          repliesMap.get(anchorId)!.push(comment);
+          commentsWithAnchor.add(comment.id);
+        }
+      });
+
+      const result: Array<Comment & { body: string; sortKey: number }> = [];
+      let sortIndex = 0;
+
+      comments.forEach((c) => {
+        if (commentsWithAnchor.has(c.id)) {
+          return;
+        }
+
+        const targetPosition = commentPositions[c.id] !== undefined
+          ? commentPositions[c.id]
+          : sortIndex;
+
+        result.push({
+          ...c,
+          body: editedComments[c.id] || c.body,
+          sortKey: targetPosition
+        });
+        sortIndex++;
+
+        const replies = repliesMap.get(Number(c.res_id));
+        if (replies) {
+          replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+          replies.forEach(reply => {
+            const replyPosition = commentPositions[reply.id] !== undefined
+              ? commentPositions[reply.id]
+              : sortIndex;
+            result.push({
+              ...reply,
+              body: editedComments[reply.id] || reply.body,
+              sortKey: replyPosition
+            });
+            sortIndex++;
+          });
+        }
+      });
+
+      return result.sort((a, b) => a.sortKey - b.sortKey);
+    }
+  }, [comments, selectedComments, showOnlySelected, editedComments, commentPositions]);
+
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
@@ -859,84 +869,7 @@ export default function CommentPicker({
       </div>
 
       <div className="space-y-2">
-        {(() => {
-          if (showOnlySelected) {
-            // 選択済みのみ表示モード：並び替え順序を保持
-            return selectedComments.map(sc => ({
-              ...comments.find(c => c.id === sc.id)!,
-              body: editedComments[sc.id] || sc.body
-            }));
-          } else {
-            // 全て表示モード：アンカーがあるコメントはその参照先の直後に配置
-            const selectedIds = new Set(selectedComments.map(sc => sc.id));
-
-            // res_idからコメントへのマップを作成
-            const resIdToComment = new Map<number, Comment>();
-            comments.forEach(c => {
-              resIdToComment.set(Number(c.res_id), c);
-            });
-
-            // アンカーによる返信関係をマップ化（res_id -> 返信コメントの配列）
-            const repliesMap = new Map<number, Comment[]>();
-            const commentsWithAnchor = new Set<string>();
-
-            comments.forEach(comment => {
-              const body = editedComments[comment.id] || comment.body;
-              const anchorId = extractAnchor(body);
-              if (anchorId !== null && resIdToComment.has(anchorId)) {
-                if (!repliesMap.has(anchorId)) {
-                  repliesMap.set(anchorId, []);
-                }
-                repliesMap.get(anchorId)!.push(comment);
-                commentsWithAnchor.add(comment.id);
-              }
-            });
-
-            // 結果配列を構築（親コメントの後に返信を挿入）
-            const result: Array<Comment & { body: string; sortKey: number }> = [];
-            let sortIndex = 0;
-
-            comments.forEach((c) => {
-              // アンカーを持つコメントは親の後に挿入されるのでスキップ
-              if (commentsWithAnchor.has(c.id)) {
-                return;
-              }
-
-              // commentPositionsに位置が記録されていればそれを使用
-              const targetPosition = commentPositions[c.id] !== undefined
-                ? commentPositions[c.id]
-                : sortIndex;
-
-              result.push({
-                ...c,
-                body: editedComments[c.id] || c.body,
-                sortKey: targetPosition
-              });
-              sortIndex++;
-
-              // このコメントへの返信を追加
-              const replies = repliesMap.get(Number(c.res_id));
-              if (replies) {
-                // 返信をres_id順でソート
-                replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-                replies.forEach(reply => {
-                  const replyPosition = commentPositions[reply.id] !== undefined
-                    ? commentPositions[reply.id]
-                    : sortIndex;
-                  result.push({
-                    ...reply,
-                    body: editedComments[reply.id] || reply.body,
-                    sortKey: replyPosition
-                  });
-                  sortIndex++;
-                });
-              }
-            });
-
-            // sortKeyでソートして返す
-            return result.sort((a, b) => a.sortKey - b.sortKey);
-          }
-        })().slice(0, showOnlySelected ? undefined : displayCount).map(comment => {
+        {arrangedComments.slice(0, showOnlySelected ? undefined : displayCount).map(comment => {
           const displayComment = {
             ...comment,
             body: editedComments[comment.id] || comment.body

@@ -164,10 +164,15 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     };
   }
 
+  // unknownの場合は対応URLを案内
+  if (sourceType === 'unknown') {
+    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / Shikutoku のURLを入力してください。');
+  }
+
   // シクトクの場合
   const talkId = extractTalkIdFromUrl(input);
   if (!talkId) {
-    throw new Error('有効なURLを入力してください');
+    throw new Error('有効なShikutoku URLを入力してください');
   }
 
   const talk = await fetchTalk(talkId);

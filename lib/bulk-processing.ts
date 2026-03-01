@@ -38,8 +38,12 @@ export async function fetchUnsummarizedUrls(options?: {
   const response = await fetch(`/api/proxy/threadMemo?${params.toString()}`);
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to fetch unsummarized URLs');
+    let errorMsg = `HTTP ${response.status}`;
+    try {
+      const errorData = await response.json() as { error?: string };
+      errorMsg = errorData.error || errorMsg;
+    } catch { /* non-JSON response */ }
+    throw new Error(errorMsg);
   }
 
   const data = await response.json() as UnsummarizedUrlsResponse;
@@ -76,8 +80,12 @@ export async function markThreadAsSummarized(url: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json() as { error?: string };
-    throw new Error(errorData.error || 'Failed to mark thread as summarized');
+    let errorMsg = `HTTP ${response.status}`;
+    try {
+      const errorData = await response.json() as { error?: string };
+      errorMsg = errorData.error || errorMsg;
+    } catch { /* non-JSON response */ }
+    throw new Error(errorMsg);
   }
 }
 

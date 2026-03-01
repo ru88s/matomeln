@@ -43,7 +43,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 
 // アンカー（>>数字）から参照先のレス番号を抽出
 function extractAnchor(body: string): number | null {
-  const match = body.match(/^>>(\d+)/);
+  const match = body.match(/>>(\d+)/);
   return match ? parseInt(match[1]) : null;
 }
 

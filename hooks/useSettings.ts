@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 
 // サーバーに同期する設定キー一覧
 const SYNCED_KEYS = [
@@ -65,6 +65,7 @@ async function postServerSettings(settings: SettingsMap): Promise<boolean> {
 export function useSettings() {
   const initializedRef = useRef(false);
   const serverAvailableRef = useRef(true);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 初回マウント時: サーバーから取得してlocalStorageとマージ
   useEffect(() => {
@@ -105,7 +106,16 @@ export function useSettings() {
     })();
   }, []);
 
-  // 設定を保存（localStorage即座 + サーバー非同期）
+  // アンマウント時にタイマーをクリア
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 設定を保存（localStorage即座 + サーバーはデバウンス付き非同期）
   const saveSettings = useCallback((updates: SettingsMap) => {
     // localStorageに即座に書き込み
     for (const [key, value] of Object.entries(updates)) {
@@ -116,11 +126,16 @@ export function useSettings() {
       }
     }
 
-    // サーバーに非同期送信
+    // サーバーに非同期送信（2秒デバウンス）
     if (serverAvailableRef.current) {
-      // 全設定を送信（部分更新ではなくフルスナップショット）
-      const allSettings = readAllFromLocalStorage();
-      postServerSettings(allSettings);
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+      syncTimerRef.current = setTimeout(() => {
+        const allSettings = readAllFromLocalStorage();
+        postServerSettings(allSettings);
+        syncTimerRef.current = null;
+      }, 2000);
     }
   }, []);
 

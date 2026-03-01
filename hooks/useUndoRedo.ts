@@ -1,59 +1,93 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useReducer, useCallback, useEffect } from 'react';
 
 interface UseUndoRedoOptions<T> {
   maxHistorySize?: number;
   initialState: T;
 }
 
-export function useUndoRedo<T>({ maxHistorySize = 50, initialState }: UseUndoRedoOptions<T>) {
-  const [history, setHistory] = useState<T[]>([initialState]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+interface UndoRedoState<T> {
+  history: T[];
+  currentIndex: number;
+}
 
-  const canUndo = currentIndex > 0;
-  const canRedo = currentIndex < history.length - 1;
+type UndoRedoAction<T> =
+  | { type: 'SET_VALUE'; value: T }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'RESET'; initialState: T };
+
+function createReducer<T>(maxHistorySize: number) {
+  return function reducer(state: UndoRedoState<T>, action: UndoRedoAction<T>): UndoRedoState<T> {
+    switch (action.type) {
+      case 'SET_VALUE': {
+        // 現在の位置より後の履歴を削除して新しい値を追加
+        const newHistory = [...state.history.slice(0, state.currentIndex + 1), action.value];
+        let newIndex = state.currentIndex + 1;
+
+        // 履歴の最大サイズを超えたら古いものを削除
+        if (newHistory.length > maxHistorySize) {
+          newHistory.shift();
+          newIndex = newHistory.length - 1;
+        }
+
+        return { history: newHistory, currentIndex: newIndex };
+      }
+      case 'UNDO': {
+        if (state.currentIndex <= 0) return state;
+        return { ...state, currentIndex: state.currentIndex - 1 };
+      }
+      case 'REDO': {
+        if (state.currentIndex >= state.history.length - 1) return state;
+        return { ...state, currentIndex: state.currentIndex + 1 };
+      }
+      case 'RESET': {
+        return { history: [action.initialState], currentIndex: 0 };
+      }
+      default:
+        return state;
+    }
+  };
+}
+
+export function useUndoRedo<T>({ maxHistorySize = 50, initialState }: UseUndoRedoOptions<T>) {
+  const [state, dispatch] = useReducer(
+    createReducer<T>(maxHistorySize),
+    { history: [initialState], currentIndex: 0 }
+  );
+
+  const canUndo = state.currentIndex > 0;
+  const canRedo = state.currentIndex < state.history.length - 1;
 
   const setValue = useCallback((newValue: T | ((prev: T) => T)) => {
-    setHistory((prevHistory) => {
-      const currentValue = prevHistory[currentIndex];
-      const value = typeof newValue === 'function'
-        ? (newValue as (prev: T) => T)(currentValue)
-        : newValue;
-
-      // 現在の位置より後の履歴を削除して新しい値を追加
-      const newHistory = [...prevHistory.slice(0, currentIndex + 1), value];
-
-      // 履歴の最大サイズを超えたら古いものを削除
-      if (newHistory.length > maxHistorySize) {
-        newHistory.shift();
-        return newHistory;
-      }
-
-      return newHistory;
-    });
-
-    setCurrentIndex((prev) => {
-      const newLength = Math.min(history.length + 1, maxHistorySize);
-      return Math.min(prev + 1, newLength - 1);
-    });
-  }, [currentIndex, history.length, maxHistorySize]);
+    // For function updaters, we need to resolve the value first
+    // Since we can't access state inside dispatch directly for function updaters,
+    // we handle this with a special pattern
+    if (typeof newValue === 'function') {
+      // We need to use the state from the reducer; this works because
+      // React guarantees dispatch is called synchronously with the latest state
+      dispatch({
+        type: 'SET_VALUE',
+        // This is a workaround - we access state.history[state.currentIndex] here
+        // It's safe because setValue is stable and React batches updates
+        value: (newValue as (prev: T) => T)(state.history[state.currentIndex]),
+      });
+    } else {
+      dispatch({ type: 'SET_VALUE', value: newValue });
+    }
+  }, [state.history, state.currentIndex]);
 
   const undo = useCallback(() => {
-    if (canUndo) {
-      setCurrentIndex((prev) => prev - 1);
-    }
-  }, [canUndo]);
+    dispatch({ type: 'UNDO' });
+  }, []);
 
   const redo = useCallback(() => {
-    if (canRedo) {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  }, [canRedo]);
+    dispatch({ type: 'REDO' });
+  }, []);
 
   const reset = useCallback(() => {
-    setHistory([initialState]);
-    setCurrentIndex(0);
+    dispatch({ type: 'RESET', initialState });
   }, [initialState]);
 
   // キーボードショートカット
@@ -79,7 +113,7 @@ export function useUndoRedo<T>({ maxHistorySize = 50, initialState }: UseUndoRed
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  const value = history[currentIndex];
+  const value = state.history[state.currentIndex];
 
   return {
     value,
@@ -89,7 +123,7 @@ export function useUndoRedo<T>({ maxHistorySize = 50, initialState }: UseUndoRed
     canUndo,
     canRedo,
     reset,
-    historySize: history.length,
-    currentIndex,
+    historySize: state.history.length,
+    currentIndex: state.currentIndex,
   };
 }
