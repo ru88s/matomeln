@@ -494,7 +494,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
         } catch {
           hostname = ogp.siteName || originalUrl;
         }
-        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div></div></div></a>`;
+        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hostname)}</div></div></div></a>`;
       } else {
         let hostname = '';
         try {
@@ -502,7 +502,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
         } catch {
           hostname = originalUrl;
         }
-        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:10px 0;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${url}</div><div style="font-size:11px;color:#666;">${hostname}</div></a>`;
+        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:10px 0;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${url}</div><div style="font-size:11px;color:#666;">${escapeHtml(hostname)}</div></a>`;
       }
     }
 
@@ -535,15 +535,30 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean): Prom
   // 5chアイコンURLを除去
   const cleanedBody = remove5chIconUrls(body);
 
-  // 改行を<br />に変換
-  let formatted = escapeHtml(cleanedBody).replace(/\n/g, '<br />\n');
+  // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
+  const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
+  const urlPlaceholders: Map<string, string> = new Map();
+  let placeholderIndex = 0;
+  const bodyWithPlaceholders = cleanedBody.replace(urlRegex, (url) => {
+    const placeholder = `__PRE_ESCAPE_URL_${placeholderIndex++}__`;
+    urlPlaceholders.set(placeholder, url);
+    return placeholder;
+  });
+
+  // HTMLエスケープ + 改行変換
+  let formatted = escapeHtml(bodyWithPlaceholders).replace(/\n/g, '<br />\n');
 
   // アンカーリンクを作成（>>数字）
   formatted = formatted.replace(/&gt;&gt;(\d+)/g, (match, num) => {
     return `<a href="#${num}" style="color: #467CE2; text-decoration: none; font-weight: bold;">&gt;&gt;${num}</a>`;
   });
 
-  // URLをリンクカードに変換
+  // プレースホルダーを元のURLに戻す（エスケープ済みテキスト内のプレースホルダーはそのまま残っている）
+  for (const [placeholder, url] of urlPlaceholders) {
+    formatted = formatted.replace(placeholder, escapeHtml(url));
+  }
+
+  // URLをリンクカードに変換（エスケープ済みURLに対してマッチ）
   formatted = await linkifyUrlsToCards(formatted, skipOgp);
 
   return formatted;
@@ -553,24 +568,37 @@ async function formatRichCommentBody(body: string, skipOgp?: boolean): Promise<s
   // 5chアイコンURLを除去
   const cleanedBody = remove5chIconUrls(body);
 
-  let lines = cleanedBody.split('\n');
+  // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
+  const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
+  const urlPlaceholders: Map<string, string> = new Map();
+  let placeholderIndex = 0;
+  const bodyWithPlaceholders = cleanedBody.replace(urlRegex, (url) => {
+    const placeholder = `__PRE_ESCAPE_URL_${placeholderIndex++}__`;
+    urlPlaceholders.set(placeholder, url);
+    return placeholder;
+  });
+
+  let lines = bodyWithPlaceholders.split('\n');
   let formatted: string[] = [];
 
   for (let line of lines) {
-    // 引用行の処理（>で始まる）
     if (line.startsWith('>')) {
       let escapedLine = escapeHtml(line);
-      // URLをリンクカードに変換（引用行でも）
+      // プレースホルダーを元のエスケープ済みURLに戻す
+      for (const [placeholder, url] of urlPlaceholders) {
+        escapedLine = escapedLine.replace(placeholder, escapeHtml(url));
+      }
       escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
       formatted.push(`<div class="quote_line">${escapedLine}</div>`);
     } else {
-      // 通常の行
       let escapedLine = escapeHtml(line);
-      // アンカーリンクを作成
       escapedLine = escapedLine.replace(/&gt;&gt;(\d+)/g, (match, num) => {
         return `<a href="#${num}" class="anchor_link">&gt;&gt;${num}</a>`;
       });
-      // URLをリンクカードに変換
+      // プレースホルダーを元のエスケープ済みURLに戻す
+      for (const [placeholder, url] of urlPlaceholders) {
+        escapedLine = escapedLine.replace(placeholder, escapeHtml(url));
+      }
       escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
       formatted.push(escapedLine);
     }

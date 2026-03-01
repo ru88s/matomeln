@@ -753,7 +753,18 @@ export default function BulkProcessPanel({
     prevAutoRunGCRef.current = autoRunGCEnabled;
 
     // チェックボックスが変更されていない場合は何もしない（初回マウント時も含む）
-    if (!changed5ch && !changedGC) return;
+    if (!changed5ch && !changedGC) {
+      // ただし、有効中のインターバル変更はタイマーを再作成
+      if (anyEnabled && autoRunTimerRef.current) {
+        clearInterval(autoRunTimerRef.current);
+        autoRunTimerRef.current = setInterval(() => {
+          if (!isAutoRunningRef.current) {
+            startAutoRunLoopRef.current?.();
+          }
+        }, autoRunInterval * 60 * 1000);
+      }
+      return;
+    }
 
     if (anyEnabled && !wasEnabled) {
       // 無効→有効に変更された場合のみ開始

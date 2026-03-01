@@ -120,7 +120,7 @@ export function LinkCard({ url }: { url: string }) {
             </div>
           )}
           <div className="text-xs text-gray-400 truncate">
-            {ogp.siteName || new URL(url).hostname}
+            {ogp.siteName || (() => { try { return new URL(url).hostname; } catch { return url; } })()}
           </div>
         </div>
       </div>

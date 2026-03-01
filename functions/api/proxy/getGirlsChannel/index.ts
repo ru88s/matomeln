@@ -8,10 +8,15 @@ export async function onRequest(context: any) {
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
 
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': corsOrigin,
+  };
+
   if (!targetUrl) {
     return new Response(JSON.stringify({ error: 'URL parameter is required' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 
@@ -19,7 +24,7 @@ export async function onRequest(context: any) {
   if (!targetUrl.match(/^https?:\/\/girlschannel\.net\/topics\/\d+/)) {
     return new Response(JSON.stringify({ error: 'Invalid GirlsChannel URL' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 
@@ -46,7 +51,7 @@ export async function onRequest(context: any) {
         error: `Failed to fetch: ${response.status} ${response.statusText}`
       }), {
         status: response.status,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
@@ -54,10 +59,7 @@ export async function onRequest(context: any) {
 
     return new Response(JSON.stringify({ content }), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': corsOrigin,
-      },
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error('Error fetching GirlsChannel:', error);
@@ -65,7 +67,7 @@ export async function onRequest(context: any) {
       error: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 }

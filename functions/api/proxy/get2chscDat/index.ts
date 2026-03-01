@@ -44,16 +44,21 @@ function generateDatUrls(info: TwoChScThreadInfo): string[] {
 
 export async function onRequest(context: any) {
   const { request } = context;
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
+  const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': corsOrigin,
+  };
+
   const urlObj = new URL(request.url);
   const url = urlObj.searchParams.get('url');
 
   if (!url) {
     return new Response(
       JSON.stringify({ error: 'URLが指定されていません' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -61,10 +66,7 @@ export async function onRequest(context: any) {
   if (!threadInfo) {
     return new Response(
       JSON.stringify({ error: '無効な2ch.sc URLです' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -108,10 +110,7 @@ export async function onRequest(context: any) {
             threadInfo,
             datUrl,
           }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }
+          { status: 200, headers: corsHeaders }
         );
       }
     } catch (error) {
@@ -126,9 +125,6 @@ export async function onRequest(context: any) {
       details: lastError?.message,
       triedUrls: datUrls,
     }),
-    {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    }
+    { status: 404, headers: corsHeaders }
   );
 }
