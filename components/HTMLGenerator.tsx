@@ -92,9 +92,12 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // 並べ替えた順番をそのまま使用（ソートしない）
       generateMatomeHTML(talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, false, customFooterHtml, selectedBlogType).then(html => {
         setGeneratedHTML(html);
+      }).catch(err => {
+        console.error('HTML生成エラー:', err);
+        setGeneratedHTML(null);
       });
     }
-  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, customFooterHtml]);
+  }, [talk, selectedComments, options, sourceInfo, customName, customNameBold, customNameColor, thumbnailUrl, showIdInHtml, isDevMode, customFooterHtml, selectedBlogType]);
 
   const handleGenerate = async () => {
     if (!talk || selectedComments.length === 0) {

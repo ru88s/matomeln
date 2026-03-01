@@ -67,7 +67,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const db = context.env.DB;
     if (!db) {
       console.error('D1 database not bound');
-      return context.next();
+      const loginUrl = new URL('/login', url.origin);
+      loginUrl.searchParams.set('returnTo', pathname);
+      return Response.redirect(loginUrl.toString(), 302);
     }
 
     const session = await db.prepare(
@@ -88,7 +90,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return context.next();
   } catch (error) {
     console.error('Middleware error:', error);
-    // On error, allow request to continue (fail open for now)
-    return context.next();
+    // Fail closed: redirect to login on error to prevent unauthorized access
+    const loginUrl = new URL('/login', url.origin);
+    loginUrl.searchParams.set('returnTo', pathname);
+    return Response.redirect(loginUrl.toString(), 302);
   }
 };

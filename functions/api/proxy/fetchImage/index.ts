@@ -8,9 +8,12 @@ export async function onRequest(context: any) {
   const urlObj = new URL(request.url);
   const imageUrl = urlObj.searchParams.get('url');
 
-  // CORSヘッダー
+  // CORSヘッダー（許可するオリジンを制限）
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };

@@ -1,6 +1,10 @@
 // Cloudflare Functions - ガールズちゃんねるHTML取得
 
 export async function onRequest(context: any) {
+  const origin = context.request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
+
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
 
@@ -52,7 +56,7 @@ export async function onRequest(context: any) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': corsOrigin,
       },
     });
   } catch (error) {

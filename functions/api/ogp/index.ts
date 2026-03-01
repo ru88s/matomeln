@@ -15,6 +15,40 @@ export async function onRequest(context: any) {
     );
   }
 
+  // SSRF防止: プライベートIPアドレスへのリクエストをブロック
+  try {
+    const parsedUrl = new URL(targetUrl);
+    const hostname = parsedUrl.hostname;
+    // プライベートIP、ローカルホスト、メタデータエンドポイントをブロック
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      hostname === 'metadata.google.internal' ||
+      hostname === '169.254.169.254' ||
+      /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)
+    ) {
+      return new Response(
+        JSON.stringify({ error: 'Access to internal addresses is not allowed' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // HTTPSまたはHTTPのみ許可
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return new Response(
+        JSON.stringify({ error: 'Only HTTP/HTTPS URLs are allowed' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Invalid URL' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const response = await fetch(targetUrl, {
       headers: {
@@ -42,11 +76,19 @@ export async function onRequest(context: any) {
     // 文字列に変換
     const html = Encoding.codeToString(unicodeArray);
 
-    // OGPタグを抽出
-    const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1] || '';
-    const ogDescription = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i)?.[1] || '';
-    const ogImage = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1] || '';
-    const ogSiteName = html.match(/<meta\s+property="og:site_name"\s+content="([^"]+)"/i)?.[1] || '';
+    // OGPタグを抽出（property/content の属性順序に依存しない）
+    const extractOgp = (prop: string): string => {
+      // property="..." content="..." の順序
+      const match1 = html.match(new RegExp(`<meta\\s+property="${prop}"\\s+content="([^"]+)"`, 'i'));
+      if (match1) return match1[1];
+      // content="..." property="..." の逆順序
+      const match2 = html.match(new RegExp(`<meta\\s+content="([^"]+)"\\s+property="${prop}"`, 'i'));
+      return match2?.[1] || '';
+    };
+    const ogTitle = extractOgp('og:title');
+    const ogDescription = extractOgp('og:description');
+    const ogImage = extractOgp('og:image');
+    const ogSiteName = extractOgp('og:site_name');
 
     // フォールバック: titleタグ
     const title = ogTitle || html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';

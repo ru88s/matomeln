@@ -12,8 +12,11 @@ interface Env {
 export async function onRequest(context: { request: Request; env: Env }) {
   const { env, request } = context;
 
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',

@@ -5,15 +5,20 @@
 
 const THREAD_MEMO_BASE_URL = 'https://thread-memo.starcrown.co.jp';
 
-// CORSヘッダー
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
 
 export async function onRequest(context: { request: Request }) {
   const { request } = context;
+  const corsHeaders = getCorsHeaders(request);
 
   // OPTIONSリクエスト（CORS preflight）
   if (request.method === 'OPTIONS') {

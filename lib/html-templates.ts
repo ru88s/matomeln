@@ -148,7 +148,7 @@ async function generateSimpleHTML(
     const displayName = customName || comment.name || '匿名';
     const nameColor = customName ? (customNameColor || 'pink') : 'pink';
     const nameBold = customName ? (customNameBold !== false) : true;
-    const nameDisplay = `<span style="font-weight: bold; color: ${nameColor};">${escapeHtml(displayName)}</span>`;
+    const nameDisplay = `<span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${escapeHtml(displayName)}</span>`;
 
     const timestamp = includeTimestamp
       ? formatDateForMatome(comment.created_at)
@@ -326,13 +326,13 @@ async function generateRichHTML(
 
     if (hasAnchor) {
       return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">
-${comment.res_id}: <span style="font-weight: bold; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
 <div style="${commentStyle}${indentStyle}" class="t_b t_i">
 ${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
 <br /></div>`;
     } else {
       return `<div class="res_div"><div class="t_h">
-${comment.res_id}: <span style="font-weight: bold; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
 <div style="${commentStyle}" class="t_b">
 ${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
 <br /></div>`;
@@ -446,37 +446,56 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     }
   }
 
-  // 第2パス: 各プレースホルダーをカードHTMLに変換
+  // 第2パス: OGP取得が必要なURLを特定し、並列取得
+  const ogpTargets: Map<string, string> = new Map(); // placeholder -> originalUrl
   for (const [placeholder, url] of placeholders) {
-    // URLは既にエスケープされた文字列から抽出されているので、
-    // OGP取得やURL判定用に元のURLに戻す
     const originalUrl = unescapeHtml(url);
+    if (
+      !skipOgp &&
+      !/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl) &&
+      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)
+    ) {
+      ogpTargets.set(placeholder, originalUrl);
+    }
+  }
 
+  // OGPを並列取得
+  const ogpResults = new Map<string, Awaited<ReturnType<typeof fetchOGP>>>();
+  if (ogpTargets.size > 0) {
+    const entries = Array.from(ogpTargets.entries());
+    const results = await Promise.all(entries.map(([, originalUrl]) => fetchOGP(originalUrl)));
+    entries.forEach(([placeholder], i) => {
+      ogpResults.set(placeholder, results[i]);
+    });
+  }
+
+  // 第3パス: 各プレースホルダーをカードHTMLに変換
+  for (const [placeholder, url] of placeholders) {
+    const originalUrl = unescapeHtml(url);
     let cardHTML = '';
 
-    // TwitterまたはX.comのURL判定 - シンプルなテキストリンクに変換
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
     }
-    // 5ch、open2ch、2ch.sc、shikutokuのスレッドURL - シンプルなテキストリンクに変換
     else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
     }
-    // OGPスキップが有効な場合はシンプルなリンクに変換
     else if (skipOgp) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
     }
     else {
-      // OGP取得は元のURL（エスケープ解除済み）で行う
-      const ogp = await fetchOGP(originalUrl);
+      const ogp = ogpResults.get(placeholder);
 
       if (ogp && ogp.title) {
-        // OGP情報がある場合はカード表示
-        // urlは既にエスケープ済み、ogp.imageはエスケープが必要
         const safeImage = ogp.image ? escapeHtml(ogp.image) : '';
-        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ogp.siteName || new URL(originalUrl).hostname}</div></div></div></a>`;
+        let hostname = '';
+        try {
+          hostname = ogp.siteName || new URL(originalUrl).hostname;
+        } catch {
+          hostname = ogp.siteName || originalUrl;
+        }
+        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${hostname}</div></div></div></a>`;
       } else {
-        // OGP情報がない場合はシンプルなカード
         let hostname = '';
         try {
           hostname = new URL(originalUrl).hostname;
@@ -487,7 +506,6 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
       }
     }
 
-    // プレースホルダーをカードHTMLに置換
     result = result.replace(placeholder, cardHTML);
   }
 

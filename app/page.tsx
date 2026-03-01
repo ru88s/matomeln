@@ -140,10 +140,14 @@ export default function Home() {
   useEffect(() => {
     const savedNameSettings = localStorage.getItem('customNameSettings');
     if (savedNameSettings) {
-      const settings = JSON.parse(savedNameSettings);
-      setCustomName(settings.name || '');
-      setCustomNameBold(settings.bold !== false);
-      setCustomNameColor(settings.color || '#ff69b4');
+      try {
+        const settings = JSON.parse(savedNameSettings);
+        setCustomName(settings.name || '');
+        setCustomNameBold(settings.bold !== false);
+        setCustomNameColor(settings.color || '#ff69b4');
+      } catch {
+        console.warn('customNameSettings の読み込みに失敗。デフォルト値を使用します。');
+      }
     }
     // サムネイルはリロード時に初期化（localStorageから復元しない）
     // ID表示設定を読み込み
@@ -159,7 +163,12 @@ export default function Home() {
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
     if (savedBlogs) {
-      const blogsList = JSON.parse(savedBlogs) as BlogSettings[];
+      let blogsList: BlogSettings[] = [];
+      try {
+        blogsList = JSON.parse(savedBlogs) as BlogSettings[];
+      } catch {
+        console.warn('blogSettingsList の読み込みに失敗。デフォルト値を使用します。');
+      }
       setBlogs(blogsList);
       // 選択中のブログIDを読み込み（sessionStorage優先、なければlocalStorageからコピー）
       // これによりタブごとに独立したブログ選択が可能
@@ -507,12 +516,16 @@ export default function Home() {
       // ブログ設定を取得
       let blogSettings: BlogSettings | null = null;
       if (savedBlogs) {
-        const blogsList: BlogSettings[] = JSON.parse(savedBlogs);
-        if (savedSelectedBlogId) {
-          blogSettings = blogsList.find(b => b.id === savedSelectedBlogId) || null;
-        }
-        if (!blogSettings && blogsList.length > 0) {
-          blogSettings = blogsList[0];
+        try {
+          const blogsList: BlogSettings[] = JSON.parse(savedBlogs);
+          if (savedSelectedBlogId) {
+            blogSettings = blogsList.find(b => b.id === savedSelectedBlogId) || null;
+          }
+          if (!blogSettings && blogsList.length > 0) {
+            blogSettings = blogsList[0];
+          }
+        } catch {
+          throw new Error('ブログ設定の読み込みに失敗しました。設定を確認してください。');
         }
       }
 
@@ -525,14 +538,22 @@ export default function Home() {
       const savedCharacters = localStorage.getItem('matomeln_thumbnail_characters');
       let allCharacters: ThumbnailCharacter[] = [];
       if (savedCharacters) {
-        allCharacters = JSON.parse(savedCharacters);
+        try {
+          allCharacters = JSON.parse(savedCharacters);
+        } catch {
+          console.warn('キャラクター設定の読み込みに失敗');
+        }
       }
 
       // レス名設定を取得
       let customNameSettings = { name: '', bold: true, color: '#ff69b4' };
       const savedNameSettings = localStorage.getItem('customNameSettings');
       if (savedNameSettings) {
-        customNameSettings = JSON.parse(savedNameSettings);
+        try {
+          customNameSettings = JSON.parse(savedNameSettings);
+        } catch {
+          console.warn('レス名設定の読み込みに失敗');
+        }
       }
 
       // カスタムフッターHTMLを取得

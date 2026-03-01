@@ -219,7 +219,14 @@ async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promi
           'Accept': '*/*',
         };
 
-    const response = await fetch(datUrl, { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
+    let response: Response;
+    try {
+      response = await fetch(datUrl, { headers, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     console.log(`[get5chFallback] ${datUrl} -> ${response.status}`);
 

@@ -7,12 +7,17 @@ interface Env {
   DB: D1Database;
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Content-Type': 'application/json',
-};
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigins = ['https://matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://matomeln.com';
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  };
+}
 
 async function getUserIdFromSession(request: Request, db: D1Database): Promise<string | null> {
   const cookies = parseCookies(request.headers.get('Cookie'));
@@ -30,6 +35,7 @@ async function getUserIdFromSession(request: Request, db: D1Database): Promise<s
 
 export async function onRequest(context: { request: Request; env: Env }) {
   const { env, request } = context;
+  const corsHeaders = getCorsHeaders(request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
