@@ -853,7 +853,7 @@ export default function BulkProcessPanel({
           value={urls}
           onChange={(e) => setUrls(e.target.value)}
           className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="https://hayabusa9.5ch.net/test/read.cgi/news/1234567890/&#10;# コメント行は無視されます&#10;https://..."
+          placeholder="https://hayabusa9.5ch.io/test/read.cgi/news/1234567890/&#10;# コメント行は無視されます&#10;https://..."
           disabled={isProcessing}
         />
       </div>

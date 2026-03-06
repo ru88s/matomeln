@@ -32,10 +32,10 @@ function decodeWithEncoding(uint8Array, encoding) {
 // 5ch URLから情報を抽出
 function parse5chUrl(url) {
   const patterns = [
-    // 標準形式
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // 標準形式（5ch.net と 5ch.io 両対応）
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
     // DAT直接
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
 
   for (const pattern of patterns) {
@@ -59,9 +59,9 @@ function generateDatUrls(info) {
 
   return [
     // 稼働中のスレッド
-    `https://${server}.5ch.net/${board}/dat/${threadKey}.dat`,
+    `https://${server}.5ch.io/${board}/dat/${threadKey}.dat`,
     // DAT落ちした現役サーバのスレッド
-    `https://${server}.5ch.net/${board}/oyster/${keyPrefix}/${threadKey}.dat`,
+    `https://${server}.5ch.io/${board}/oyster/${keyPrefix}/${threadKey}.dat`,
   ];
 }
 
@@ -91,8 +91,8 @@ async function tryCorsProxyFetch(datUrl) {
 
 // 5ch.sc（ミラーサイト）経由でフェッチを試みる
 async function try5chScFetch(datUrl) {
-  // 5ch.net → 5ch.sc に変換
-  const scUrl = datUrl.replace('.5ch.net/', '.5ch.sc/');
+  // 5ch.io → 5ch.sc に変換
+  const scUrl = datUrl.replace('.5ch.io/', '.5ch.sc/');
   const response = await fetch(scUrl, {
     headers: {
       'User-Agent': 'Monazilla/1.00',
@@ -165,7 +165,7 @@ function parseHtmlToData(html) {
 // HTML経由でスレッドを取得
 async function tryHtmlFetch(threadInfo) {
   const { server, board, threadKey } = threadInfo;
-  const htmlUrl = `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`;
+  const htmlUrl = `https://${server}.5ch.io/test/read.cgi/${board}/${threadKey}/`;
 
   const response = await fetch(htmlUrl, {
     headers: {

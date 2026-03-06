@@ -54,9 +54,9 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
     // 5chの場合は入力されたURLを整形
     const url = sourceInfo.originalUrl.trim();
     // 末尾のスラッシュやパラメータを除去して正規化
-    const match = url.match(/https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i);
+    const match = url.match(/https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i);
     if (match) {
-      return `https://${match[1]}.5ch.net/test/read.cgi/${match[2]}/${match[3]}/`;
+      return `https://${match[1]}.5ch.io/test/read.cgi/${match[2]}/${match[3]}/`;
     }
     return url;
   }
@@ -521,11 +521,11 @@ function linkifyUrls(text: string): string {
 
 // 5chのアイコンURLなど不要なURLを除去
 function remove5chIconUrls(body: string): string {
-  // 5chアイコンURL（img.5ch.net/ico/）を含む行を除去
+  // 5chアイコンURL（img.5ch.net/ico/ または img.5ch.io/ico/）を含む行を除去
   // 例: https://img.5ch.net/ico/syobo2.gif
   return body
     .split('\n')
-    .filter(line => !line.match(/^https?:\/\/img\.5ch\.net\/ico\//))
+    .filter(line => !line.match(/^https?:\/\/img\.5ch\.(?:net|io)\/ico\//))
     .join('\n')
     .trim();
 }

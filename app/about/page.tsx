@@ -75,7 +75,7 @@ export default function AboutPage() {
                     <div className="bg-white rounded-lg p-3 border border-pink-200 shadow-sm">
                       <p className="text-xs font-bold text-gray-600 mb-2">📝 入力例</p>
                       <div className="space-y-1">
-                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.5ch.net/test/read.cgi/...</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.5ch.io/test/read.cgi/...</code>
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.open2ch.net/test/read.cgi/...</code>
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://shikutoku.me/talks/6454</code>
                       </div>

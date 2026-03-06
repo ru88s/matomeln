@@ -15,10 +15,10 @@ function parse5chUrl(url: string): ThreadInfo | null {
   const normalizedUrl = normalize5chUrl(url);
 
   const patterns = [
-    // 標準形式: https://server.5ch.net/test/read.cgi/board/threadkey/
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
+    // 標準形式: https://server.5ch.net/test/read.cgi/board/threadkey/（5ch.net と 5ch.io 両対応）
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
     // DAT直接: https://server.5ch.net/board/dat/threadkey.dat
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
 
   for (const pattern of patterns) {
@@ -36,18 +36,19 @@ function parse5chUrl(url: string): ThreadInfo | null {
 }
 
 function normalize5chUrl(url: string): string {
-  // itest.5ch.net形式: https://itest.5ch.net/server/test/read.cgi/board/threadkey
-  const itestPattern = /https?:\/\/itest\.5ch\.net\/([a-z0-9]+)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
+  // itest.5ch.net/io形式: https://itest.5ch.net/server/test/read.cgi/board/threadkey
+  const itestPattern = /https?:\/\/itest\.5ch\.(?:net|io)\/([a-z0-9]+)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
   const itestMatch = url.match(itestPattern);
 
   if (itestMatch) {
     const server = itestMatch[1];
     const board = itestMatch[2];
     const threadKey = itestMatch[3];
-    return `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`;
+    return `https://${server}.5ch.io/test/read.cgi/${board}/${threadKey}/`;
   }
 
-  return url;
+  // 旧ドメイン 5ch.net を 5ch.io に変換
+  return url.replace(/\.5ch\.net\//g, '.5ch.io/');
 }
 
 // 2ch.scのDATファイルURLを生成

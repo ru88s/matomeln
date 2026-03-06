@@ -91,7 +91,7 @@ export default function Privacy() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">7. 外部サービスとの連携</h2>
           <p className="text-gray-700 mb-3">当サービスは以下の外部サービスと連携しています：</p>
           <ul className="list-disc pl-6 text-gray-700 space-y-2">
-            <li><strong>5ch.net：</strong> コメントデータの取得元</li>
+            <li><strong>5ch.io：</strong> コメントデータの取得元</li>
             <li><strong>2ch.sc：</strong> コメントデータの取得元</li>
             <li><strong>open2ch.net：</strong> コメントデータの取得元</li>
             <li><strong>shikutoku.me：</strong> コメントデータの取得元</li>

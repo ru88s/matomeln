@@ -8,8 +8,8 @@ export interface FiveChThreadInfo {
 }
 
 // 5ch URLのパターン
-// https://nova.5ch.net/test/read.cgi/livegalileo/1764043617/
-// https://nova.5ch.net/test/read.cgi/livegalileo/1764043617/l50
+// https://nova.5ch.io/test/read.cgi/livegalileo/1764043617/
+// https://nova.5ch.net/test/read.cgi/livegalileo/1764043617/ (旧ドメイン)
 // https://itest.5ch.net/hayabusa9/test/read.cgi/news/1764539868 (モバイル版)
 export function parse5chUrl(url: string): FiveChThreadInfo | null {
   // まずURLを正規化（モバイル版をPC版に変換）
@@ -17,10 +17,10 @@ export function parse5chUrl(url: string): FiveChThreadInfo | null {
 
   const patterns = [
     // 標準形式: https://server.5ch.net/test/read.cgi/board/threadkey/
-    // 末尾の/はあってもなくてもOK
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
+    // 末尾の/はあってもなくてもOK（5ch.net と 5ch.io 両対応）
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)\/?/i,
     // DAT直接: https://server.5ch.net/board/dat/threadkey.dat
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
 
   for (const pattern of patterns) {
@@ -37,21 +37,22 @@ export function parse5chUrl(url: string): FiveChThreadInfo | null {
   return null;
 }
 
-// 5ch URLを正規化（モバイル版をPC版に変換）
-// itest.5ch.net/hayabusa9/test/read.cgi/news/xxx → hayabusa9.5ch.net/test/read.cgi/news/xxx
+// 5ch URLを正規化（モバイル版をPC版に変換、旧ドメインも対応）
+// itest.5ch.net/hayabusa9/test/read.cgi/news/xxx → hayabusa9.5ch.io/test/read.cgi/news/xxx
 export function normalize5chUrl(url: string): string {
-  // itest.5ch.net形式: https://itest.5ch.net/server/test/read.cgi/board/threadkey
-  const itestPattern = /https?:\/\/itest\.5ch\.net\/([a-z0-9]+)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
+  // itest.5ch.net/io形式: https://itest.5ch.net/server/test/read.cgi/board/threadkey
+  const itestPattern = /https?:\/\/itest\.5ch\.(?:net|io)\/([a-z0-9]+)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i;
   const itestMatch = url.match(itestPattern);
 
   if (itestMatch) {
     const server = itestMatch[1];
     const board = itestMatch[2];
     const threadKey = itestMatch[3];
-    return `https://${server}.5ch.net/test/read.cgi/${board}/${threadKey}/`;
+    return `https://${server}.5ch.io/test/read.cgi/${board}/${threadKey}/`;
   }
 
-  return url;
+  // 旧ドメイン 5ch.net を 5ch.io に変換
+  return url.replace(/\.5ch\.net\//g, '.5ch.io/');
 }
 
 // HTMLエンティティをデコード

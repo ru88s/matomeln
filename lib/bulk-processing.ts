@@ -111,7 +111,7 @@ export async function markThreadAsSkipped(url: string, reason: string): Promise<
  * URLからスレッドIDを抽出
  */
 export function extractThreadId(url: string): string | null {
-  // 5ch URL format: https://hayabusa9.5ch.net/test/read.cgi/news/1234567890/
+  // 5ch URL format: https://hayabusa9.5ch.io/test/read.cgi/news/1234567890/
   const match = url.match(/\/(\d{10,})\/?$/);
   return match ? match[1] : null;
 }

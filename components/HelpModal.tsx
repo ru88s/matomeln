@@ -86,7 +86,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     5ch、open2ch、2ch.sc、ShikutokuのスレッドURLを入力
                   </p>
                   <div className="text-xs bg-gray-50 p-2 rounded-lg space-y-1">
-                    <code className="block text-orange-600">https://xxx.5ch.net/test/read.cgi/...</code>
+                    <code className="block text-orange-600">https://xxx.5ch.io/test/read.cgi/...</code>
                     <code className="block text-orange-600">https://xxx.2ch.sc/test/read.cgi/...</code>
                   </div>
                 </div>

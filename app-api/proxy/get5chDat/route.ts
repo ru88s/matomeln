@@ -11,10 +11,10 @@ interface FiveChThreadInfo {
 
 function parse5chUrl(url: string): FiveChThreadInfo | null {
   const patterns = [
-    // 標準形式
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
+    // 標準形式（5ch.net と 5ch.io 両対応）
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\/(\d+)/i,
     // DAT直接
-    /https?:\/\/([a-z0-9]+)\.5ch\.net\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
+    /https?:\/\/([a-z0-9]+)\.5ch\.(?:net|io)\/([a-z0-9_]+)\/dat\/(\d+)\.dat/i,
   ];
 
   for (const pattern of patterns) {
@@ -38,9 +38,9 @@ function generateDatUrls(info: FiveChThreadInfo): string[] {
 
   return [
     // 稼働中のスレッド
-    `https://${server}.5ch.net/${board}/dat/${threadKey}.dat`,
+    `https://${server}.5ch.io/${board}/dat/${threadKey}.dat`,
     // DAT落ちした現役サーバのスレッド
-    `https://${server}.5ch.net/${board}/oyster/${keyPrefix}/${threadKey}.dat`,
+    `https://${server}.5ch.io/${board}/oyster/${keyPrefix}/${threadKey}.dat`,
   ];
 }
 
