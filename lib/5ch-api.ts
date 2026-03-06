@@ -302,7 +302,7 @@ export function detectSourceType(url: string): SourceType {
   if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
     return 'shikutoku';
   }
-  if (/\.5ch\.net/i.test(url)) {
+  if (/\.5ch\.(?:net|io)/i.test(url)) {
     return '5ch';
   }
   if (/\.2ch\.sc/i.test(url)) {
