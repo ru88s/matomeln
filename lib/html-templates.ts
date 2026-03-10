@@ -163,12 +163,12 @@ async function generateSimpleHTML(
     const headerInfo = [timestamp, idDisplay].filter(Boolean).join(' ');
     const headerInfoHTML = headerInfo ? `<span style="color: silver;">${headerInfo}</span>` : '';
 
-    // 画像の処理 - 200pxに縮小
+    // 画像の処理
     let imageHTML = '';
     if (includeImages && comment.images && comment.images.length > 0) {
       imageHTML = comment.images.filter(img => img && typeof img === 'string').map(img => {
         const imageUrl = img.startsWith('http') ? img : `https://cdn.shikutoku.me${img.startsWith('/') ? img : '/' + img}`;
-        return `<div style="margin:10px 0;"><img src="${imageUrl}" style="max-width:200px;max-height:200px;" /></div>`;
+        return `<div style="margin:10px 0;"><img src="${imageUrl}" /></div>`;
       }).join('');
     }
 
@@ -272,8 +272,6 @@ async function generateRichHTML(
   line-height: 1.8;
 }
 .t_b img {
-  max-width: 200px;
-  max-height: 200px;
   border-radius: 8px;
   margin: 10px 5px;
 }
@@ -314,7 +312,7 @@ async function generateRichHTML(
     if (includeImages && comment.images && comment.images.length > 0) {
       imageHTML = comment.images.filter(img => img && typeof img === 'string').map(img => {
         const imageUrl = img.startsWith('http') ? img : `https://cdn.shikutoku.me${img.startsWith('/') ? img : '/' + img}`;
-        return `<img src="${imageUrl}" style="max-width:200px;max-height:200px;margin:5px;" />`;
+        return `<img src="${imageUrl}" style="margin:5px;" />`;
       }).join('');
     }
 
