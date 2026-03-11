@@ -168,7 +168,7 @@ async function generateSimpleHTML(
     if (includeImages && comment.images && comment.images.length > 0) {
       imageHTML = comment.images.filter(img => img && typeof img === 'string').map(img => {
         const imageUrl = img.startsWith('http') ? img : `https://cdn.shikutoku.me${img.startsWith('/') ? img : '/' + img}`;
-        return `<div style="margin:10px 0;"><img src="${imageUrl}" /></div>`;
+        return `<div style="margin:10px 0;"><img src="${imageUrl}" style="width:100%;" /></div>`;
       }).join('');
     }
 
@@ -272,6 +272,7 @@ async function generateRichHTML(
   line-height: 1.8;
 }
 .t_b img {
+  width: 100%;
   border-radius: 8px;
   margin: 10px 5px;
 }
@@ -312,7 +313,7 @@ async function generateRichHTML(
     if (includeImages && comment.images && comment.images.length > 0) {
       imageHTML = comment.images.filter(img => img && typeof img === 'string').map(img => {
         const imageUrl = img.startsWith('http') ? img : `https://cdn.shikutoku.me${img.startsWith('/') ? img : '/' + img}`;
-        return `<img src="${imageUrl}" style="margin:5px;" />`;
+        return `<img src="${imageUrl}" style="width:100%;margin:5px;" />`;
       }).join('');
     }
 
