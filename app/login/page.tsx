@@ -14,7 +14,7 @@ function LoginContent() {
     if (errorParam) {
       switch (errorParam) {
         case 'access_denied':
-          setError('現在はクローズド運用中です。利用をご希望の場合はお問い合わせください。');
+          setError('ログインできませんでした。もう一度Googleログインをお試しください。');
           break;
         case 'oauth_error':
           setError('Googleログインに失敗しました。もう一度お試しください。');
@@ -43,7 +43,7 @@ function LoginContent() {
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">まとめるん</h1>
-        <p className="text-sm text-gray-500 mt-1">掲示板まとめ作成ツール</p>
+        <p className="text-sm text-gray-500 mt-1">Kotoriaでまとめブログを運営する人のためのツール</p>
       </div>
 
       {/* Error message */}
@@ -56,7 +56,7 @@ function LoginContent() {
       {/* Info */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
         <p className="text-gray-600 text-sm text-center">
-          このツールを利用するにはログインが必要です
+          Googleアカウントでログインすると、すぐに利用できます。
         </p>
       </div>
 
@@ -108,7 +108,7 @@ function LoginFallback() {
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">まとめるん</h1>
-        <p className="text-sm text-gray-500 mt-1">掲示板まとめ作成ツール</p>
+        <p className="text-sm text-gray-500 mt-1">Kotoriaでまとめブログを運営する人のためのツール</p>
       </div>
       <div className="bg-gray-50 rounded-xl p-4 mb-6 animate-pulse">
         <p className="text-gray-400 text-sm text-center">読み込み中...</p>

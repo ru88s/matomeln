@@ -17,10 +17,10 @@ export interface Session {
   created_at: string;
 }
 
-// Admin email - the only user allowed in Phase 1
+// Admin email - keeps admin privileges while general users can sign in.
 export const ADMIN_EMAIL = 'lulu.y0812@gmail.com';
 
-// Allowlist for future Phase 2 (empty for now, admin only)
+// Legacy allowlist retained for older imports. Login is no longer restricted by it.
 export const ALLOWLIST_EMAILS: string[] = [
   ADMIN_EMAIL,
 ];

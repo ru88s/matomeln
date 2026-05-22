@@ -6,9 +6,7 @@ import {
   parseCookies,
   createSessionCookie,
   SESSION_DURATION_MS,
-  isAllowed,
   getRoleForEmail,
-  ADMIN_EMAIL,
 } from '../../../lib/auth';
 
 interface Env {
@@ -82,19 +80,6 @@ export async function onRequest(context: { request: Request; env: Env }) {
 
     // Decode ID token to get user info
     const userInfo = decodeIdToken(tokens.id_token);
-
-    // Phase 1: Only allow admin
-    // Phase 2: Use isAllowed() for allowlist
-    if (!isAllowed(userInfo.email)) {
-      console.log(`Access denied for: ${userInfo.email}`);
-      return new Response(null, {
-        status: 302,
-        headers: {
-          'Location': '/login?error=access_denied',
-          'Set-Cookie': 'auth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-        },
-      });
-    }
 
     // Determine role
     const role = getRoleForEmail(userInfo.email);
