@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
 import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
 import SettingsModal from '@/components/SettingsModal';
-import BulkProcessPanel from '@/components/BulkProcessPanel';
 import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/LoadingSpinner';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
@@ -18,7 +18,10 @@ import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
+import { useIsAdmin } from '@/lib/auth-context';
 import toast from 'react-hot-toast';
+
+const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), { ssr: false });
 
 // タイムアウト付きfetch（30秒）
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
@@ -99,6 +102,7 @@ function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithSty
 }
 
 export default function Home() {
+  const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
   const [currentTalk, setCurrentTalk] = useState<Talk | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -132,6 +136,7 @@ export default function Home() {
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理後にモーダルを開くための期待するコメント数
   const [pendingModalCommentCount, setPendingModalCommentCount] = useState<number | null>(null);
+  const canUseAdminAiTools = isAdmin && isDevMode;
 
   // サーバー同期
   const { saveSettings } = useSettings();
@@ -155,10 +160,12 @@ export default function Home() {
     if (savedShowIdInHtml !== null) {
       setShowIdInHtml(savedShowIdInHtml === 'true');
     }
-    // 開発者モードを読み込み
+    // 開発者モードを読み込み（admin専用機能のため、非adminでは強制OFF）
     const savedDevMode = localStorage.getItem('matomeln_dev_mode');
-    if (savedDevMode === 'true') {
+    if (isAdmin && savedDevMode === 'true') {
       setIsDevMode(true);
+    } else {
+      setIsDevMode(false);
     }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
@@ -205,7 +212,7 @@ export default function Home() {
         }
       }
     }
-  }, []);
+  }, [isAdmin]);
 
   // レス名設定をローカルストレージに保存
   useEffect(() => {
@@ -987,7 +994,7 @@ export default function Home() {
         </div>
 
         {/* 開発者モードのAI機能 */}
-        {isDevMode && (
+        {canUseAdminAiTools && (
           <>
             {/* 一括AIまとめパネル */}
             <BulkProcessPanel
