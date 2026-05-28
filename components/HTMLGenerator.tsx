@@ -137,7 +137,24 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // ブログタイプに応じたAPI呼び出し
       let response: Response;
 
-      if (selectedBlogType === 'girls-matome') {
+      if (selectedBlogType === 'kotoria') {
+        // Kotoriaへ投稿
+        response = await fetch('/api/proxy/postKotoria', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            apiUrl: apiSettings.blogUrl,
+            apiKey: apiSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            sourceUrl: sourceInfo?.originalUrl || '',
+            tags: talk?.tag_names?.join(',') || '',
+            thumbnailUrl: thumbnailUrl || '',
+          }),
+        });
+      } else if (selectedBlogType === 'girls-matome') {
         // ガールズまとめ速報へ投稿
         response = await fetch('/api/proxy/postGirlsMatome', {
           method: 'POST',
@@ -188,7 +205,24 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           try {
             let otherResponse: Response;
 
-            if (blog.blogType === 'girls-matome') {
+            if (blog.blogType === 'kotoria') {
+              // Kotoriaへ投稿
+              otherResponse = await fetch('/api/proxy/postKotoria', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  apiUrl: blog.blogId,
+                  apiKey: blog.apiKey,
+                  title: generatedHTML.title,
+                  body: fullBody,
+                  sourceUrl: sourceInfo?.originalUrl || '',
+                  tags: talk?.tag_names?.join(',') || '',
+                  thumbnailUrl: thumbnailUrl || '',
+                }),
+              });
+            } else if (blog.blogType === 'girls-matome') {
               // ガールズまとめ速報へ投稿
               otherResponse = await fetch('/api/proxy/postGirlsMatome', {
                 method: 'POST',

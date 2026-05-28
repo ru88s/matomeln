@@ -128,6 +128,84 @@ export function isKeywordSpam(text: string): boolean {
   return false;
 }
 
+// YouTube URLスパムを検出（URLだけの荒らしレス）
+export function isYouTubeSpam(text: string): boolean {
+  const youtubePattern = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//i;
+  if (!youtubePattern.test(text)) return false;
+
+  // URL部分を除去して残りのテキストを確認
+  const textWithoutUrls = text.replace(/https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+/g, '').trim();
+  // アンカーも除去
+  const textWithoutAnchors = textWithoutUrls.replace(/>>(\d+)/g, '').trim();
+
+  // URL以外の内容が20文字未満なら荒らしと判定
+  if (textWithoutAnchors.length < 20) {
+    console.log(`🚫 YouTube URLスパム検出: 残テキスト=${textWithoutAnchors.length}文字「${textWithoutAnchors.substring(0, 30)}」`);
+    return true;
+  }
+
+  return false;
+}
+
+// 政治/宗教煽りコピペを検出（【〇〇】で始まるテンプレ + 煽りキーワード）
+// 例: 「>>1 【イスラム化する世界】フランスはイスラム教移民を…」
+//   どのスレッドにも貼られる定型コピペで、スレッド本題と無関係なものを除外
+export function isOffTopicPoliticalSpam(text: string): boolean {
+  // アンカーを除いた本文
+  const body = text.replace(/>>(\d+)/g, '').replace(/＞＞[０-９\d]+/g, '').trim();
+
+  // 先頭60文字以内に【〇〇〇】（2文字以上）があるか
+  // 【ネタバレ】等の正当な使い方もあるので、煽りキーワードと組み合わせて判定
+  const bracketMatch = body.slice(0, 60).match(/【[^】]{2,30}】/);
+  if (!bracketMatch) return false;
+
+  // 政治/宗教/民族煽りキーワード
+  const inflammatoryKeywords = [
+    'イスラム', 'ムスリム', 'ムハンマド', 'コーラン',
+    'キリスト教', 'ユダヤ', 'シオニスト',
+    '移民', '難民', '不法滞在',
+    '韓国人', '朝鮮人', '在日', '反日', '親日',
+    '中国共産党', '中共', 'チャイナ',
+    '統一教会', '創価', 'カルト',
+    'ネトウヨ', 'パヨク', '工作員',
+    '棄教', '改宗', '異教徒',
+  ];
+  const hitCount = inflammatoryKeywords.filter(kw => body.includes(kw)).length;
+
+  // 【】テンプレ + 煽りキーワード2個以上 → 高確率でコピペ
+  if (hitCount >= 2) {
+    console.log(`🚫 政治/宗教コピペ検出: 「${bracketMatch[0]}」+ 煽り語${hitCount}個`);
+    return true;
+  }
+
+  return false;
+}
+
+// コピペ荒らしを検出（外部URL複数 + SNSハンドル等）
+export function isCopyPasteSpam(text: string): boolean {
+  // 外部URLの数をカウント（http/https、ドメイン直書き）
+  const urlPattern = /(?:https?:\/\/[\w.-]+\.\w{2,}|[\w-]+\.(?:com|net|org|jp|io|be|dev|co\.jp|ne\.jp|or\.jp)\/\S*)/gi;
+  const urls = text.match(urlPattern) || [];
+
+  // SNSハンドル（@username）の数をカウント
+  const handlePattern = /@\w{2,}/g;
+  const handles = text.match(handlePattern) || [];
+
+  // 外部URLが3つ以上 → コピペスパム
+  if (urls.length >= 3) {
+    console.log(`🚫 コピペスパム検出: URL=${urls.length}個`);
+    return true;
+  }
+
+  // 外部URL2つ以上 + SNSハンドル2つ以上 → コピペスパム
+  if (urls.length >= 2 && handles.length >= 2) {
+    console.log(`🚫 コピペスパム検出: URL=${urls.length}個, ハンドル=${handles.length}個`);
+    return true;
+  }
+
+  return false;
+}
+
 // アンカー（>>数字）を抽出（全角・半角両対応）
 function extractAnchors(text: string): number[] {
   const anchors: number[] = [];
@@ -249,6 +327,7 @@ ${postsText}
 - スレ主[主]のレスは優先的に選んでください
 - 10文字未満の短いレスは選ばないでください（「あ」「草」など）
 - アンカー（>>数字）付きレスを選ぶ場合、参照先も重要なら選んでください
+- スレッド本題と無関係な政治/宗教/民族のコピペ（【イスラム化する世界】等の定型文、移民・在日・特定宗教を煽る長文など）は絶対に選ばないでください
 
 【色の使用ルール】
 - 使用できる色: "red", "blue", "green", "pink", "orange", "purple", null
@@ -303,13 +382,36 @@ export function enhanceAIResponse(
   let selectedPosts = [...aiResponse.selected_posts];
   const totalPosts = comments.length;
 
-  // キーワードスパムを除外（レス1は除く）
+  // AIが同じレス番号を複数回返した場合の重複除去（最初の1つを残す）
+  const seenPostNumbers = new Set<number>();
+  selectedPosts = selectedPosts.filter(post => {
+    if (seenPostNumbers.has(post.post_number)) {
+      console.log(`⚠️ 重複レスを除去: ${post.post_number}`);
+      return false;
+    }
+    seenPostNumbers.add(post.post_number);
+    return true;
+  });
+
+  // キーワードスパム・YouTube URLスパムを除外（レス1は除く）
   selectedPosts = selectedPosts.filter(post => {
     if (post.post_number === 1) return true; // レス1は除外しない
     const comment = comments[post.post_number - 1];
     if (!comment) return false;
     if (isKeywordSpam(comment.body)) {
       console.log(`🚫 スパムレスを除外: ${post.post_number}`);
+      return false;
+    }
+    if (isYouTubeSpam(comment.body)) {
+      console.log(`🚫 YouTube URLスパムレスを除外: ${post.post_number}`);
+      return false;
+    }
+    if (isCopyPasteSpam(comment.body)) {
+      console.log(`🚫 コピペスパムレスを除外: ${post.post_number}`);
+      return false;
+    }
+    if (isOffTopicPoliticalSpam(comment.body)) {
+      console.log(`🚫 政治/宗教コピペレスを除外: ${post.post_number}`);
       return false;
     }
     return true;
@@ -441,6 +543,26 @@ export function enhanceAIResponse(
       }
     }
   }
+
+  // 自動追加されたレスにもスパムフィルターを適用（レス1は除く）
+  selectedPosts = selectedPosts.filter(post => {
+    if (post.post_number === 1) return true;
+    const comment = comments[post.post_number - 1];
+    if (!comment) return false;
+    if (isYouTubeSpam(comment.body)) {
+      console.log(`🚫 YouTube URLスパムレスを除外（自動追加分）: ${post.post_number}`);
+      return false;
+    }
+    if (isCopyPasteSpam(comment.body)) {
+      console.log(`🚫 コピペスパムレスを除外（自動追加分）: ${post.post_number}`);
+      return false;
+    }
+    if (isOffTopicPoliticalSpam(comment.body)) {
+      console.log(`🚫 政治/宗教コピペレスを除外（自動追加分）: ${post.post_number}`);
+      return false;
+    }
+    return true;
+  });
 
   // 200レス制限（読者の読み疲れ防止）
   const MAX_SELECTED_POSTS = 200;

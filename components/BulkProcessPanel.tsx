@@ -292,6 +292,12 @@ export default function BulkProcessPanel({
       'トピックの取得に失敗',
       'Invalid GirlsChannel',
       'girlschannel',
+      // Shikutokuログイン必須トーク（loginEnabled=true）
+      'Login required',
+      'login required',
+      'ログインが必要',
+      'UNAUTHORIZED',
+      '401',
       // コンテンツ検証エラー
       'タイトルが空のため投稿できません',
       '本文が空のため投稿できません',
@@ -330,6 +336,24 @@ export default function BulkProcessPanel({
     ];
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
+
+  // Anthropic APIのクレジット残高不足エラーを判定
+  const isCreditBalanceError = (errorMsg: string): boolean => {
+    const msg = errorMsg.toLowerCase();
+    return msg.includes('credit balance is too low')
+      || msg.includes('credit balance')
+      || (msg.includes('plans & billing') && msg.includes('anthropic'));
+  };
+
+  // クレジット残高不足時に定期実行をオフにする
+  const disableAutoRunForCreditError = useCallback(() => {
+    setAutoRun5chEnabled(false);
+    setAutoRunGCEnabled(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('autoRun5chEnabled', 'false');
+      localStorage.setItem('autoRunGCEnabled', 'false');
+    }
+  }, []);
 
   // 一括処理開始
   const handleStartBulk = useCallback(async () => {
@@ -424,7 +448,12 @@ export default function BulkProcessPanel({
               failedUrls: [...prev.failedUrls, { url, error: safeError }],
             }));
             toast.error(`(${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-            toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
+            if (isCreditBalanceError(lastError)) {
+              toast.error('Claude APIのクレジット残高不足です。Anthropic Consoleで補充してください: https://console.anthropic.com/settings/billing', { duration: 10000 });
+              disableAutoRunForCreditError();
+            } else {
+              toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
+            }
             shouldStopRef.current = true;
             break;
           }
@@ -601,8 +630,13 @@ export default function BulkProcessPanel({
                 failedUrls: [...prev.failedUrls, { url, error: safeError }],
               }));
               toast.error(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-              toast.error(`投稿エラーが発生したため処理を一時停止しました。次回チェック時に再試行します`, { duration: 5000 });
-              // チェックボックスは外さない（次回チェック時に再試行）
+              if (isCreditBalanceError(lastError)) {
+                toast.error('Claude APIのクレジット残高不足です。定期実行をオフにしました。Anthropic Consoleで補充後、再度オンにしてください: https://console.anthropic.com/settings/billing', { duration: 12000 });
+                disableAutoRunForCreditError();
+              } else {
+                toast.error(`投稿エラーが発生したため処理を一時停止しました。次回チェック時に再試行します`, { duration: 5000 });
+              }
+              // クレジット残高不足以外はチェックボックスを外さない（次回チェック時に再試行）
               shouldStopRef.current = true;
               break;
             }

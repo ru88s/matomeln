@@ -112,10 +112,7 @@ function getCommentStyle(options: MatomeOptions): string {
 
 // サムネイル画像タグを生成
 function generateThumbnailHTML(thumbnailUrl: string): string {
-  // -s.pngを追加してサムネイルURL（小サイズ）を生成
-  const thumbnailSmallUrl = thumbnailUrl.replace(/(\.[a-zA-Z]+)$/, '-s$1');
-
-  return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailSmallUrl}" width="400" height="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
+  return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailUrl}" width="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
 }
 
 // シンプルなHTML

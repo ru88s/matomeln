@@ -13,9 +13,10 @@ import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useSettings } from '@/hooks/useSettings';
 import { callClaudeAPI, AISummarizeResponse, isAdultContent } from '@/lib/ai-summarize';
-import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
+import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle, generateGenericTitleForTag } from '@/lib/ai-thumbnail';
 import { generateMatomeHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
+import { searchTagByTitle, saveThumbnailToTag, registerNewTag, extractKeywordFromTitle, TagSearchResult } from '@/lib/tag-thumbnail-cache';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
@@ -658,6 +659,49 @@ export default function Home() {
       // =====================
       let generatedThumbnailUrl = '';
       let generatedThumbnailBase64 = '';  // girls-matome用のbase64
+
+      // ===== サムネイル生成ON/OFFチェック =====
+      const thumbnailEnabledSetting = localStorage.getItem('matomeln_thumbnail_enabled');
+      const isThumbnailEnabled = thumbnailEnabledSetting !== 'false';
+
+      // ===== タグサムネイルキャッシュ検索 =====
+      let cachedTagResult: TagSearchResult | null = null;
+      let skipThumbnailGeneration = !isThumbnailEnabled;  // OFFなら最初からスキップ
+
+      if (!isThumbnailEnabled) {
+        console.log('AIサムネイル生成はOFFです。スキップします。');
+        toast.success('サムネイル生成スキップ（OFF設定）', { id: 'bulk-step' });
+      }
+
+      try {
+        if (!isThumbnailEnabled) {
+          // サムネイルOFFの場合はキャッシュ検索もスキップ
+        } else {
+        toast.loading('サムネイルキャッシュを検索中...', { id: 'bulk-step' });
+        cachedTagResult = await searchTagByTitle(talk.title);
+
+        if (cachedTagResult?.tag?.thumbnail_url && cachedTagResult.tag.is_original) {
+          // オリジナルサムネのキャッシュヒット - そのまま使用
+          generatedThumbnailUrl = cachedTagResult.tag.thumbnail_url;
+          skipThumbnailGeneration = true;
+          console.log('キャッシュサムネイル使用:', cachedTagResult.tag.tag);
+          toast.success(`キャッシュサムネイル使用（${cachedTagResult.tag.tag}）`, { id: 'bulk-step' });
+        } else if (cachedTagResult?.tag?.thumbnail_url && !cachedTagResult.tag.is_original) {
+          // 旧サムネ → AI生成して置換（skipしない）
+          console.log('旧サムネを検出、オリジナル生成で置換:', cachedTagResult.tag.tag);
+          toast.loading(`旧サムネを置換生成中（${cachedTagResult.tag.tag}）...`, { id: 'bulk-step' });
+        } else if (cachedTagResult?.categoryFallback?.thumbnail_url && cachedTagResult.categoryFallback.is_original) {
+          // カテゴリフォールバック（オリジナルサムネ）
+          generatedThumbnailUrl = cachedTagResult.categoryFallback.thumbnail_url;
+          skipThumbnailGeneration = true;
+          console.log('カテゴリサムネイル使用');
+          toast.success('カテゴリサムネイル使用', { id: 'bulk-step' });
+        }
+        } // end if isThumbnailEnabled
+      } catch (e) {
+        console.warn('タグキャッシュ検索失敗:', e);
+      }
+
       // サムネイルプロバイダーを読み込み
       const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
       const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
@@ -666,25 +710,32 @@ export default function Home() {
       const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
       const thumbnailApiKey = useOpenAI ? openaiApiKey : geminiApiKey;
 
-      if (thumbnailApiKey && blogSettings) {
+      if (!skipThumbnailGeneration && thumbnailApiKey && blogSettings) {
         // キャラクターが複数ある場合、AIが記事に合うキャラを選択（常にGemini使用）
         if (allCharacters.length > 0 && geminiApiKey) {
           toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
           thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
           if (thumbnailCharacter) {
-            console.log('📷 選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+            console.log('選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
           }
         }
 
         const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+        // タグがヒットしてるがthumbnail_urlがない場合、汎用タイトルで生成（キャッシュ再利用のため）
+        const titleForThumbnail = (cachedTagResult?.tag && !cachedTagResult.tag.thumbnail_url)
+          ? generateGenericTitleForTag(cachedTagResult.tag.tag, cachedTagResult.tag.girlsvip_category)
+          : talk.title;
+        if (titleForThumbnail !== talk.title) {
+          console.log('汎用サムネイル生成:', titleForThumbnail);
+        }
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: 'bulk-step' });
         try {
           const thumbnailResult = useOpenAI
-            ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter, false, openaiModel, openaiQuality)
-            : await generateThumbnail(geminiApiKey!, talk.title, thumbnailCharacter);
+            ? await generateThumbnailWithOpenAI(openaiApiKey, titleForThumbnail, thumbnailCharacter, false, openaiModel, openaiQuality)
+            : await generateThumbnail(geminiApiKey!, titleForThumbnail, thumbnailCharacter);
 
           if (thumbnailResult.referenceImageFailures && thumbnailResult.referenceImageFailures > 0) {
-            console.warn(`⚠️ 参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);
+            console.warn(`参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);
           }
 
           if (thumbnailResult.success && thumbnailResult.imageBase64) {
@@ -718,6 +769,30 @@ export default function Home() {
                   generatedThumbnailUrl = uploadData.url;
                   setThumbnailUrl(generatedThumbnailUrl);
                   toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+
+                  // 生成したサムネイルURLをタグキャッシュに保存（Livedoorの場合のみ）
+                  // タグヒット＆サムネなし、またはタグヒット＆旧サムネ置換の場合
+                  if (cachedTagResult?.tag?.id && (!cachedTagResult.tag.thumbnail_url || !cachedTagResult.tag.is_original)) {
+                    try {
+                      await saveThumbnailToTag(cachedTagResult.tag.id, generatedThumbnailUrl);
+                      console.log('サムネイルをタグキャッシュに保存:', cachedTagResult.tag.tag);
+                    } catch (e) {
+                      console.warn('サムネイルキャッシュ保存失敗:', e);
+                    }
+                  } else if (!cachedTagResult?.tag) {
+                    // タグ不一致 → タイトルからキーワード抽出して新しいタグを自動登録
+                    try {
+                      const keyword = extractKeywordFromTitle(talk.title);
+                      if (keyword.length >= 2) {
+                        const newTag = await registerNewTag(keyword, keyword, generatedThumbnailUrl);
+                        if (newTag) {
+                          console.log('新しいタグを自動登録:', keyword);
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('タグ自動登録失敗:', e);
+                    }
+                  }
                 }
               } else {
                 console.warn('サムネイルアップロード失敗');

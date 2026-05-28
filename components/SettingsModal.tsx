@@ -57,6 +57,7 @@ export default function SettingsModal({
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
+  const [thumbnailEnabled, setThumbnailEnabled] = useState(true);
   const [thumbnailProvider, setThumbnailProvider] = useState<ThumbnailProvider>('gemini');
   const [openaiImageModel, setOpenaiImageModel] = useState<OpenAIImageModel>('gpt-image-1');
   const [openaiImageQuality, setOpenaiImageQuality] = useState<OpenAIImageQuality>('medium');
@@ -77,6 +78,14 @@ export default function SettingsModal({
   const [testTitle, setTestTitle] = useState('');
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+
+  const selectBlogType = (blogType: BlogType) => {
+    setBlogForm((current) => ({
+      ...current,
+      blogType,
+      blogId: blogType === 'kotoria' && !current.blogId.trim() ? 'https://kotoria.me' : current.blogId,
+    }));
+  };
 
   // localStorage書き込み + サーバー同期のヘルパー
   const persistSettings = useCallback((updates: Record<string, string | null>) => {
@@ -113,6 +122,10 @@ export default function SettingsModal({
       const savedOpenaiApiKey = localStorage.getItem('matomeln_openai_api_key');
       if (savedOpenaiApiKey) {
         setOpenaiApiKey(savedOpenaiApiKey);
+      }
+      const savedThumbnailEnabled = localStorage.getItem('matomeln_thumbnail_enabled');
+      if (savedThumbnailEnabled === 'false') {
+        setThumbnailEnabled(false);
       }
       const savedProvider = localStorage.getItem('matomeln_thumbnail_provider') as ThumbnailProvider | null;
       if (savedProvider === 'gemini' || savedProvider === 'openai') {
@@ -390,7 +403,11 @@ export default function SettingsModal({
   // ブログを保存
   const saveBlog = () => {
     if (!blogForm.name.trim() || !blogForm.blogId.trim() || !blogForm.apiKey.trim()) {
-      toast.error('すべての項目を入力してください');
+      toast.error(
+        blogForm.blogType === 'kotoria'
+          ? '表示名、Kotoria URL、APIキーを入力してください'
+          : 'すべての項目を入力してください'
+      );
       return;
     }
 
@@ -502,7 +519,7 @@ export default function SettingsModal({
                 </button>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                ライブドアブログのAPI設定を登録できます
+                ライブドアブログ、ガールズまとめ、Kotoriaの投稿先を登録できます
               </p>
             </div>
 
@@ -657,6 +674,18 @@ export default function SettingsModal({
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">AIサムネイル</h3>
+                  <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={thumbnailEnabled}
+                      onChange={(e) => {
+                        setThumbnailEnabled(e.target.checked);
+                        persistSettings({ matomeln_thumbnail_enabled: String(e.target.checked) });
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs text-gray-600">有効</span>
+                  </label>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                     thumbnailProvider === 'openai'
                       ? 'bg-green-200 text-green-700'
@@ -1120,10 +1149,10 @@ export default function SettingsModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ブログタイプ
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setBlogForm({ ...blogForm, blogType: 'livedoor' })}
+                    onClick={() => selectBlogType('livedoor')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
                       blogForm.blogType === 'livedoor'
                         ? 'bg-orange-500 text-white'
@@ -1134,7 +1163,7 @@ export default function SettingsModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setBlogForm({ ...blogForm, blogType: 'girls-matome' })}
+                    onClick={() => selectBlogType('girls-matome')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
                       blogForm.blogType === 'girls-matome'
                         ? 'bg-pink-500 text-white'
@@ -1142,6 +1171,17 @@ export default function SettingsModal({
                     }`}
                   >
                     ガールズまとめ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectBlogType('kotoria')}
+                    className={`px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      blogForm.blogType === 'kotoria'
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Kotoria
                   </button>
                 </div>
               </div>
@@ -1153,25 +1193,27 @@ export default function SettingsModal({
                   type="text"
                   value={blogForm.name}
                   onChange={(e) => setBlogForm({ ...blogForm, name: e.target.value })}
-                  placeholder={blogForm.blogType === 'girls-matome' ? 'ガールズまとめ速報' : 'マイブログ'}
+                  placeholder={blogForm.blogType === 'kotoria' ? 'Kotoriaのブログ' : blogForm.blogType === 'girls-matome' ? 'ガールズまとめ速報' : 'マイブログ'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {blogForm.blogType === 'girls-matome' ? 'API URL' : 'ブログID'}
+                  {blogForm.blogType === 'livedoor' ? 'ブログID' : blogForm.blogType === 'kotoria' ? 'Kotoria URL' : 'API URL'}
                 </label>
                 <input
                   type="text"
                   value={blogForm.blogId}
                   onChange={(e) => setBlogForm({ ...blogForm, blogId: e.target.value })}
-                  placeholder={blogForm.blogType === 'girls-matome' ? 'https://girls-matome.example.com' : 'myblog'}
+                  placeholder={blogForm.blogType === 'kotoria' ? 'https://kotoria.me' : blogForm.blogType === 'girls-matome' ? 'https://girls-matome.example.com' : 'myblog'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {blogForm.blogType === 'girls-matome'
-                    ? 'ガールズまとめ速報のAPIエンドポイントURL'
-                    : 'https://●●●.blog.jp の ●●● 部分'}
+                  {blogForm.blogType === 'kotoria'
+                    ? '通常は https://kotoria.me のままでOKです。投稿先ブログはAPIキーから自動判定されるため、ブログIDは不要です。'
+                    : blogForm.blogType === 'girls-matome'
+                      ? 'ガールズまとめ速報のAPIエンドポイントURL'
+                      : 'https://●●●.blog.jp の ●●● 部分'}
                 </p>
               </div>
               <div>

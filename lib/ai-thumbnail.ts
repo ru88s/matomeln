@@ -286,6 +286,24 @@ Character's reaction should match the article's emotional tone:
 CREATE A THUMBNAIL WHERE THE BACKGROUND AND SCENE TELL THE STORY! 🎨✨`;
 }
 
+/**
+ * タグ名から汎用サムネイル用のタイトルを生成
+ * キャッシュ保存用：特定の記事に依存しない汎用的なサムネイルを生成するため
+ */
+export function generateGenericTitleForTag(tagName: string, category?: string | null): string {
+  if (category === '芸能系' || category === '芸能') {
+    return `${tagName}の最新ニュース`;
+  } else if (category === 'スポーツ系' || category === 'スポーツ・運動') {
+    return `${tagName}の話題`;
+  } else if (category === 'TV・映画・サブスク系' || category === '番組・映画・CM') {
+    return `${tagName}について`;
+  } else if (category === 'ゲーム・ホビー系' || category === 'ゲーム・ホビー・IT') {
+    return `${tagName}の最新情報`;
+  } else {
+    return `${tagName}について`;
+  }
+}
+
 export interface ThumbnailGenerationResult {
   success: boolean;
   imageBase64?: string;
