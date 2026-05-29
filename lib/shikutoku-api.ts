@@ -106,7 +106,7 @@ export function extractTalkIdFromUrl(url: string): string | null {
 export interface ThreadData {
   talk: Talk;
   comments: Comment[];
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
+  source: '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
 }
 
 export async function fetchThreadData(input: string): Promise<ThreadData> {
@@ -166,26 +166,10 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
 
   // unknownの場合は対応URLを案内
   if (sourceType === 'unknown') {
-    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / Shikutoku のURLを入力してください。');
+    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる のURLを入力してください。');
   }
 
-  // シクトクの場合
-  const talkId = extractTalkIdFromUrl(input);
-  if (!talkId) {
-    throw new Error('有効なShikutoku URLを入力してください');
-  }
-
-  const talk = await fetchTalk(talkId);
-  if (!talk) {
-    throw new Error('トークが見つかりません');
-  }
-
-  const comments = await fetchAllComments(talkId);
-  return {
-    talk,
-    comments,
-    source: 'shikutoku',
-  };
+  throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる のURLを入力してください。');
 }
 
 // Re-export for convenience

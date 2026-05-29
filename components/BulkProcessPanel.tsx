@@ -234,10 +234,10 @@ export default function BulkProcessPanel({
     }
   }, []);
 
-  // ガールズちゃんねる + Shikutoku 未まとめURL取得
+  // ガールズちゃんねる未まとめURL取得
   const handleFetchGirlsChannelUrls = useCallback(async () => {
     setIsFetchingGC(true);
-    const toastId = toast.loading('ガルちゃん・Shikutoku未まとめURLを取得中...');
+    const toastId = toast.loading('ガルちゃん未まとめURLを取得中...');
 
     try {
       const result = await fetchGirlsChannelUrls({ limit: 100 });
@@ -935,7 +935,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              ガルちゃん・Shikutoku
+              ガルちゃん
             </>
           )}
         </button>
@@ -1036,7 +1036,7 @@ export default function BulkProcessPanel({
               className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
               disabled={isProcessing}
             />
-            <span className="text-sm font-medium text-gray-700">すべて（5ch + ガルちゃん・Shikutoku）</span>
+            <span className="text-sm font-medium text-gray-700">すべて（5ch + ガルちゃん）</span>
           </label>
 
           {/* 5ch */}
@@ -1051,7 +1051,7 @@ export default function BulkProcessPanel({
             <span className="text-sm font-medium text-gray-700">5ch未まとめ</span>
           </label>
 
-          {/* ガルちゃん・Shikutoku */}
+          {/* ガルちゃん */}
           <label className="flex items-center gap-2 cursor-pointer ml-4">
             <input
               type="checkbox"
@@ -1060,7 +1060,7 @@ export default function BulkProcessPanel({
               className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
               disabled={isProcessing}
             />
-            <span className="text-sm font-medium text-gray-700">ガルちゃん・Shikutoku</span>
+            <span className="text-sm font-medium text-gray-700">ガルちゃん</span>
           </label>
         </div>
 

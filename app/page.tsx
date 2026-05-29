@@ -505,7 +505,7 @@ export default function Home() {
       setComments(loadedComments);
       setSourceInfo({ source, originalUrl: input });
 
-      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : 'Shikutoku';
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : '掲示板';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
     } catch (error) {
       // 開発環境のみエラーログを出力
@@ -601,7 +601,7 @@ export default function Home() {
       setSourceInfo({ source, originalUrl: url });
       setLoading(false);
 
-      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : 'Shikutoku';
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : '掲示板';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
 
       // =====================

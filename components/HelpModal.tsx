@@ -83,7 +83,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-900 mb-1">スレッドを読み込む</h3>
                   <p className="text-sm text-gray-600 mb-2">
-                    5ch、open2ch、2ch.sc、ShikutokuのスレッドURLを入力
+                    5ch、open2ch、2ch.scのスレッドURLを入力
                   </p>
                   <div className="text-xs bg-gray-50 p-2 rounded-lg space-y-1">
                     <code className="block text-orange-600">https://xxx.5ch.io/test/read.cgi/...</code>
@@ -208,7 +208,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 { q: '画像も含められますか？', a: 'はい、コメントの画像は自動で含まれます（最大200px）。' },
                 { q: '生成後に編集できますか？', a: 'はい、タイトル・本文・続きすべて編集可能です。' },
                 { q: '引用元リンクは含まれますか？', a: 'はい、自動で元スレッドへのリンクが追加されます。' },
-                { q: '対応している掲示板は？', a: '5ch、open2ch、2ch.sc、Shikutokuに対応しています。' },
+                { q: '対応している掲示板は？', a: '5ch、open2ch、2ch.scに対応しています。' },
               ].map((item, i) => (
                 <div key={i} className="bg-white rounded-xl p-3 shadow-sm border border-orange-100">
                   <p className="font-bold text-gray-900 text-sm mb-1">Q: {item.q}</p>

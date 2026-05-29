@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "使い方 - まとめるん",
-  description: "まとめるんの使い方を詳しく解説。5ch、open2ch、Shikutokuのスレッドから簡単にまとめ記事を作成できます。キーボードショートカットやカスタマイズ機能も紹介。",
+  description: "まとめるんの使い方を詳しく解説。5ch、open2ch、2ch.scのスレッドから簡単にまとめ記事を作成できます。キーボードショートカットやカスタマイズ機能も紹介。",
   alternates: {
     canonical: '/about',
   },
@@ -62,7 +62,7 @@ export default function AboutLayout({
         name: '対応している掲示板は？',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: '現在、5ch（5ちゃんねる）、open2ch（おーぷん2ちゃんねる）、Shikutokuに対応しています。',
+          text: '現在、5ch（5ちゃんねる）、open2ch（おーぷん2ちゃんねる）、2ch.scに対応しています。',
         },
       },
     ],

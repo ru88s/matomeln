@@ -296,12 +296,9 @@ function extractImagesFromBody(body: string): string[] {
 }
 
 // URLがどのサービスか判定
-export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'unknown';
+export type SourceType = '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
-  if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
-    return 'shikutoku';
-  }
   if (/\.5ch\.(?:net|io)/i.test(url)) {
     return '5ch';
   }

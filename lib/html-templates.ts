@@ -449,7 +449,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (
       !skipOgp &&
       !/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl) &&
-      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)
+      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)
     ) {
       ogpTargets.set(placeholder, originalUrl);
     }
@@ -473,7 +473,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
     }
-    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)) {
+    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
     }
     else if (skipOgp) {

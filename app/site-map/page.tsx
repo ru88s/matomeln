@@ -86,15 +86,6 @@ export default function Sitemap() {
               </a>
               <span className="text-gray-500 text-sm ml-2">- おーぷん2ちゃんねる</span>
             </li>
-            <li>
-              <a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center">
-                shikutoku.me
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-              <span className="text-gray-500 text-sm ml-2">- 新しい掲示板サービス</span>
-            </li>
           </ul>
         </section>
 
@@ -132,7 +123,7 @@ export default function Sitemap() {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
                 <span className="text-orange-400 mr-2">✓</span>
-                <span>5ch、2ch.sc、open2ch、Shikutokuのスレッドからコメントを取得</span>
+                <span>5ch、2ch.sc、open2chのスレッドからコメントを取得</span>
               </li>
               <li className="flex items-start">
                 <span className="text-orange-400 mr-2">✓</span>

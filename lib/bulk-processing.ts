@@ -117,7 +117,7 @@ export function extractThreadId(url: string): string | null {
 }
 
 /**
- * ガールズちゃんねる + Shikutoku 未まとめURL一覧を取得（スレメモくん経由）
+ * ガールズちゃんねる未まとめURL一覧を取得（スレメモくん経由）
  */
 export async function fetchGirlsChannelUrls(options?: {
   limit?: number;
@@ -125,11 +125,7 @@ export async function fetchGirlsChannelUrls(options?: {
   const params = new URLSearchParams();
   if (options?.limit) params.append('limit', options.limit.toString());
 
-  // ガールズちゃんねるとShikutokuを並行取得
-  const [gcResponse, shikutokuResponse] = await Promise.all([
-    fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`),
-    fetch(`/api/proxy/getShikutokuNew?${params.toString()}`),
-  ]);
+  const gcResponse = await fetch(`/api/proxy/getGirlsChannelNew?${params.toString()}`);
 
   const allUrls: string[] = [];
   let anySuccess = false;
@@ -141,19 +137,12 @@ export async function fetchGirlsChannelUrls(options?: {
     allUrls.push(...gcData.urls);
   }
 
-  // Shikutoku
-  if (shikutokuResponse.ok) {
-    anySuccess = true;
-    const shikutokuData = await shikutokuResponse.json() as { urls: string[]; count: number };
-    allUrls.push(...shikutokuData.urls);
-  }
-
-  // 両方のAPIが失敗した場合のみエラー（0件は正常）
+  // APIが失敗した場合のみエラー（0件は正常）
   if (!anySuccess) {
     throw new Error('未まとめURLの取得に失敗しました（API接続エラー）');
   }
 
-  // URLをソート（ガルちゃんはトピックID、ShikutokuはトークID）
+  // URLをソート（ガルちゃんはトピックID）
   const sortedUrls = allUrls.sort((a, b) => {
     // ガルちゃんURL
     if (a.includes('girlschannel.net') && b.includes('girlschannel.net')) {
@@ -161,15 +150,6 @@ export async function fetchGirlsChannelUrls(options?: {
       const idB = extractGirlsChannelTopicId(b);
       if (idA && idB) return parseInt(idB) - parseInt(idA);
     }
-    // ShikutokuURL
-    if (a.includes('shikutoku.me') && b.includes('shikutoku.me')) {
-      const idA = extractShikutokuTalkId(a);
-      const idB = extractShikutokuTalkId(b);
-      if (idA && idB) return parseInt(idB) - parseInt(idA);
-    }
-    // 異なるソースの場合はガルちゃんを先に
-    if (a.includes('girlschannel.net')) return -1;
-    if (b.includes('girlschannel.net')) return 1;
     return 0;
   });
 

@@ -13,7 +13,7 @@ export default function AboutPage() {
           まとめるんの使い方
         </h1>
         <p className="text-gray-600 text-lg">
-          5ch、open2ch、Shikutokuのスレッドから簡単にまとめ記事を作成できます
+          5ch、open2ch、2ch.scのスレッドから簡単にまとめ記事を作成できます
         </p>
       </div>
 
@@ -70,14 +70,14 @@ export default function AboutPage() {
                   </div>
                   <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 space-y-3">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      5ch、open2ch、ShikutokuのスレッドURLを入力してください。
+                      5ch、open2ch、2ch.scのスレッドURLを入力してください。
                     </p>
                     <div className="bg-white rounded-lg p-3 border border-pink-200 shadow-sm">
                       <p className="text-xs font-bold text-gray-600 mb-2">📝 入力例</p>
                       <div className="space-y-1">
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.5ch.io/test/read.cgi/...</code>
                         <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.open2ch.net/test/read.cgi/...</code>
-                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://shikutoku.me/talks/6454</code>
+                        <code className="block text-xs bg-gray-100 p-1 rounded text-orange-600">https://xxx.2ch.sc/test/read.cgi/...</code>
                       </div>
                     </div>
                   </div>
@@ -367,7 +367,7 @@ export default function AboutPage() {
                 Q: 対応している掲示板は？
               </p>
               <p className="text-sm text-gray-600">
-                A: 現在、5ch（5ちゃんねる）、open2ch（おーぷん2ちゃんねる）、Shikutokuに対応しています。
+                A: 現在、5ch（5ちゃんねる）、open2ch（おーぷん2ちゃんねる）、2ch.scに対応しています。
               </p>
             </div>
 
