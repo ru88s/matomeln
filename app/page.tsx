@@ -4,25 +4,39 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
-import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
-import SettingsModal from '@/components/SettingsModal';
 import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/LoadingSpinner';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
+import type { TagSearchResult } from '@/lib/tag-thumbnail-cache';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useSettings } from '@/hooks/useSettings';
-import { callClaudeAPI, AISummarizeResponse, isAdultContent } from '@/lib/ai-summarize';
-import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle, generateGenericTitleForTag } from '@/lib/ai-thumbnail';
-import { generateMatomeHTML } from '@/lib/html-templates';
-import { markThreadAsSummarized } from '@/lib/bulk-processing';
-import { searchTagByTitle, saveThumbnailToTag, registerNewTag, extractKeywordFromTitle, TagSearchResult } from '@/lib/tag-thumbnail-cache';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
 import toast from 'react-hot-toast';
 
-const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), { ssr: false });
+const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-purple-100 bg-white p-4 text-sm text-gray-500 shadow-sm">
+      一括処理パネルを読み込み中...
+    </div>
+  ),
+});
+
+const HTMLGenerator = dynamic(() => import('@/components/HTMLGenerator'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-orange-100 bg-white p-6 text-sm text-gray-500">
+      タグ発行ツールを読み込み中...
+    </div>
+  ),
+});
+
+const SettingsModal = dynamic(() => import('@/components/SettingsModal'), {
+  ssr: false,
+});
 
 // タイムアウト付きfetch（30秒）
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
@@ -163,8 +177,12 @@ export default function Home() {
     }
     // 開発者モードを読み込み（admin専用機能のため、非adminでは強制OFF）
     const savedDevMode = localStorage.getItem('matomeln_dev_mode');
-    if (isAdmin && savedDevMode === 'true') {
+    if (isAdmin) {
       setIsDevMode(true);
+      if (savedDevMode !== 'true') {
+        localStorage.setItem('matomeln_dev_mode', 'true');
+        window.dispatchEvent(new CustomEvent('devModeChanged'));
+      }
     } else {
       setIsDevMode(false);
     }
@@ -392,6 +410,7 @@ export default function Home() {
     const toastId = toast.loading('AIがレスを分析中...');
 
     try {
+      const { callClaudeAPI } = await import('@/lib/ai-summarize');
       const aiResponse = await callClaudeAPI(apiKey, currentTalk.title, comments);
 
       // AIの選択結果をCommentWithStyle[]に変換
@@ -516,6 +535,7 @@ export default function Home() {
       const savedBlogs = localStorage.getItem('blogSettingsList');
       // sessionStorageから読み込み（タブごとに独立したブログ選択）
       const savedSelectedBlogId = sessionStorage.getItem('selectedBlogId') || localStorage.getItem('selectedBlogId');
+      const { callClaudeAPI, isAdultContent } = await import('@/lib/ai-summarize');
 
       if (!claudeApiKey) {
         throw new Error('Claude APIキーが設定されていません');
@@ -678,6 +698,7 @@ export default function Home() {
           // サムネイルOFFの場合はキャッシュ検索もスキップ
         } else {
         toast.loading('サムネイルキャッシュを検索中...', { id: 'bulk-step' });
+        const { searchTagByTitle } = await import('@/lib/tag-thumbnail-cache');
         cachedTagResult = await searchTagByTitle(talk.title);
 
         if (cachedTagResult?.tag?.thumbnail_url && cachedTagResult.tag.is_original) {
@@ -713,6 +734,7 @@ export default function Home() {
       if (!skipThumbnailGeneration && thumbnailApiKey && blogSettings) {
         // キャラクターが複数ある場合、AIが記事に合うキャラを選択（常にGemini使用）
         if (allCharacters.length > 0 && geminiApiKey) {
+          const { selectCharacterForArticle } = await import('@/lib/ai-thumbnail');
           toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
           thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
           if (thumbnailCharacter) {
@@ -721,6 +743,11 @@ export default function Home() {
         }
 
         const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+        const {
+          generateThumbnail,
+          generateThumbnailWithOpenAI,
+          generateGenericTitleForTag,
+        } = await import('@/lib/ai-thumbnail');
         // タグがヒットしてるがthumbnail_urlがない場合、汎用タイトルで生成（キャッシュ再利用のため）
         const titleForThumbnail = (cachedTagResult?.tag && !cachedTagResult.tag.thumbnail_url)
           ? generateGenericTitleForTag(cachedTagResult.tag.tag, cachedTagResult.tag.girlsvip_category)
@@ -774,6 +801,7 @@ export default function Home() {
                   // タグヒット＆サムネなし、またはタグヒット＆旧サムネ置換の場合
                   if (cachedTagResult?.tag?.id && (!cachedTagResult.tag.thumbnail_url || !cachedTagResult.tag.is_original)) {
                     try {
+                      const { saveThumbnailToTag } = await import('@/lib/tag-thumbnail-cache');
                       await saveThumbnailToTag(cachedTagResult.tag.id, generatedThumbnailUrl);
                       console.log('サムネイルをタグキャッシュに保存:', cachedTagResult.tag.tag);
                     } catch (e) {
@@ -782,6 +810,7 @@ export default function Home() {
                   } else if (!cachedTagResult?.tag) {
                     // タグ不一致 → タイトルからキーワード抽出して新しいタグを自動登録
                     try {
+                      const { extractKeywordFromTitle, registerNewTag } = await import('@/lib/tag-thumbnail-cache');
                       const keyword = extractKeywordFromTitle(talk.title);
                       if (keyword.length >= 2) {
                         const newTag = await registerNewTag(keyword, keyword, generatedThumbnailUrl);
@@ -817,6 +846,7 @@ export default function Home() {
       const sortedComments = sortByAnchorOrder(newSelectedComments);
 
       // HTML生成（記事要点・編集部まとめを含む）
+      const { generateMatomeHTML } = await import('@/lib/html-templates');
       const generatedHTML = await generateMatomeHTML(
         talk,
         sortedComments,
@@ -991,6 +1021,7 @@ export default function Home() {
       // 5. スレメモくんに投稿済みとして登録
       // =====================
       try {
+        const { markThreadAsSummarized } = await import('@/lib/bulk-processing');
         await markThreadAsSummarized(url);
         console.log('✅ スレメモくんに登録完了:', url);
       } catch (memoError) {
@@ -1226,25 +1257,27 @@ export default function Home() {
       />
 
       {/* 設定モーダル */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        isDevMode={isDevMode}
-        onDevModeChange={setIsDevMode}
-        customName={customName}
-        onCustomNameChange={setCustomName}
-        customNameBold={customNameBold}
-        onCustomNameBoldChange={setCustomNameBold}
-        customNameColor={customNameColor}
-        onCustomNameColorChange={setCustomNameColor}
-        showIdInHtml={showIdInHtml}
-        onShowIdInHtmlChange={handleShowIdInHtmlChange}
-        blogs={blogs}
-        selectedBlogId={selectedBlogId}
-        onBlogsChange={handleBlogsChange}
-        onSelectedBlogIdChange={handleSelectedBlogIdChange}
-        onSaveSettings={saveSettings}
-      />
+      {showSettingsModal && (
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          isDevMode={isDevMode}
+          onDevModeChange={setIsDevMode}
+          customName={customName}
+          onCustomNameChange={setCustomName}
+          customNameBold={customNameBold}
+          onCustomNameBoldChange={setCustomNameBold}
+          customNameColor={customNameColor}
+          onCustomNameColorChange={setCustomNameColor}
+          showIdInHtml={showIdInHtml}
+          onShowIdInHtmlChange={handleShowIdInHtmlChange}
+          blogs={blogs}
+          selectedBlogId={selectedBlogId}
+          onBlogsChange={handleBlogsChange}
+          onSelectedBlogIdChange={handleSelectedBlogIdChange}
+          onSaveSettings={saveSettings}
+        />
+      )}
     </div>
   );
 }

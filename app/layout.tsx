@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
@@ -98,7 +99,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {/* Cloudflare Web Analytics */}
-        <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
+        <Script
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          strategy="lazyOnload"
+          data-cf-beacon='{"token":"d9c88df490414f3996a1358c65d64642"}'
+        />
       </head>
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>

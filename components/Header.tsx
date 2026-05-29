@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Logo } from '@/components/ui/Logo';
-import HelpModal from '@/components/HelpModal';
 import { useAuth, useIsAdmin } from '@/lib/auth-context';
+
+const HelpModal = dynamic(() => import('@/components/HelpModal'), {
+  ssr: false,
+});
 
 export default function Header() {
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -117,7 +121,9 @@ export default function Header() {
       </nav>
 
       {/* 使い方モーダル */}
-      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      {showHelpModal && (
+        <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      )}
     </>
   );
 }
