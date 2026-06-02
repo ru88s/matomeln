@@ -1218,7 +1218,7 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={sortByAnchorOrder(selectedComments)}
+                  selectedComments={selectedComments}
                   sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
                   customName={customName}
