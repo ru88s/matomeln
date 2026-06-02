@@ -127,10 +127,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
         const index = keyNum === '0' ? 9 : parseInt(keyNum) - 1;
         if (index < colorPalette.length) {
           onColorChange(colorPalette[index]);
-          // 色選択時に自動的にコメントを選択状態にする
-          if (!isSelected) {
-            onToggle();
-          }
         }
       }
 
@@ -138,23 +134,14 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       if (e.key.toLowerCase() === 'q') {
         e.preventDefault();
         onSizeChange('large');
-        if (!isSelected) {
-          onToggle();
-        }
       }
       if (e.key.toLowerCase() === 'w') {
         e.preventDefault();
         onSizeChange('medium');
-        if (!isSelected) {
-          onToggle();
-        }
       }
       if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         onSizeChange('small');
-        if (!isSelected) {
-          onToggle();
-        }
       }
     };
 
@@ -402,10 +389,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onClick={(e) => {
                     e.stopPropagation();
                     onColorChange(paletteColor);
-                    // 色選択時に自動的にコメントを選択状態にする
-                    if (!isSelected) {
-                      onToggle();
-                    }
                   }}
                   title={`色を選択 (キー: ${keyHint})`}
                 >
@@ -425,9 +408,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('large');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 22 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -445,9 +425,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('medium');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 18 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -465,9 +442,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('small');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 14 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -752,11 +726,30 @@ export default function CommentPicker({
     // 色情報を保存
     setCommentColors(prev => ({ ...prev, [commentId]: color }));
 
-    // 選択済みコメントの色を更新
-    const updated = selectedComments.map(c =>
-      c.id === commentId ? { ...c, color } : c
-    );
-    onSelectionChange(updated);
+    const isSelected = selectedComments.some(c => c.id === commentId);
+    if (isSelected) {
+      // 選択済みコメントの色を更新
+      const updated = selectedComments.map(c =>
+        c.id === commentId ? { ...c, color } : c
+      );
+      onSelectionChange(updated);
+      return;
+    }
+
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    const sizeValue = commentSizes[commentId];
+    const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+    onSelectionChange([
+      ...selectedComments,
+      {
+        ...comment,
+        body: editedComments[commentId] || comment.body,
+        color,
+        fontSize,
+      },
+    ]);
   };
 
   const updateCommentSize = (commentId: string, size: 'small' | 'medium' | 'large') => {
@@ -766,11 +759,28 @@ export default function CommentPicker({
     // サイズ情報を保存
     setCommentSizes({ ...commentSizes, [commentId]: fontSizeValue });
 
-    // 選択済みコメントのサイズを更新
-    const updated = selectedComments.map(c =>
-      c.id === commentId ? { ...c, fontSize: size } : c
-    );
-    onSelectionChange(updated);
+    const isSelected = selectedComments.some(c => c.id === commentId);
+    if (isSelected) {
+      // 選択済みコメントのサイズを更新
+      const updated = selectedComments.map(c =>
+        c.id === commentId ? { ...c, fontSize: size } : c
+      );
+      onSelectionChange(updated);
+      return;
+    }
+
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    onSelectionChange([
+      ...selectedComments,
+      {
+        ...comment,
+        body: editedComments[commentId] || comment.body,
+        color: commentColors[commentId] || '#000000',
+        fontSize: size,
+      },
+    ]);
   };
 
   const updateCommentBody = (commentId: string, newBody: string) => {
