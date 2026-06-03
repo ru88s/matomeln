@@ -116,6 +116,18 @@ function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithSty
   return result;
 }
 
+function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWithStyle[] {
+  const sourceFirstIndex = comments.findIndex((comment) => Number(comment.res_id) === 1);
+  if (sourceFirstIndex <= 0) return comments;
+
+  const sourceFirstComment = comments[sourceFirstIndex];
+  return [
+    sourceFirstComment,
+    ...comments.slice(0, sourceFirstIndex),
+    ...comments.slice(sourceFirstIndex + 1),
+  ];
+}
+
 export default function Home() {
   const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -123,7 +135,7 @@ export default function Home() {
   const [comments, setComments] = useState<Comment[]>([]);
   const {
     value: selectedComments,
-    setValue: setSelectedComments,
+    setValue: setSelectedCommentsValue,
     canUndo,
     canRedo,
     undo,
@@ -133,6 +145,9 @@ export default function Home() {
     initialState: [],
     maxHistorySize: 30
   });
+  const setSelectedComments = useCallback((nextComments: CommentWithStyle[]) => {
+    setSelectedCommentsValue(keepSourceFirstCommentAsBody(nextComments));
+  }, [setSelectedCommentsValue]);
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
