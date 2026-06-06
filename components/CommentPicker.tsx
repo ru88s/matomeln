@@ -1105,11 +1105,19 @@ export default function CommentPicker({
                   }
 
                   if (currentIndex !== -1) {
-                    // ターゲットコメントの下に配置するため、画面上のindex + 0.5 の位置を設定
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [comment.id]: targetDisplayIndex + 0.5
-                    }));
+                    const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
+                    const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => String(c.res_id) === String(targetResId));
+                    if (targetIndexInNextDisplay === -1) {
+                      toast.error(`${targetResId}番のコメントが見つかりません`);
+                      return;
+                    }
+                    nextDisplayOrder.splice(targetIndexInNextDisplay + 1, 0, comment);
+
+                    const nextPositions: Record<string, number> = {};
+                    nextDisplayOrder.forEach((displayComment, index) => {
+                      nextPositions[displayComment.id] = index;
+                    });
+                    setCommentPositions(nextPositions);
 
                     const newSelectedComments = [...selectedComments];
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
