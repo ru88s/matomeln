@@ -1097,7 +1097,7 @@ export default function CommentPicker({
                 onMoveToPosition={(targetResId) => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
                   // 画面上の並び順から対象コメントを探す
-                  const targetDisplayIndex = arrangedComments.findIndex(c => String(c.res_id) === String(targetResId));
+                  const targetDisplayIndex = arrangedComments.findIndex(c => Number(c.res_id) === Number(targetResId));
 
                   if (targetDisplayIndex === -1) {
                     toast.error(`${targetResId}番のコメントが見つかりません`);
@@ -1106,7 +1106,7 @@ export default function CommentPicker({
 
                   if (currentIndex !== -1) {
                     const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
-                    const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => String(c.res_id) === String(targetResId));
+                    const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => Number(c.res_id) === Number(targetResId));
                     if (targetIndexInNextDisplay === -1) {
                       toast.error(`${targetResId}番のコメントが見つかりません`);
                       return;
@@ -1119,21 +1119,11 @@ export default function CommentPicker({
                     });
                     setCommentPositions(nextPositions);
 
-                    const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-
-                    // selectedCommentsの中で適切な位置に挿入
-                    const selectedTargetIndex = newSelectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
-                    if (selectedTargetIndex !== -1) {
-                      newSelectedComments.splice(selectedTargetIndex + 1, 0, movedComment);
-                    } else {
-                      const insertIndex = newSelectedComments.findIndex((sc, index) => {
-                        if (index === 0) return false; // 本文は固定
-                        const selectedDisplayIndex = arrangedComments.findIndex(c => c.id === sc.id);
-                        return selectedDisplayIndex > targetDisplayIndex;
-                      });
-                      newSelectedComments.splice(insertIndex === -1 ? newSelectedComments.length : insertIndex, 0, movedComment);
-                    }
+                    const selectedById = new Map(selectedComments.map(sc => [sc.id, sc]));
+                    const selectedIds = new Set(selectedComments.map(sc => sc.id));
+                    const newSelectedComments = nextDisplayOrder
+                      .filter(displayComment => selectedIds.has(displayComment.id))
+                      .map(displayComment => selectedById.get(displayComment.id) ?? displayComment as CommentWithStyle);
 
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを${targetResId}番の下に移動しました`);
