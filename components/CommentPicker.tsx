@@ -1096,19 +1096,19 @@ export default function CommentPicker({
                 }}
                 onMoveToPosition={(targetResId) => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  // 全コメントから対象のコメントを探す
-                  const targetCommentIndex = comments.findIndex(c => String(c.res_id) === String(targetResId));
+                  // 画面上の並び順から対象コメントを探す
+                  const targetDisplayIndex = arrangedComments.findIndex(c => String(c.res_id) === String(targetResId));
 
-                  if (targetCommentIndex === -1) {
+                  if (targetDisplayIndex === -1) {
                     toast.error(`${targetResId}番のコメントが見つかりません`);
                     return;
                   }
 
                   if (currentIndex !== -1) {
-                    // ターゲットコメントの下に配置するため、targetIndex + 0.5 の位置を設定
+                    // ターゲットコメントの下に配置するため、画面上のindex + 0.5 の位置を設定
                     setCommentPositions(prev => ({
                       ...prev,
-                      [comment.id]: targetCommentIndex + 0.5
+                      [comment.id]: targetDisplayIndex + 0.5
                     }));
 
                     const newSelectedComments = [...selectedComments];
@@ -1121,8 +1121,8 @@ export default function CommentPicker({
                     } else {
                       const insertIndex = newSelectedComments.findIndex((sc, index) => {
                         if (index === 0) return false; // 本文は固定
-                        const selectedCommentIndex = comments.findIndex(c => c.id === sc.id);
-                        return selectedCommentIndex > targetCommentIndex;
+                        const selectedDisplayIndex = arrangedComments.findIndex(c => c.id === sc.id);
+                        return selectedDisplayIndex > targetDisplayIndex;
                       });
                       newSelectedComments.splice(insertIndex === -1 ? newSelectedComments.length : insertIndex, 0, movedComment);
                     }
