@@ -1115,12 +1115,16 @@ export default function CommentPicker({
                     const [movedComment] = newSelectedComments.splice(currentIndex, 1);
 
                     // selectedCommentsの中で適切な位置に挿入
-                    const selectedTargetIndex = selectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
+                    const selectedTargetIndex = newSelectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
                     if (selectedTargetIndex !== -1) {
-                      const insertIndex = currentIndex < selectedTargetIndex ? selectedTargetIndex : selectedTargetIndex + 1;
-                      newSelectedComments.splice(insertIndex, 0, movedComment);
+                      newSelectedComments.splice(selectedTargetIndex + 1, 0, movedComment);
                     } else {
-                      newSelectedComments.push(movedComment);
+                      const insertIndex = newSelectedComments.findIndex((sc, index) => {
+                        if (index === 0) return false; // 本文は固定
+                        const selectedCommentIndex = comments.findIndex(c => c.id === sc.id);
+                        return selectedCommentIndex > targetCommentIndex;
+                      });
+                      newSelectedComments.splice(insertIndex === -1 ? newSelectedComments.length : insertIndex, 0, movedComment);
                     }
 
                     onSelectionChange(newSelectedComments);
