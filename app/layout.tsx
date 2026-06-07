@@ -95,6 +95,53 @@ export default function RootLayout({
     <html lang="ja">
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function () {
+  var storageKey = 'matomeln:last-chunk-reload';
+  var reloadWindowMs = 60000;
+
+  function messageFrom(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return [value.message, value.stack, value.name].filter(Boolean).join(' ');
+  }
+
+  function isChunkFailure(value) {
+    var message = messageFrom(value);
+    return /ChunkLoadError|Failed to load chunk|Loading chunk \\d+ failed|_next\\/static\\/chunks\\//i.test(message);
+  }
+
+  function reloadOnce() {
+    try {
+      var lastReload = Number(sessionStorage.getItem(storageKey) || '0');
+      var now = Date.now();
+      if (now - lastReload < reloadWindowMs) return;
+      sessionStorage.setItem(storageKey, String(now));
+    } catch (_) {}
+    window.location.reload();
+  }
+
+  window.addEventListener('error', function (event) {
+    var target = event && event.target;
+    if (target && target.tagName === 'SCRIPT' && target.src && target.src.indexOf('/_next/static/chunks/') !== -1) {
+      reloadOnce();
+      return;
+    }
+    if (isChunkFailure(event && (event.error || event.message))) {
+      reloadOnce();
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (event) {
+    if (isChunkFailure(event && event.reason)) {
+      reloadOnce();
+    }
+  });
+})();`,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
