@@ -1,9 +1,23 @@
 import { Talk, Comment } from './types';
 import { logger } from './logger';
 import { detectSourceType, fetch5chThread, parse5chUrl, fetchOpen2chThread, parseOpen2chUrl, fetch2chscThread, parse2chscUrl, fetchGirlsChannelThread, parseGirlsChannelUrl } from './5ch-api';
+import { fetchLivedoorMatomeArticle, parseLivedoorMatomeUrl } from './livedoor-matome-api';
 
 // プロキシAPIを使用してCORS問題を回避
 const API_BASE = '/api/proxy';
+
+function normalizeCommentBody(body: string): string {
+  return String(body || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+}
+
+function normalizeComments(comments: Comment[]): Comment[] {
+  return comments.map(comment => ({
+    ...comment,
+    body: normalizeCommentBody(comment.body),
+  }));
+}
 
 export async function fetchTalk(talkId: string): Promise<Talk | null> {
   try {
@@ -51,7 +65,7 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
 
     // APIレスポンスの構造: { data: { comments: [...], pagination: {...}, totalCount: N } }
     if (data.data && data.data.comments) {
-      return data.data.comments;
+      return normalizeComments(data.data.comments);
     }
     return [];
   } catch (error) {
@@ -102,11 +116,11 @@ export function extractTalkIdFromUrl(url: string): string | null {
   return null;
 }
 
-// URLまたはIDからデータを取得（シクトク/5ch/open2ch/2ch.sc/girlschannel対応）
+// URLまたはIDからデータを取得（シクトク/5ch/open2ch/2ch.sc/girlschannel/まとめ記事対応）
 export interface ThreadData {
   talk: Talk;
   comments: Comment[];
-  source: '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
+  source: '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'matomeBlog';
 }
 
 export async function fetchThreadData(input: string): Promise<ThreadData> {
@@ -164,13 +178,26 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     };
   }
 
-  // unknownの場合は対応URLを案内
-  if (sourceType === 'unknown') {
-    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる のURLを入力してください。');
+  if (sourceType === 'matomeBlog') {
+    // livedoor系まとめ記事を取得
+    const result = await fetchLivedoorMatomeArticle(input);
+    if (!result) {
+      throw new Error('まとめ記事の取得に失敗しました');
+    }
+    return {
+      talk: result.talk,
+      comments: result.comments,
+      source: 'matomeBlog',
+    };
   }
 
-  throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる のURLを入力してください。');
+  // unknownの場合は対応URLを案内
+  if (sourceType === 'unknown') {
+    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / livedoor系まとめ記事 のURLを入力してください。');
+  }
+
+  throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / livedoor系まとめ記事 のURLを入力してください。');
 }
 
 // Re-export for convenience
-export { detectSourceType, parse5chUrl, parseOpen2chUrl, parse2chscUrl, parseGirlsChannelUrl } from './5ch-api';
+export { detectSourceType, parse5chUrl, parseOpen2chUrl, parse2chscUrl, parseGirlsChannelUrl, parseLivedoorMatomeUrl };

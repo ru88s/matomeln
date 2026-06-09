@@ -296,9 +296,12 @@ function extractImagesFromBody(body: string): string[] {
 }
 
 // URLがどのサービスか判定
-export type SourceType = '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'unknown';
+export type SourceType = '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'matomeBlog' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
+  if (/https?:\/\/(?:girlsvip-matome\.com|matomeblade\.com|[^/]+\.livedoor\.blog|blog\.livedoor\.jp)\/(?:archives|acv)\/\d+\.html/i.test(url)) {
+    return 'matomeBlog';
+  }
   if (/\.5ch\.(?:net|io)/i.test(url)) {
     return '5ch';
   }

@@ -227,7 +227,7 @@ export default function TalkLoader({
     const sourceType = detectSourceType(trimmedInput);
 
     if (sourceType === 'unknown') {
-      setError('有効な5ch、open2ch、2ch.scのURLを入力してください');
+      setError('有効な5ch、open2ch、2ch.sc、まとめ記事のURLを入力してください');
       return;
     }
 
@@ -252,14 +252,14 @@ export default function TalkLoader({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm text-gray-600 mb-1">
-            <a href="https://5ch.io" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.io</a>、<a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>{isDevMode && <>、<a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>} のURL
+            <a href="https://5ch.io" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.io</a>、<a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>{isDevMode && <>、<a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}、まとめ記事 のURL
           </label>
           <input
             type="text"
             id="url"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isDevMode ? "https://xxx.5ch.io/... または https://girlschannel.net/topics/..." : "https://xxx.5ch.io/... または https://open2ch.net/..."}
+            placeholder={isDevMode ? "https://xxx.5ch.io/... または https://girlsvip-matome.com/acv/..." : "https://xxx.5ch.io/... または https://matomeblade.com/archives/..."}
             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm bg-white"
           />
         </div>

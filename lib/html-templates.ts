@@ -7,7 +7,7 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'matomeBlog';
   originalUrl: string;
 }
 
@@ -80,6 +80,9 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
       return `https://girlschannel.net/topics/${match[1]}/`;
     }
     return url;
+  }
+  if (sourceInfo?.source === 'matomeBlog' && sourceInfo.originalUrl) {
+    return sourceInfo.originalUrl.trim();
   }
   // Shikutokuの場合
   return `https://shikutoku.me/talks/${talk.id}`;
