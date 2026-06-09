@@ -5,6 +5,28 @@
 - Kotoriaなど外部ブログへ貼り付けるHTMLタグを発行する
 - デプロイ: `npm run pages:deploy`
 
+## まとめ記事再まとめ戦略 - 重要
+
+### 戦略の位置づけ
+- ガールズVIPまとめ、まとめブレイドなど、運営協力できるlivedoor系まとめ記事を「まとめるん」に取り込み、Kotoria向けに再編集・再投稿できるようにする。
+- これはWataru運営圏ならではの強い成長戦略として扱う。運営者の作業負担を下げ、元まとめサイト側にも送客・引用メリットを残し、Kotoria側の記事数と読者体験も増やす。
+- この導線を壊さない。まとめ記事URLの読み込み、AIまとめ、タグ発行、Kotoria投稿は通常の対応対象に含める。
+
+### 実装ルール
+- livedoor系まとめ記事は `res_div` を1レス単位、`t_h` をレスヘッダー、`t_b` をレス本文として抽出する。
+- `sourceInfo.source` は `matomeBlog` とし、引用元URLは元スレURLではなく、ユーザーが入力したまとめ記事URLを使う。
+- 記事本文内に `p.source_link` があっても、Kotoria投稿時の引用元は取り込み元まとめ記事URLを優先する。
+- 対応URLは最低限 `girlsvip-matome.com/acv/...` と `matomeblade.com/archives/...` を維持する。追加対応時も同じパーサーで扱えるか先に確認する。
+- 外部HTML取得はクライアント直fetchではなく、Cloudflare Pages Functionsのプロキシ経由にする。
+- プロキシはSSRF対策として許可ホスト・記事URLパターンを絞る。任意URLプロキシ化しない。
+
+### 回帰確認
+- `https://girlsvip-matome.com/acv/1086348233.html` がレスとして抽出できること。
+- `https://matomeblade.com/archives/301144138.html` がレスとして抽出できること。
+- 抽出後の `source_link` が取り込み元まとめ記事URLになること。
+- `npx tsc --noEmit` と `npm run build` を通すこと。
+- デプロイ後は `/api/proxy/getLivedoorMatome?url=...` が本番またはPreviewでHTMLを返し、`res_div` を含むことを確認する。
+
 ## Kotoria向けHTMLタグ発行ルール - 重要
 
 ### 原則
