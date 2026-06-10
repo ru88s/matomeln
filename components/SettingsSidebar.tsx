@@ -76,6 +76,8 @@ export default function SettingsSidebar({
           </label>
         </div>
 
+        <div id="bulk-auto-run-sidebar-slot" className="[&:empty]:hidden" />
+
         {/* スレ主操作 - よく使う機能 */}
         {firstPosterId && (
           <div className="space-y-2 pt-3 border-t border-gray-100">
