@@ -59,6 +59,12 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
+function getAISummarizeInputMode(): 'standard' | 'token-saving' {
+  return localStorage.getItem('matomeln_ai_input_mode') === 'token-saving'
+    ? 'token-saving'
+    : 'standard';
+}
+
 // アンカー（>>数字）から参照先のレス番号を抽出
 function extractAnchor(body: string): number | null {
   const match = body.match(/>>(\d+)/);
@@ -426,7 +432,9 @@ export default function Home() {
 
     try {
       const { callClaudeAPI } = await import('@/lib/ai-summarize');
-      const aiResponse = await callClaudeAPI(apiKey, currentTalk.title, comments);
+      const aiResponse = await callClaudeAPI(apiKey, currentTalk.title, comments, {
+        inputMode: getAISummarizeInputMode(),
+      });
 
       // AIの選択結果をCommentWithStyle[]に変換
       // 後方互換性のためのカラーマップ（古い形式 red/blue/green にも対応）
@@ -634,7 +642,9 @@ export default function Home() {
       setGeneratingAI(true);
       toast.loading('AIがレスを分析中...', { id: 'bulk-step' });
 
-      const aiResponse = await callClaudeAPI(claudeApiKey, talk.title, loadedComments);
+      const aiResponse = await callClaudeAPI(claudeApiKey, talk.title, loadedComments, {
+        inputMode: getAISummarizeInputMode(),
+      });
 
       const colorMap: Record<string, string> = {
         red: '#ef4444',

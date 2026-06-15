@@ -26,6 +26,12 @@ export interface AISummarizeResponse {
   }[];
 }
 
+export type AISummarizeInputMode = 'standard' | 'token-saving';
+
+export interface AISummarizeOptions {
+  inputMode?: AISummarizeInputMode;
+}
+
 // アダルト/エロ系コンテンツを検出
 export function isAdultContent(title: string, comments: Comment[]): { isAdult: boolean; reason: string } {
   // タイトルとコメント本文を結合
@@ -346,6 +352,175 @@ ${postsText}
 JSONのみを返してください。説明文は不要です。`;
 
   // 最終的にもう一度サニタイズして返す
+  return sanitizeText(rawPrompt);
+}
+
+interface PromptPost {
+  postNumber: number;
+  body: string;
+  priority: number;
+  flags: string[];
+}
+
+function truncateForPrompt(text: string, maxLength: number): string {
+  const sanitized = sanitizeText(text).replace(/\n{3,}/g, '\n\n').trim();
+  return sanitized.length > maxLength ? sanitized.slice(0, maxLength) + '…' : sanitized;
+}
+
+function getAnchorSet(comments: Comment[]): Set<number> {
+  const anchors = new Set<number>();
+  comments.forEach((comment) => {
+    for (const anchor of extractAnchors(comment.body)) {
+      if (anchor > 0 && anchor <= comments.length) {
+        anchors.add(anchor);
+      }
+    }
+  });
+  return anchors;
+}
+
+function isPromptNoise(comment: Comment): boolean {
+  const body = sanitizeText(comment.body).trim();
+  const withoutAnchors = body.replace(/>>(\d+)/g, '').replace(/＞＞[０-９\d]+/g, '').trim();
+  const withoutUrls = withoutAnchors.replace(/https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+/g, '').trim();
+
+  if (comment.images && comment.images.length > 0) return false;
+  if (extractAnchors(body).length > 0) return false;
+  if (withoutUrls.length < 4) return true;
+  if (/^(草|w+|ｗ+|それな|これ|はい|うん|せやな|ワロタ|わろた|笑)$/i.test(withoutUrls)) return true;
+  if (isYouTubeSpam(body) || isCopyPasteSpam(body) || isOffTopicPoliticalSpam(body) || isKeywordSpam(body)) return true;
+
+  return false;
+}
+
+function buildPromptPostsForTokenSaving(comments: Comment[]): { posts: PromptPost[]; omittedCount: number } {
+  const totalPosts = comments.length;
+  const anchorTargets = getAnchorSet(comments);
+  const lastSectionStart = Math.max(1, Math.floor(totalPosts * 0.85));
+  const maxPromptPosts = totalPosts > 700 ? 650 : totalPosts > 400 ? 520 : totalPosts;
+
+  const candidates: PromptPost[] = comments.map((comment, index) => {
+    const postNumber = index + 1;
+    const body = sanitizeText(comment.body);
+    const hasImage = !!comment.images?.length;
+    const hasAnchor = extractAnchors(body).length > 0;
+    const isAnchorTarget = anchorTargets.has(postNumber);
+    const isOwner = !!comment.is_talk_owner;
+    const isFirst = postNumber === 1;
+    const isLate = postNumber >= lastSectionStart;
+    const bodyWithoutAnchors = body.replace(/>>(\d+)/g, '').replace(/＞＞[０-９\d]+/g, '').trim();
+    const isShort = bodyWithoutAnchors.length < 10;
+    const isNoise = !isFirst && !isOwner && !hasImage && !hasAnchor && !isAnchorTarget && !isLate && isPromptNoise(comment);
+
+    const flags: string[] = [];
+    if (isFirst) flags.push('1');
+    if (isOwner) flags.push('主');
+    if (hasImage) flags.push('画像');
+    if (hasAnchor) flags.push('参照');
+    if (isAnchorTarget) flags.push('被参照');
+    if (isLate) flags.push('後半');
+
+    let priority = 0;
+    if (isFirst) priority += 100;
+    if (isOwner) priority += 80;
+    if (hasImage) priority += 60;
+    if (hasAnchor) priority += 45;
+    if (isAnchorTarget) priority += 45;
+    if (isLate) priority += 20;
+    if (bodyWithoutAnchors.length >= 30) priority += 10;
+    if (bodyWithoutAnchors.length >= 80) priority += 8;
+    if (isShort) priority -= 20;
+    if (isNoise) priority -= 100;
+
+    const keepFull = isFirst || isOwner || hasImage || hasAnchor || isAnchorTarget || isLate;
+    const maxLength = keepFull ? 320 : totalPosts > 500 ? 120 : 180;
+
+    return {
+      postNumber,
+      body: truncateForPrompt(body, maxLength),
+      priority,
+      flags,
+    };
+  });
+
+  const kept = candidates
+    .filter((post) => post.priority > -50)
+    .sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority;
+      return a.postNumber - b.postNumber;
+    })
+    .slice(0, maxPromptPosts)
+    .sort((a, b) => a.postNumber - b.postNumber);
+
+  return {
+    posts: kept,
+    omittedCount: comments.length - kept.length,
+  };
+}
+
+export function buildOptimizedAISummarizePrompt(title: string, comments: Comment[]): string {
+  const totalPosts = comments.length;
+  const { posts, omittedCount } = buildPromptPostsForTokenSaving(comments);
+
+  const ownerPostNumbers: number[] = [];
+  comments.forEach((comment, index) => {
+    if (comment.is_talk_owner) {
+      ownerPostNumbers.push(index + 1);
+    }
+  });
+
+  const minSelection = Math.min(15, Math.floor(totalPosts * 0.1));
+  const maxSelection = Math.min(40, Math.floor(totalPosts * 0.15));
+  const selectionRange = `${Math.max(10, minSelection)}〜${Math.max(20, maxSelection)}`;
+  const sanitizedTitle = sanitizeText(title);
+
+  const postsText = posts
+    .map((post) => {
+      const flags = post.flags.length > 0 ? `[${post.flags.join('/')}]` : '';
+      return `${post.postNumber}${flags}: ${post.body}`;
+    })
+    .join('\n');
+
+  const ownerLine = ownerPostNumbers.length > 0
+    ? `\nスレ主レス番号: ${ownerPostNumbers.join(', ')}`
+    : '';
+
+  const rawPrompt = `以下のスレッドから、面白くまとめるために最適なレスを選択してください。
+
+タイトル: ${sanitizedTitle}
+レス数: ${totalPosts}件
+入力最適化: 明らかな短文ノイズや荒らし候補を${omittedCount}件省略し、重要候補は元のレス番号のまま保持しています。${ownerLine}
+
+【レス一覧】
+${postsText}
+
+【選択ルール】
+- 必ず${selectionRange}個のレスを選択してください（重要：全部選ばないでください）
+- 面白い、印象的、重要なレスのみを厳選してください
+- ストーリーの流れが分かるように選んでください
+- レス1は含めないでください（自動追加されます）
+- スレ主[主]のレスは優先的に選んでください
+- [参照]はアンカー付きレス、[被参照]は他レスから参照されているレスです。つながりが自然になるように選んでください
+- [後半]の中からオチになりそうなレスを優先的に探してください
+- 10文字未満の短いレスは選ばないでください（「あ」「草」など）
+- スレッド本題と無関係な政治/宗教/民族のコピペ（【イスラム化する世界】等の定型文、移民・在日・特定宗教を煽る長文など）は絶対に選ばないでください
+
+【色の使用ルール】
+- 使用できる色: "red", "blue", "green", "pink", "orange", "purple", null
+- 紫色(purple)はスレ主専用です
+- 連続するレスに同じ色を付けないでください
+- 色なし(null)を積極的に使ってください（50%程度）
+
+【サイズルール】
+- "large": 短くてインパクトのあるレスのみ（50文字以内、2〜4個）
+- null: 通常（デフォルト）
+- "small": 補足的なレス（使用は控えめに）
+
+以下のJSON形式で返答してください：
+{"selected_posts":[{"post_number":2,"decorations":{"color":"blue","size_boost":null},"reason":"理由"}]}
+
+JSONのみを返してください。説明文は不要です。`;
+
   return sanitizeText(rawPrompt);
 }
 
@@ -769,11 +944,15 @@ function improveColorAndSizeDistribution(
 export async function callClaudeAPI(
   apiKey: string,
   title: string,
-  comments: Comment[]
+  comments: Comment[],
+  options: AISummarizeOptions = {}
 ): Promise<AISummarizeResponse> {
   // プロンプトを生成
-  const prompt = buildAISummarizePrompt(title, comments);
-  console.log(`📊 プロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件`);
+  const inputMode = options.inputMode || 'standard';
+  const prompt = inputMode === 'token-saving'
+    ? buildOptimizedAISummarizePrompt(title, comments)
+    : buildAISummarizePrompt(title, comments);
+  console.log(`📊 プロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件, 入力モード: ${inputMode}`);
 
   // タイムアウト設定（60秒）
   const controller = new AbortController();

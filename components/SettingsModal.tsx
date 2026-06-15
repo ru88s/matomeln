@@ -53,6 +53,7 @@ export default function SettingsModal({
   const isAdmin = useIsAdmin();
   const [claudeApiKey, setClaudeApiKey] = useState('');
   const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
+  const [aiInputMode, setAiInputMode] = useState<'standard' | 'token-saving'>('standard');
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
@@ -115,6 +116,7 @@ export default function SettingsModal({
       if (savedClaudeApiKey) {
         setClaudeApiKey(savedClaudeApiKey);
       }
+      setAiInputMode(localStorage.getItem('matomeln_ai_input_mode') === 'token-saving' ? 'token-saving' : 'standard');
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
@@ -665,6 +667,28 @@ export default function SettingsModal({
                   <p className="text-xs text-purple-600">
                     レスを自動選択・色付けするAIまとめ機能に使用
                   </p>
+
+                  <div className="rounded-lg border border-purple-200 bg-white p-3">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={aiInputMode === 'token-saving'}
+                        onChange={(e) => {
+                          const nextMode = e.target.checked ? 'token-saving' : 'standard';
+                          setAiInputMode(nextMode);
+                          persistSettings({ matomeln_ai_input_mode: nextMode });
+                          toast.success(e.target.checked ? 'Token削減モードを有効にしました' : '通常入力モードに戻しました');
+                        }}
+                        className="mt-0.5 w-4 h-4"
+                      />
+                      <span>
+                        <span className="block text-sm font-bold text-gray-800">Token削減モード</span>
+                        <span className="block text-xs text-gray-600 mt-1">
+                          AIに渡すレス一覧から短文ノイズや荒らし候補を省き、重要レスは元番号のまま保持します。投稿・HTML生成の流れは変わりません。
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
