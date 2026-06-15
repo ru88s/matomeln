@@ -525,8 +525,7 @@ function remove5chIconUrls(body: string): string {
   return body
     .split('\n')
     .filter(line => !line.match(/^https?:\/\/img\.5ch\.(?:net|io)\/ico\//))
-    .join('\n')
-    .trim();
+    .join('\n');
 }
 
 // まとめくす風の本文フォーマット
