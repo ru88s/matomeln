@@ -52,7 +52,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   const [isHovered, setIsHovered] = useState(false);
   const [editingBody, setEditingBody] = useState(comment.body);
   const [targetPosition, setTargetPosition] = useState<string>('');  // 移動先番号入力用
-  const [showMoveMenu, setShowMoveMenu] = useState(false);  // 移動メニュー表示
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
 
   // 編集開始時に現在のbodyを設定
   useEffect(() => {
@@ -85,22 +85,22 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isEditing, comment.body, onEditingChange]);
 
-  // 移動メニューを外側クリックで閉じる
+  // オプションメニューを外側クリックで閉じる
   useEffect(() => {
-    if (!showMoveMenu) return;
+    if (!showOptionsMenu) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // メニュー内のクリックは無視
-      if (target.closest('[data-move-menu]')) {
+      if (target.closest('[data-options-menu]')) {
         return;
       }
-      setShowMoveMenu(false);
+      setShowOptionsMenu(false);
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [showMoveMenu]);
+  }, [showOptionsMenu]);
 
   // ホバー中のキーボード処理
   useEffect(() => {
@@ -168,6 +168,9 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
     return `${year}/${month}/${day}(${dayOfWeek}) ${hour}:${minute}:${second}`;
   };
 
+  const hasPosterIdOption = Boolean(showId && comment.name_id);
+  const canShowOptions = !isFirstSelected || hasPosterIdOption;
+
   return (
     <div
       className={`relative border rounded-xl p-4 transition-all cursor-pointer ${
@@ -219,27 +222,15 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               </span>
               <span className="text-sm text-gray-400">{formatDate(comment.created_at)}</span>
               {showId && comment.name_id && (
-                <span className="inline-flex items-center gap-1">
-                  <span className={`text-sm ${comment.name_id === firstPosterId ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
-                    ID: {comment.name_id}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExcludePosterId?.(comment.name_id!);
-                    }}
-                    className="text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-1.5 py-0.5 rounded transition-colors"
-                    title="このIDのレスをまとめて除外"
-                  >
-                    ID除外
-                  </button>
+                <span className={`text-sm ${comment.name_id === firstPosterId ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                  ID: {comment.name_id}
                 </span>
               )}
             </div>
-            {/* 本文バッジ */}
-            {isFirstSelected && (
-              <div className="absolute top-0 right-0 flex items-center gap-2">
+            <div className="absolute top-0 right-0 flex items-center gap-1" data-options-menu>
+              {/* 本文バッジ */}
+              {isFirstSelected && (
+                <>
                 <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
                   本文
                 </span>
@@ -249,48 +240,51 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   </svg>
                   固定
                 </span>
-              </div>
-            )}
-            {/* 移動メニュー */}
-            {!isFirstSelected && (
-              <div className="absolute top-0 right-0 flex items-center gap-1" data-move-menu>
-                {/* ドラッグハンドル */}
-                {isSelected && (
-                  <div
-                    className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
-                    draggable={true}
-                    onDragStart={(e) => {
-                      e.stopPropagation();
-                      e.dataTransfer.setData('text/plain', comment.id);
-                      e.dataTransfer.effectAllowed = 'move';
-                      onDragHandleStart?.(e);
-                    }}
-                    title="ドラッグして並べ替え"
-                  >
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                    </svg>
-                  </div>
-                )}
+                </>
+              )}
+              {/* ドラッグハンドル */}
+              {!isFirstSelected && isSelected && (
+                <div
+                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('text/plain', comment.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    onDragHandleStart?.(e);
+                  }}
+                  title="ドラッグして並べ替え"
+                >
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
+                </div>
+              )}
+              {canShowOptions && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowMoveMenu(!showMoveMenu);
+                    setShowOptionsMenu(prev => !prev);
                   }}
                   className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer flex items-center gap-1"
+                  title="レスのオプション"
                 >
-                  移動
-                  <svg className={`w-3 h-3 transition-transform ${showMoveMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  オプション
+                  <svg className={`w-3 h-3 transition-transform ${showOptionsMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                {showMoveMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
+              )}
+              {showOptionsMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                  {!isFirstSelected && (
+                    <>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveUp?.();
-                        setShowMoveMenu(false);
+                        setShowOptionsMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
                     >
@@ -303,7 +297,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveDown?.();
-                        setShowMoveMenu(false);
+                        setShowOptionsMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
@@ -317,7 +311,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToTop?.();
-                          setShowMoveMenu(false);
+                          setShowOptionsMenu(false);
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       >
@@ -330,7 +324,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToEnd?.();
-                          setShowMoveMenu(false);
+                          setShowOptionsMenu(false);
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       >
@@ -356,7 +350,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                               if (!isNaN(targetResId) && targetResId > 0) {
                                 onMoveToPosition?.(targetPosition);
                                 setTargetPosition('');
-                                setShowMoveMenu(false);
+                                setShowOptionsMenu(false);
                               }
                             }
                           }}
@@ -373,7 +367,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                             if (!isNaN(targetResId) && targetResId > 0) {
                               onMoveToPosition?.(targetPosition);
                               setTargetPosition('');
-                              setShowMoveMenu(false);
+                              setShowOptionsMenu(false);
                             }
                           }}
                           disabled={!targetPosition || isNaN(parseInt(targetPosition))}
@@ -383,10 +377,31 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    </>
+                  )}
+                  {hasPosterIdOption && (
+                    <div className={`${!isFirstSelected ? 'border-t border-gray-200' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const ok = window.confirm(`ID:${comment.name_id} のレスをまとめて除外しますか？`);
+                          if (!ok) return;
+                          onExcludePosterId?.(comment.name_id!);
+                          setShowOptionsMenu(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 ${isFirstSelected ? 'rounded-t-lg' : ''} rounded-b-lg`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        このIDを除外
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* カラーパレット - 名前欗の下に表示 */}
