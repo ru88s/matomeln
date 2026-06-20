@@ -586,6 +586,21 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
   const parts = body.split(pattern);
   const elements: React.ReactElement[] = [];
 
+  const pushTextWithLineBreaks = (text: string, keyPrefix: string) => {
+    text.split(/\r\n?|\n/).forEach((line, lineIndex, lines) => {
+      if (line) {
+        elements.push(
+          <span key={`${keyPrefix}-line-${lineIndex}`} style={{ color: color || '#000000' }}>
+            {line}
+          </span>
+        );
+      }
+      if (lineIndex < lines.length - 1) {
+        elements.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
+      }
+    });
+  };
+
   // テキスト、アンカー、URLを出現順に処理
   parts.forEach((part, index) => {
     // URLの場合
@@ -603,7 +618,7 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
     }
     // 通常のテキスト
     else if (part) {
-      elements.push(<span key={`text-${index}`} style={{ color: color || '#000000' }}>{part}</span>);
+      pushTextWithLineBreaks(part, `text-${index}`);
     }
   });
 

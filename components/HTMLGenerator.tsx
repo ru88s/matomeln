@@ -32,6 +32,12 @@ interface HTMLGeneratorProps {
   selectedBlogId?: string;
 }
 
+function buildFullGeneratedHtml(html: GeneratedHTML): string {
+  return html.footer
+    ? `${html.body}\n<!--more-->\n${html.footer}`
+    : html.body;
+}
+
 export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', selectedBlogType = 'livedoor', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '' }: HTMLGeneratorProps) {
   const [options, setOptions] = useState<MatomeOptions>({
     includeImages: true,
@@ -52,6 +58,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+  const previewHtml = generatedHTML ? buildFullGeneratedHtml(generatedHTML) : '';
 
   // LocalStorageから設定を読み込み
   useEffect(() => {
@@ -130,9 +137,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
     try {
       // 本文と続きを読むを組み合わせてブログ記事の内容を作成
-      const fullBody = generatedHTML.footer
-        ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
-        : generatedHTML.body;
+      const fullBody = buildFullGeneratedHtml(generatedHTML);
 
       // ブログタイプに応じたAPI呼び出し
       let response: Response;
@@ -364,6 +369,18 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               value={generatedHTML.body}
               onChange={(e) => setGeneratedHTML({...generatedHTML, body: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-[200px]"
+            />
+          </div>
+
+          {/* タグ表示プレビュー */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-bold text-gray-900">発行タグの表示プレビュー:</h4>
+              <span className="text-xs text-gray-500">下のタグを貼った時の見た目です</span>
+            </div>
+            <div
+              className="matomeln-generated-preview"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>
 
