@@ -4,6 +4,7 @@ import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
 import Header from '@/components/Header';
+import WebFeedbackButton from '@/components/WebFeedbackButton';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
@@ -189,6 +190,8 @@ export default function RootLayout({
                 <a href="/contact" className="text-gray-500 hover:text-gray-700 transition-colors">
                   お問い合わせ
                 </a>
+                <span className="text-gray-300">|</span>
+                <WebFeedbackButton />
               </div>
               <p className="text-xs text-gray-400">
                 © 2025 まとめるん
