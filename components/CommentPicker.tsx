@@ -619,6 +619,33 @@ function extractAnchor(body: string): number | null {
   return null;
 }
 
+function getSelectedDisplayOrder(
+  comments: Comment[],
+  commentPositions: Record<string, number>,
+): Map<string, number> {
+  const sourceOrder = new Map(comments.map((comment, index) => [comment.id, index]));
+  return new Map(
+    comments.map((comment, index) => [
+      comment.id,
+      commentPositions[comment.id] ?? sourceOrder.get(comment.id) ?? index,
+    ]),
+  );
+}
+
+function orderSelectedCommentsByDisplay(
+  selected: CommentWithStyle[],
+  comments: Comment[],
+  commentPositions: Record<string, number>,
+): CommentWithStyle[] {
+  const displayOrder = getSelectedDisplayOrder(comments, commentPositions);
+  return [...selected].sort((a, b) => {
+    const aOrder = displayOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = displayOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return Number(a.res_id) - Number(b.res_id);
+  });
+}
+
 export default function CommentPicker({
   comments,
   selectedComments,
@@ -674,9 +701,9 @@ export default function CommentPicker({
       const sizeValue = commentSizes[comment.id];
       const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
       const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
-      onSelectionChange([...selectedComments, newComment]);
+      onSelectionChange(orderSelectedCommentsByDisplay([...selectedComments, newComment], comments, commentPositions));
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, comments, commentPositions]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
