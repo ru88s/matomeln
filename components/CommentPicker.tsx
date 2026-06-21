@@ -663,25 +663,75 @@ function extractAnchor(body: string): number | null {
   return null;
 }
 
-function getSelectedDisplayOrder(
+function buildFullDisplayComments(
   comments: Comment[],
   commentPositions: Record<string, number>,
-): Map<string, number> {
-  const sourceOrder = new Map(comments.map((comment, index) => [comment.id, index]));
-  return new Map(
-    comments.map((comment, index) => [
-      comment.id,
-      commentPositions[comment.id] ?? sourceOrder.get(comment.id) ?? index,
-    ]),
-  );
+  editedComments: Record<string, string>,
+): Array<Comment & { body: string; sortKey: number }> {
+  const resIdToComment = new Map<number, Comment>();
+  comments.forEach(c => {
+    resIdToComment.set(Number(c.res_id), c);
+  });
+
+  const repliesMap = new Map<number, Comment[]>();
+  const commentsWithAnchor = new Set<string>();
+
+  comments.forEach(comment => {
+    const body = editedComments[comment.id] || comment.body;
+    const anchorId = extractAnchor(body);
+    if (anchorId !== null && resIdToComment.has(anchorId)) {
+      if (!repliesMap.has(anchorId)) {
+        repliesMap.set(anchorId, []);
+      }
+      repliesMap.get(anchorId)!.push(comment);
+      commentsWithAnchor.add(comment.id);
+    }
+  });
+
+  const result: Array<Comment & { body: string; sortKey: number }> = [];
+  let sortIndex = 0;
+
+  comments.forEach((c) => {
+    if (commentsWithAnchor.has(c.id)) {
+      return;
+    }
+
+    const targetPosition = commentPositions[c.id] !== undefined
+      ? commentPositions[c.id]
+      : sortIndex;
+
+    result.push({
+      ...c,
+      body: editedComments[c.id] || c.body,
+      sortKey: targetPosition
+    });
+    sortIndex++;
+
+    const replies = repliesMap.get(Number(c.res_id));
+    if (replies) {
+      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+      replies.forEach(reply => {
+        const replyPosition = commentPositions[reply.id] !== undefined
+          ? commentPositions[reply.id]
+          : sortIndex;
+        result.push({
+          ...reply,
+          body: editedComments[reply.id] || reply.body,
+          sortKey: replyPosition
+        });
+        sortIndex++;
+      });
+    }
+  });
+
+  return result.sort((a, b) => a.sortKey - b.sortKey);
 }
 
 function orderSelectedCommentsByDisplay(
   selected: CommentWithStyle[],
-  comments: Comment[],
-  commentPositions: Record<string, number>,
+  displayComments: Comment[],
 ): CommentWithStyle[] {
-  const displayOrder = getSelectedDisplayOrder(comments, commentPositions);
+  const displayOrder = new Map(displayComments.map((comment, index) => [comment.id, index]));
   return [...selected].sort((a, b) => {
     const aOrder = displayOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER;
     const bOrder = displayOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER;
@@ -739,6 +789,10 @@ export default function CommentPicker({
     return comments.filter(c => !c.name_id || !excludedNameIds.has(c.name_id));
   }, [comments, excludedNameIds]);
 
+  const fullDisplayComments = useMemo(() => {
+    return buildFullDisplayComments(visibleComments, commentPositions, editedComments);
+  }, [visibleComments, commentPositions, editedComments]);
+
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
     const isSelected = selectedComments.some(sc => sc.id === comment.id);
@@ -752,9 +806,9 @@ export default function CommentPicker({
       const sizeValue = commentSizes[comment.id];
       const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
       const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
-      onSelectionChange(orderSelectedCommentsByDisplay([...selectedComments, newComment], visibleComments, commentPositions));
+      onSelectionChange(orderSelectedCommentsByDisplay([...selectedComments, newComment], fullDisplayComments));
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, visibleComments, commentPositions]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, fullDisplayComments]);
 
   const excludePosterId = useCallback((nameId: string) => {
     const targetIds = new Set(comments.filter(c => c.name_id === nameId).map(c => c.id));
@@ -915,65 +969,9 @@ export default function CommentPicker({
         })
         .filter((c): c is NonNullable<typeof c> => c !== null);
     } else {
-      const resIdToComment = new Map<number, Comment>();
-      visibleComments.forEach(c => {
-        resIdToComment.set(Number(c.res_id), c);
-      });
-
-      const repliesMap = new Map<number, Comment[]>();
-      const commentsWithAnchor = new Set<string>();
-
-      visibleComments.forEach(comment => {
-        const body = editedComments[comment.id] || comment.body;
-        const anchorId = extractAnchor(body);
-        if (anchorId !== null && resIdToComment.has(anchorId)) {
-          if (!repliesMap.has(anchorId)) {
-            repliesMap.set(anchorId, []);
-          }
-          repliesMap.get(anchorId)!.push(comment);
-          commentsWithAnchor.add(comment.id);
-        }
-      });
-
-      const result: Array<Comment & { body: string; sortKey: number }> = [];
-      let sortIndex = 0;
-
-      visibleComments.forEach((c) => {
-        if (commentsWithAnchor.has(c.id)) {
-          return;
-        }
-
-        const targetPosition = commentPositions[c.id] !== undefined
-          ? commentPositions[c.id]
-          : sortIndex;
-
-        result.push({
-          ...c,
-          body: editedComments[c.id] || c.body,
-          sortKey: targetPosition
-        });
-        sortIndex++;
-
-        const replies = repliesMap.get(Number(c.res_id));
-        if (replies) {
-          replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-          replies.forEach(reply => {
-            const replyPosition = commentPositions[reply.id] !== undefined
-              ? commentPositions[reply.id]
-              : sortIndex;
-            result.push({
-              ...reply,
-              body: editedComments[reply.id] || reply.body,
-              sortKey: replyPosition
-            });
-            sortIndex++;
-          });
-        }
-      });
-
-      return result.sort((a, b) => a.sortKey - b.sortKey);
+      return fullDisplayComments;
     }
-  }, [comments, visibleComments, selectedComments, showOnlySelected, editedComments, commentPositions, excludedNameIds]);
+  }, [comments, selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments]);
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
