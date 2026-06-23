@@ -767,6 +767,7 @@ export default function CommentPicker({
   // 選択済みコメントの位置を全コメント中のインデックスで管理
   const [commentPositions, setCommentPositions] = useState<Record<string, number>>({});
   const [excludedNameIds, setExcludedNameIds] = useState<Set<string>>(() => new Set());
+  const [hiddenNameIdCommentIds, setHiddenNameIdCommentIds] = useState<Set<string>>(() => new Set());
   // 表示するコメント件数（遅延ローディング用）
   const INITIAL_DISPLAY_COUNT = 1000;
   const LOAD_MORE_COUNT = 500;
@@ -781,8 +782,14 @@ export default function CommentPicker({
   useEffect(() => {
     setCommentPositions({});
     setExcludedNameIds(new Set());
+    setHiddenNameIdCommentIds(new Set());
     setDisplayCount(INITIAL_DISPLAY_COUNT);
   }, [comments]);
+
+  const hideNameId = useCallback(<T extends Comment>(comment: T): T => {
+    if (!hiddenNameIdCommentIds.has(comment.id)) return comment;
+    return { ...comment, name_id: undefined };
+  }, [hiddenNameIdCommentIds]);
 
   const visibleComments = useMemo(() => {
     if (excludedNameIds.size === 0) return comments;
@@ -805,10 +812,10 @@ export default function CommentPicker({
       // サイズマップ変換
       const sizeValue = commentSizes[comment.id];
       const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
-      const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
+      const newComment: CommentWithStyle = { ...hideNameId(comment), body, color, fontSize };
       onSelectionChange(orderSelectedCommentsByDisplay([...selectedComments, newComment], fullDisplayComments));
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, fullDisplayComments]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, fullDisplayComments, hideNameId]);
 
   const excludePosterId = useCallback((nameId: string) => {
     const targetIds = new Set(comments.filter(c => c.name_id === nameId).map(c => c.id));
@@ -822,6 +829,7 @@ export default function CommentPicker({
     setCommentPositions(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
     setEditedComments(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
     setCommentColors(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
+    setHiddenNameIdCommentIds(prev => new Set([...prev].filter(commentId => !targetIds.has(commentId))));
     setCommentSizes(Object.fromEntries(Object.entries(commentSizes).filter(([commentId]) => !targetIds.has(commentId))));
     onSelectionChange(selectedComments.filter(sc => !targetIds.has(sc.id)));
     setLastHoveredCommentId(prev => prev && targetIds.has(prev) ? null : prev);
@@ -837,6 +845,27 @@ export default function CommentPicker({
     });
     toast.success(`ID:${nameId} を表示に戻しました`);
   }, []);
+
+  const selectedCommentsWithNameIdCount = useMemo(() => {
+    return selectedComments.filter(comment => Boolean(comment.name_id)).length;
+  }, [selectedComments]);
+
+  const clearSelectedNameIds = useCallback(() => {
+    const targetIds = selectedComments
+      .filter(comment => Boolean(comment.name_id))
+      .map(comment => comment.id);
+    if (targetIds.length === 0) return;
+
+    setHiddenNameIdCommentIds(prev => {
+      const next = new Set(prev);
+      targetIds.forEach(commentId => next.add(commentId));
+      return next;
+    });
+    onSelectionChange(selectedComments.map(comment => (
+      comment.name_id ? { ...comment, name_id: undefined } : comment
+    )));
+    toast.success(`選択済みレス ${targetIds.length}件のIDを消しました`);
+  }, [onSelectionChange, selectedComments]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
@@ -904,7 +933,7 @@ export default function CommentPicker({
     onSelectionChange([
       ...selectedComments,
       {
-        ...comment,
+        ...hideNameId(comment),
         body: editedComments[commentId] || comment.body,
         color,
         fontSize,
@@ -935,7 +964,7 @@ export default function CommentPicker({
     onSelectionChange([
       ...selectedComments,
       {
-        ...comment,
+        ...hideNameId(comment),
         body: editedComments[commentId] || comment.body,
         color: commentColors[commentId] || '#000000',
         fontSize: size,
@@ -965,13 +994,13 @@ export default function CommentPicker({
           if (sc.name_id && excludedNameIds.has(sc.name_id)) return null;
           const found = comments.find(c => c.id === sc.id);
           if (!found) return null;
-          return { ...found, body: editedComments[sc.id] || sc.body };
+          return hideNameId({ ...found, body: editedComments[sc.id] || sc.body });
         })
         .filter((c): c is NonNullable<typeof c> => c !== null);
     } else {
       return fullDisplayComments;
     }
-  }, [comments, selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments]);
+  }, [comments, selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
@@ -999,10 +1028,26 @@ export default function CommentPicker({
         </div>
       )}
 
+      {selectedCommentsWithNameIdCount > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={clearSelectedNameIds}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+            title="選択済みレスのIDを消す"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M8 6V4h8v2m-9 4l1 10h8l1-10" />
+            </svg>
+            選択済みのIDを消す ({selectedCommentsWithNameIdCount})
+          </button>
+        </div>
+      )}
+
       <div className="space-y-2">
         {arrangedComments.slice(0, showOnlySelected ? undefined : displayCount).map(comment => {
           const displayComment = {
-            ...comment,
+            ...hideNameId(comment),
             body: editedComments[comment.id] || comment.body
           };
           const isSelected = selectedComments.some(sc => sc.id === comment.id);
@@ -1112,7 +1157,7 @@ export default function CommentPicker({
                   // 未選択の場合は自動選択してから移動
                   if (!isSelected) {
                     const newComment: CommentWithStyle = {
-                      ...comment,
+                      ...hideNameId(comment),
                       color: commentColors[comment.id] || '#000000',
                       fontSize: commentSizes[comment.id] === 14 ? 'small' : commentSizes[comment.id] === 22 ? 'large' : 'medium',
                       body: editedComments[comment.id] || comment.body
