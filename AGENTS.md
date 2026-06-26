@@ -5,6 +5,73 @@
 - Kotoriaなど外部ブログへ貼り付けるHTMLタグを発行する
 - デプロイ: `npm run pages:deploy`
 
+## Codex作業完了ルール - 重要
+
+### 原則
+- ユーザーが「完了後は本番反映」「コミットも忘れずに」「プッシュとデプロイはちゃんとやる」と指定済みなので、コード変更を完了したら原則としてコミット、GitHubへプッシュ、本番デプロイまで行う。
+- デプロイ前に型チェックと本番ビルド検証を通す。検証が通らない状態で本番反映しない。
+- ローカルで確認できるUI変更は、可能な限り `http://localhost:3000/` をブラウザまたはcurlで確認する。
+- 投稿・削除・公開など外部に副作用がある動作確認は、必要最小限にする。公開投稿を増やすテストは避け、可能ならダミー認証やAPIの手前までで確認する。
+
+### コミット・プッシュ・デプロイ手順
+- 変更後は最低限 `tsc --noEmit` を通す。
+- Cloudflare Pages向け本番ビルドは、Turbopackではなく通常の `next build` で検証する。
+- 安定しているビルド手順:
+
+```bash
+export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+./scripts/dev-setup.sh
+rm -rf .next out tsconfig.tsbuildinfo
+./scripts/build-clean.sh
+CF_PAGES=true ./node_modules/.bin/next build
+./scripts/post-build.sh
+./scripts/dev-setup.sh
+./scripts/verify-build.sh
+```
+
+- `PageNotFoundError` がビルド中に一時的に出ることがある。その場合は `./scripts/dev-setup.sh` と `rm -rf .next out tsconfig.tsbuildinfo` からやり直す。
+- `out/` にページHTMLが揃っていないビルドはデプロイしない。必ず `./scripts/verify-build.sh` を通す。
+- デプロイ:
+
+```bash
+export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+./node_modules/.bin/wrangler pages deploy out --project-name matomeln --branch main
+```
+
+- デプロイ後は `curl -I https://matomeln.com/` で `302` が返り、`/login?returnTo=%2F` へ向くことを確認する。
+- 作業後はローカルを使える状態に戻す:
+
+```bash
+lsof -ti tcp:3000 | xargs kill 2>/dev/null || true
+export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+./scripts/dev-setup.sh && ./node_modules/.bin/next dev --turbopack -p 3000
+```
+
+### Git管理
+- コミット前に `git status --short` と `git diff --stat` を確認する。
+- `app-api/settings/`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` はローカル運用由来で未追跡のまま残ることがある。ユーザーが明示しない限りコミットしない。
+- 認証情報やローカル設定を含むファイルを不用意にコミットしない。
+- 既存の未追跡・未コミット変更はユーザー作業の可能性があるため、勝手に削除・リセットしない。
+
+## ライブドア複数ブログ投稿ルール - 重要
+
+### 認証ユーザー名
+- ライブドアAtomPub投稿では、ブログIDと認証ユーザー名が一致しないことがある。
+- ガールズVIPまとめ、まとめブレイド、なんでも受信遅報は、投稿先ブログIDが違っても認証ユーザー名は `garlsvip` を使う。
+- `postBlog` と `uploadImage` には `blogId` だけでなく `apiUsername` も渡す。未指定時だけ `blogId` を認証ユーザー名として使う。
+- 設定編集時に `apiUsername` を消さない。ライブドアブログ設定には「認証ユーザー名」欄を維持する。
+- 既存ローカル設定で `apiUsername` が欠けている場合、既知ブログID `garlsvip`, `matome_blade`, `mnuhkhkbxmagwje` は `garlsvip` に補正する。
+
+### エラー表示
+- 同時投稿の失敗を一律に「制限中」と表示しない。
+- 追加ブログ投稿で失敗したら、APIレスポンスの `details` または `error` を表示する。
+- ブログ側で制限されていない可能性があるため、認証エラー・XMLエラー・403/401などを区別できるログとtoastにする。
+
+### 動作確認
+- 追加ブログ投稿周りを触ったら、ローカル設定APIで各ブログの `apiUsername` を確認する。
+- 公開投稿を増やす動作確認は避ける。必要な場合だけユーザーに明示してから行う。
+- ダミーAPIキーで `/api/proxy/postBlog` を叩く場合は、公開投稿は作られず認証/権限エラーで止まることを確認目的に限定する。
+
 ## まとめ記事再まとめ戦略 - 重要
 
 ### 戦略の位置づけ
