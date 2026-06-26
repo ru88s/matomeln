@@ -17,24 +17,18 @@ export interface Session {
   created_at: string;
 }
 
-// Admin email - the only user allowed in Phase 1
+// Admin email
 export const ADMIN_EMAIL = 'lulu.y0812@gmail.com';
-
-// Allowlist for future Phase 2 (empty for now, admin only)
-export const ALLOWLIST_EMAILS: string[] = [
-  ADMIN_EMAIL,
-];
 
 // Check if email is admin
 export function isAdmin(email: string): boolean {
   return email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
-// Check if email is in allowlist
+// Allow any Google account that returns an email address.
+// Admin-only features are still guarded by role === 'admin'.
 export function isAllowed(email: string): boolean {
-  return ALLOWLIST_EMAILS.some(
-    allowed => allowed.toLowerCase() === email.toLowerCase()
-  );
+  return email.trim().length > 0;
 }
 
 // Get role for email

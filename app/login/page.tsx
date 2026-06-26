@@ -14,7 +14,7 @@ function LoginContent() {
     if (errorParam) {
       switch (errorParam) {
         case 'access_denied':
-          setError('現在はクローズド運用中です。利用をご希望の場合はお問い合わせください。');
+          setError('このGoogleアカウントではログインできませんでした。別のアカウントでお試しください。');
           break;
         case 'oauth_error':
           setError('Googleログインに失敗しました。もう一度お試しください。');
