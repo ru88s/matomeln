@@ -792,39 +792,24 @@ export default function BulkProcessPanel({
   startAutoRunLoopRef.current = async () => {
     if (!autoRunActive || !hasAutoRunTargets) return;
 
-    let hasMoreUrls = false;
+    const enabledSources: Array<'5ch' | 'talk' | 'gc'> = [];
+    if (autoRun5chEnabled) enabledSources.push('5ch');
+    if (autoRunTalkEnabled) enabledSources.push('talk');
+    if (autoRunGCEnabled) enabledSources.push('gc');
 
-    // 5chが有効なら5chを処理
-    if (autoRun5chEnabled) {
-      hasMoreUrls = await runAutoProcessCycle('5ch');
-      if (hasMoreUrls) {
-        toast('5ch未まとめを再チェック中...', { icon: '🔄' });
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        startAutoRunLoopRef.current?.();
-        return;
-      }
+    let processedAnySource = false;
+
+    for (const source of enabledSources) {
+      if (!autoRunActive || shouldStopRef.current) return;
+      const hadUrls = await runAutoProcessCycle(source);
+      processedAnySource = processedAnySource || hadUrls;
     }
 
-    // Talkが有効ならTalkを処理
-    if (autoRunTalkEnabled) {
-      hasMoreUrls = await runAutoProcessCycle('talk');
-      if (hasMoreUrls) {
-        toast('Talk未まとめを再チェック中...', { icon: '🔄' });
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        startAutoRunLoopRef.current?.();
-        return;
-      }
-    }
-
-    // ガルちゃんが有効ならガルちゃんを処理
-    if (autoRunGCEnabled) {
-      hasMoreUrls = await runAutoProcessCycle('gc');
-      if (hasMoreUrls) {
-        toast('ガルちゃん未まとめを再チェック中...', { icon: '🔄' });
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        startAutoRunLoopRef.current?.();
-        return;
-      }
+    if (processedAnySource && autoRunActive && !shouldStopRef.current) {
+      toast('選択中の未まとめを再チェック中...', { icon: '🔄' });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      startAutoRunLoopRef.current?.();
+      return;
     }
 
     // どちらもURLがないので、指定時間待機
