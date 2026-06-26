@@ -110,6 +110,26 @@ function sanitizeErrorForState(error: string): string {
   return error;
 }
 
+type AutoRunSource = '5ch' | 'talk' | 'gc';
+
+function interleaveUniqueUrlLists(urlLists: string[][]): string[] {
+  const seenUrls = new Set<string>();
+  const maxQueueLength = Math.max(...urlLists.map((urls) => urls.length), 0);
+  const mergedUrls: string[] = [];
+
+  for (let index = 0; index < maxQueueLength; index += 1) {
+    for (const sourceUrls of urlLists) {
+      const url = sourceUrls[index];
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        mergedUrls.push(url);
+      }
+    }
+  }
+
+  return mergedUrls;
+}
+
 interface BulkProcessPanelProps {
   onBulkProcess: (url: string) => Promise<void>;
   isProcessingAI: boolean;
@@ -155,7 +175,7 @@ export default function BulkProcessPanel({
   });
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
-  const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'talk' | 'gc' | null>(null);
+  const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'all' | '5ch' | 'talk' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
@@ -259,11 +279,11 @@ export default function BulkProcessPanel({
         fetchTalkUrls({ limit: 1000 }),
         fetchGirlsChannelUrls({ limit: 100 }),
       ]);
-      const mergedUrls = [
-        ...fiveChResult.urls,
-        ...talkResult.urls,
-        ...girlsChannelResult.urls,
-      ].filter((url, index, allUrls) => allUrls.indexOf(url) === index);
+      const mergedUrls = interleaveUniqueUrlLists([
+        fiveChResult.urls,
+        talkResult.urls,
+        girlsChannelResult.urls,
+      ]);
       setUrls(mergedUrls.join('\n'));
       toast.success(`${mergedUrls.length}件のURLを取得しました`, { id: toastId });
     } catch (error) {
@@ -580,25 +600,38 @@ export default function BulkProcessPanel({
     toast('停止処理中...', { icon: '⏳' });
   }, []);
 
+  const getAutoRunSourceLabel = (source: AutoRunSource): string => {
+    return source === '5ch' ? '5ch' : source === 'talk' ? 'Talk' : 'ガルちゃん';
+  };
+
+  const fetchAutoRunSourceUrls = async (source: AutoRunSource): Promise<string[]> => {
+    const result = source === '5ch'
+      ? await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' })
+      : source === 'talk'
+        ? await fetchTalkUrls({ limit: 1000 })
+        : await fetchGirlsChannelUrls({ limit: 100 });
+
+    return result.urls;
+  };
+
   // 定期実行: 1サイクル実行（処理完了後に再度URL取得して続行）
-  const runAutoProcessCycle = useCallback(async (source: '5ch' | 'talk' | 'gc'): Promise<boolean> => {
+  const runAutoProcessCycle = useCallback(async (sources: AutoRunSource[]): Promise<boolean> => {
     // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
     if (isAutoRunningRef.current) return false;
     isAutoRunningRef.current = true;
-    setCurrentAutoRunSource(source);
 
-    const sourceLabel = source === '5ch' ? '5ch' : source === 'talk' ? 'Talk' : 'ガルちゃん';
+    const sourceLabel = sources.length === 1
+      ? getAutoRunSourceLabel(sources[0])
+      : sources.map(getAutoRunSourceLabel).join('・');
+    setCurrentAutoRunSource(sources.length === 1 ? sources[0] : 'all');
 
     try {
-      // 1. 未まとめURLを取得（ソースに応じて異なるAPI）
+      // 1. 未まとめURLを取得（選択中のソースをまとめて取得）
       toast.loading(`定期実行[${sourceLabel}]: URL取得中...`, { id: 'auto-run' });
-      const result = source === '5ch'
-        ? await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' })
-        : source === 'talk'
-          ? await fetchTalkUrls({ limit: 1000 })
-          : await fetchGirlsChannelUrls({ limit: 100 });
+      const results = await Promise.all(sources.map(fetchAutoRunSourceUrls));
+      const urlList = interleaveUniqueUrlLists(results);
 
-      if (result.urls.length === 0) {
+      if (urlList.length === 0) {
         toast.success(`定期実行[${sourceLabel}]: 未まとめURLがありません`, { id: 'auto-run' });
         setLastRunTime(new Date());
         consecutiveErrorsRef.current = 0; // エラーカウントリセット
@@ -608,11 +641,10 @@ export default function BulkProcessPanel({
       }
 
       // 2. URLをセット
-      setUrls(result.urls.join('\n'));
-      toast.success(`定期実行[${sourceLabel}]: ${result.count}件のURLを処理開始`, { id: 'auto-run' });
+      setUrls(urlList.join('\n'));
+      toast.success(`定期実行[${sourceLabel}]: ${urlList.length}件のURLを処理開始`, { id: 'auto-run' });
 
       // 3. 一括処理を開始
-      const urlList = result.urls;
       shouldStopRef.current = false;
 
       const initialStatus: BulkProcessStatus = {
@@ -797,13 +829,8 @@ export default function BulkProcessPanel({
     if (autoRunTalkEnabled) enabledSources.push('talk');
     if (autoRunGCEnabled) enabledSources.push('gc');
 
-    let processedAnySource = false;
-
-    for (const source of enabledSources) {
-      if (!autoRunActive || shouldStopRef.current) return;
-      const hadUrls = await runAutoProcessCycle(source);
-      processedAnySource = processedAnySource || hadUrls;
-    }
+    if (!autoRunActive || shouldStopRef.current) return;
+    const processedAnySource = await runAutoProcessCycle(enabledSources);
 
     if (processedAnySource && autoRunActive && !shouldStopRef.current) {
       toast('選択中の未まとめを再チェック中...', { icon: '🔄' });
@@ -1043,7 +1070,9 @@ export default function BulkProcessPanel({
           <div className="flex items-center justify-between gap-2">
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
               status.isProcessing
-                ? currentAutoRunSource === '5ch'
+                ? currentAutoRunSource === 'all'
+                  ? 'bg-green-100 text-green-800'
+                  : currentAutoRunSource === '5ch'
                   ? 'bg-indigo-100 text-indigo-800'
                   : currentAutoRunSource === 'talk'
                     ? 'bg-cyan-100 text-cyan-800'
@@ -1051,7 +1080,7 @@ export default function BulkProcessPanel({
                 : 'bg-green-100 text-green-800'
             }`}>
               {status.isProcessing
-                ? currentAutoRunSource === '5ch' ? '5ch処理中' : currentAutoRunSource === 'talk' ? 'Talk処理中' : 'ガルちゃん処理中'
+                ? currentAutoRunSource === 'all' ? 'すべて処理中' : currentAutoRunSource === '5ch' ? '5ch処理中' : currentAutoRunSource === 'talk' ? 'Talk処理中' : 'ガルちゃん処理中'
                 : '待機中'}
             </span>
             <span className="text-[11px] font-medium text-gray-500">{activeSources}</span>
