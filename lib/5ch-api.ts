@@ -106,17 +106,7 @@ function isMojibake(text: string): boolean {
     return true;
   }
 
-  // 3. 同じ文字の異常な連続（◇◇◇◇のような文字化け特有パターン）
-  // ただし、5chでよく使われる文字は除外（w, ー, -, =, _, ・, 草, 笑, !,?など）
-  const commonRepeatChars = /[wWｗＷー\-=_・草笑!?！？\s。、\.]/;
-  const repeatedCharMatches = text.match(/(.)\1{14,}/g) || []; // 15文字以上に緩和
-  const suspiciousRepeats = repeatedCharMatches.filter(match => !commonRepeatChars.test(match[0]));
-  if (suspiciousRepeats.length > 0) {
-    console.log(`[mojibake] 同一文字の異常連続を検出: ${suspiciousRepeats[0]?.substring(0, 20)}`);
-    return true;
-  }
-
-  // 4. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
+  // 3. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
   // 最初の1000文字で判定（スレタイと1レス目を含む）
   const sample = text.substring(0, 1000);
   const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
@@ -290,13 +280,23 @@ function extractImagesFromBody(body: string): string[] {
   const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
   const matches = body.match(imgRegex);
   if (matches) {
-    images.push(...matches);
+    images.push(...matches.filter(imageUrl => !isFiveChannelIconUrl(imageUrl)));
   }
   return images;
 }
 
+function isFiveChannelIconUrl(imageUrl: string): boolean {
+  try {
+    const url = new URL(imageUrl);
+    return /^img\.5ch\.(?:net|io)$/i.test(url.hostname) &&
+      (url.pathname.startsWith('/ico/') || url.pathname.startsWith('/premium/'));
+  } catch {
+    return false;
+  }
+}
+
 // URLがどのサービスか判定
-export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'unknown';
+export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
   if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
@@ -314,7 +314,126 @@ export function detectSourceType(url: string): SourceType {
   if (/girlschannel\.net/i.test(url)) {
     return 'girlschannel';
   }
+  if (/talk\.jp\/boards\//i.test(url)) {
+    return 'talkjp';
+  }
   return 'unknown';
+}
+
+// talk.jp URLから情報を抽出
+export interface TalkJpThreadInfo {
+  board: string;
+  threadKey: string;
+}
+
+export function parseTalkJpUrl(url: string): TalkJpThreadInfo | null {
+  const pattern = /https?:\/\/talk\.jp\/boards\/([a-z0-9_]+)\/(\d+)\/?/i;
+  const match = url.match(pattern);
+
+  if (match) {
+    return {
+      board: match[1],
+      threadKey: match[2],
+    };
+  }
+
+  return null;
+}
+
+interface TalkJpWriter {
+  id?: string | null;
+  name?: string | null;
+}
+
+interface TalkJpComment {
+  number?: number;
+  body?: string;
+  timestamp?: number;
+  writer?: TalkJpWriter | null;
+  is_sensitive?: boolean;
+}
+
+interface TalkJpThreadPayload {
+  title?: string;
+  timestamp?: number;
+  display_updated_at?: number;
+  sort_updated_at?: number;
+  comment_count?: number;
+  comments?: TalkJpComment[];
+  board?: {
+    name?: string;
+    settings?: {
+      default_name?: string;
+      show_id?: string;
+    };
+  };
+}
+
+function convertTalkJpBody(body: string): string {
+  return decodeHtmlEntities(body)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, (_, href, label) => label || href)
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function parseUnixTimestamp(timestamp?: number): string {
+  if (!timestamp || Number.isNaN(timestamp)) {
+    return new Date().toISOString();
+  }
+  return new Date(timestamp * 1000).toISOString();
+}
+
+export function parseTalkJpThreadPayload(
+  payload: TalkJpThreadPayload,
+  threadInfo: TalkJpThreadInfo
+): { talk: Talk; comments: Comment[] } {
+  const rawComments = Array.isArray(payload.comments) ? payload.comments : [];
+  const comments = rawComments
+    .filter((comment) => typeof comment.number === 'number')
+    .map((comment) => {
+      const number = comment.number || 0;
+      const body = convertTalkJpBody(comment.body || '');
+      const name = comment.writer?.name || payload.board?.settings?.default_name || '名無しさん';
+      const nameId = comment.writer?.id || undefined;
+
+      return {
+        id: `talkjp-${threadInfo.threadKey}-${number}`,
+        res_id: String(number),
+        name,
+        name_id: nameId,
+        body,
+        talk_id: threadInfo.threadKey,
+        created_at: parseUnixTimestamp(comment.timestamp),
+        images: extractImagesFromBody(body),
+        is_talk_owner: number === 1,
+      };
+    });
+
+  if (comments.length === 0) {
+    throw new Error('talk.jpスレッドデータの解析に失敗しました: コメントが0件です');
+  }
+
+  const title = cleanThreadTitle(payload.title || '');
+  if (!title) {
+    throw new Error('talk.jpスレッドタイトルの取得に失敗しました');
+  }
+
+  const talk: Talk = {
+    id: `talkjp-${threadInfo.threadKey}`,
+    title,
+    body: '',
+    created_at: parseUnixTimestamp(payload.timestamp),
+    updated_at: parseUnixTimestamp(payload.sort_updated_at || payload.display_updated_at || payload.timestamp),
+    views_count: 0,
+    sage_count: 0,
+    hash_id: threadInfo.threadKey,
+    comment_count: payload.comment_count || comments.length,
+    show_id: true,
+  };
+
+  return { talk, comments };
 }
 
 // ガールズちゃんねる URLから情報を抽出
@@ -1085,5 +1204,44 @@ export async function fetch2chscThread(url: string): Promise<{ talk: Talk; comme
       errorMsg = error;
     }
     throw new Error(errorMsg);
+  }
+}
+
+// talk.jpスレッドデータを取得
+export async function fetchTalkJpThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
+  const threadInfo = parseTalkJpUrl(url);
+  if (!threadInfo) {
+    throw new Error('無効なtalk.jp URLです');
+  }
+
+  try {
+    const apiResponse = await fetch(`https://talk.jp/api/boards/${threadInfo.board}/threads/${threadInfo.threadKey}`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (apiResponse.ok) {
+      const apiData = await apiResponse.json() as { data?: TalkJpThreadPayload };
+      if (apiData.data && typeof apiData.data === 'object') {
+        return parseTalkJpThreadPayload(apiData.data, threadInfo);
+      }
+    }
+
+    const response = await fetch(`/api/proxy/getTalkJpThread?url=${encodeURIComponent(url)}`);
+
+    if (!response.ok) {
+      const errorData = await response.json() as { error?: string };
+      throw new Error(errorData.error || 'スレッドの取得に失敗しました');
+    }
+
+    const data = await response.json() as { thread: TalkJpThreadPayload };
+    return parseTalkJpThreadPayload(data.thread, threadInfo);
+  } catch (error) {
+    console.error('Error fetching talk.jp thread:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('talk.jpスレッドの取得に失敗しました');
   }
 }

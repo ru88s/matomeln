@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
 import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
@@ -148,7 +149,13 @@ export default function BulkProcessPanel({
     if (typeof window === 'undefined') return 'gpt-image-1';
     return localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1';
   });
-  const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
+  const [nextRunTime, setNextRunTime] = useState<Date | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('autoRunNextRunTime');
+    if (!saved) return null;
+    const restored = new Date(saved);
+    return Number.isNaN(restored.getTime()) ? null : restored;
+  });
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,6 +164,15 @@ export default function BulkProcessPanel({
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
   // どちらかが有効かどうか
   const autoRunEnabled = autoRun5chEnabled || autoRunGCEnabled;
+
+  const updateNextRunTime = useCallback((nextRun: Date | null) => {
+    setNextRunTime(nextRun);
+    if (nextRun) {
+      localStorage.setItem('autoRunNextRunTime', nextRun.toISOString());
+    } else {
+      localStorage.removeItem('autoRunNextRunTime');
+    }
+  }, []);
 
   // 初回マウント完了フラグ（ハイドレーション問題を回避）
   const isInitialMountRef = useRef(true);
@@ -331,6 +347,14 @@ export default function BulkProcessPanel({
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
 
+  const isImmediateSkipError = (errorMsg: string): boolean => {
+    const immediateSkipPatterns = [
+      'アダルトコンテンツ',
+      'アダルトキーワード',
+    ];
+    return immediateSkipPatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+  };
+
   // 一括処理開始
   const handleStartBulk = useCallback(async () => {
     const urlList = urls
@@ -407,7 +431,12 @@ export default function BulkProcessPanel({
           }
           console.error(`Stringified error: ${lastError}`);
 
-          // スキップ可能なエラーの場合はリトライ
+          // 判定が確定しているスキップ対象はリトライしない
+          if (isImmediateSkipError(lastError)) {
+            break;
+          }
+
+          // スキップ可能な一時エラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
             toast(`(${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
             await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
@@ -504,7 +533,7 @@ export default function BulkProcessPanel({
     isAutoRunningRef.current = true;
     setCurrentAutoRunSource(source);
 
-    const sourceLabel = source === '5ch' ? '5ch' : 'ガルちゃん';
+    const sourceLabel = source === '5ch' ? '5ch・talk.jp' : 'ガルちゃん';
 
     try {
       // 1. 未まとめURLを取得（ソースに応じて異なるAPI）
@@ -582,7 +611,12 @@ export default function BulkProcessPanel({
               lastError = 'エラーの詳細を取得できませんでした';
             }
 
-            // スキップ可能なエラーの場合はリトライ
+            // 判定が確定しているスキップ対象はリトライしない
+            if (isImmediateSkipError(lastError)) {
+              break;
+            }
+
+            // スキップ可能な一時エラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
               toast(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
               await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
@@ -704,11 +738,11 @@ export default function BulkProcessPanel({
 
     let hasMoreUrls = false;
 
-    // 5chが有効なら5chを処理
+    // 5ch/talk.jpが有効なら処理
     if (autoRun5chEnabled) {
       hasMoreUrls = await runAutoProcessCycle('5ch');
       if (hasMoreUrls) {
-        toast('5ch未まとめを再チェック中...', { icon: '🔄' });
+        toast('5ch・talk.jp未まとめを再チェック中...', { icon: '🔄' });
         await new Promise(resolve => setTimeout(resolve, 3000));
         startAutoRunLoopRef.current?.();
         return;
@@ -728,7 +762,7 @@ export default function BulkProcessPanel({
 
     // どちらもURLがないので、指定時間待機
     const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
-    setNextRunTime(nextRun);
+    updateNextRunTime(nextRun);
   };
 
   // 定期実行のタイマー管理（チェックボックス変更時のみ発火）
@@ -771,7 +805,7 @@ export default function BulkProcessPanel({
       consecutiveErrorsRef.current = 0;
 
       const sources = [];
-      if (autoRun5chEnabled) sources.push('5ch');
+      if (autoRun5chEnabled) sources.push('5ch・talk.jp');
       if (autoRunGCEnabled) sources.push('ガルちゃん');
       toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
       startAutoRunLoopRef.current?.();
@@ -788,7 +822,7 @@ export default function BulkProcessPanel({
         clearInterval(autoRunTimerRef.current);
         autoRunTimerRef.current = null;
       }
-      setNextRunTime(null);
+      updateNextRunTime(null);
       consecutiveErrorsRef.current = 0;
       toast('定期実行を停止しました', { icon: '⏹️' });
     }
@@ -800,19 +834,50 @@ export default function BulkProcessPanel({
     };
   }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval]);
 
+  useEffect(() => {
+    if (!autoRunEnabled || status.isProcessing || nextRunTime) return;
+    updateNextRunTime(new Date(Date.now() + autoRunInterval * 60 * 1000));
+  }, [autoRunEnabled, autoRunInterval, nextRunTime, status.isProcessing, updateNextRunTime]);
+
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
     const now = new Date();
     const diff = targetTime.getTime() - now.getTime();
-    if (diff <= 0) return '実行中...';
+    if (diff <= 0) return 'まもなく実行';
 
     const minutes = Math.floor(diff / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
     return `${minutes}分${seconds}秒`;
   };
 
+  const formatNextRunTime = (targetTime: Date): string => {
+    return targetTime.toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
+
   // 1秒ごとに残り時間を更新
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
+  const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
+
+  useEffect(() => {
+    const readAISummaryProvider = () => {
+      const savedProvider = localStorage.getItem('matomeln_ai_summary_provider');
+      setAiSummaryProvider(savedProvider === 'ollama' ? 'ollama' : 'claude');
+    };
+
+    readAISummaryProvider();
+    window.addEventListener('storage', readAISummaryProvider);
+    window.addEventListener('settingsSynced', readAISummaryProvider);
+
+    return () => {
+      window.removeEventListener('storage', readAISummaryProvider);
+      window.removeEventListener('settingsSynced', readAISummaryProvider);
+    };
+  }, []);
+
   useEffect(() => {
     if (!autoRunEnabled || !nextRunTime) return;
 
@@ -823,17 +888,130 @@ export default function BulkProcessPanel({
     return () => clearInterval(timer);
   }, [autoRunEnabled, nextRunTime]);
 
+  useEffect(() => {
+    if (!autoRunEnabled || status.isProcessing || isAutoRunningRef.current || !nextRunTime) return;
+    if (nextRunTime.getTime() > Date.now()) return;
+
+    updateNextRunTime(null);
+    startAutoRunLoopRef.current?.();
+  }, [autoRunEnabled, nextRunTime, status.isProcessing, tick, updateNextRunTime]);
+
   const isProcessing = status.isProcessing || isProcessingAI;
+  const [autoRunPortalTarget, setAutoRunPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setAutoRunPortalTarget(document.getElementById('auto-run-sidebar-slot'));
+  }, []);
+
+  const autoRunControls = (
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
+      <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
+        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        定期自動処理
+      </h4>
+
+      <div className="space-y-2 mb-3">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoRun5chEnabled && autoRunGCEnabled}
+            onChange={(e) => {
+              setAutoRun5chEnabled(e.target.checked);
+              setAutoRunGCEnabled(e.target.checked);
+            }}
+            className="mt-0.5 w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+            disabled={isProcessing}
+          />
+          <span className="text-xs font-medium text-gray-700 leading-5">すべて</span>
+        </label>
+
+        <label className="flex items-start gap-2 cursor-pointer pl-3">
+          <input
+            type="checkbox"
+            checked={autoRun5chEnabled}
+            onChange={(e) => setAutoRun5chEnabled(e.target.checked)}
+            className="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+            disabled={isProcessing}
+          />
+          <span className="text-xs font-medium text-gray-700 leading-5">5ch・talk.jp未まとめ</span>
+        </label>
+
+        <label className="flex items-start gap-2 cursor-pointer pl-3">
+          <input
+            type="checkbox"
+            checked={autoRunGCEnabled}
+            onChange={(e) => setAutoRunGCEnabled(e.target.checked)}
+            className="mt-0.5 w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
+            disabled={isProcessing}
+          />
+          <span className="text-xs font-medium text-gray-700 leading-5">ガルちゃん・Shikutoku</span>
+        </label>
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-xs text-gray-600 mb-1">チェック間隔</label>
+        <select
+          value={autoRunInterval}
+          onChange={(e) => setAutoRunInterval(Number(e.target.value))}
+          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-green-500 focus:border-green-500"
+          disabled={autoRunEnabled || isProcessing}
+        >
+          <option value={10}>10分</option>
+          <option value={15}>15分</option>
+          <option value={30}>30分</option>
+          <option value={60}>60分</option>
+        </select>
+      </div>
+
+      {autoRunEnabled && (
+        <div className="bg-white rounded-lg p-3 border border-green-200 text-xs space-y-2">
+          <p className="space-y-1">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              status.isProcessing
+                ? currentAutoRunSource === '5ch'
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : 'bg-pink-100 text-pink-800'
+                : 'bg-green-100 text-green-800'
+            }`}>
+              {status.isProcessing
+                ? currentAutoRunSource === '5ch' ? '5ch・talk.jp処理中' : 'ガルちゃん処理中'
+                : '待機中'}
+            </span>
+            <span className="block text-gray-600 leading-5">
+              {status.isProcessing
+                ? `${status.currentIndex + 1}/${status.totalCount}件を処理中`
+                : nextRunTime
+                  ? `次回: ${formatNextRunTime(nextRunTime)}（あと ${formatTimeRemaining(nextRunTime)}）`
+                  : '次回チェック時刻を準備中'}
+            </span>
+          </p>
+          {lastRunTime && (
+            <p className="text-gray-500">
+              前回: {lastRunTime.toLocaleTimeString('ja-JP')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   return (
+    <>
+    {autoRunPortalTarget ? createPortal(autoRunControls, autoRunPortalTarget) : null}
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100 shadow-sm">
       <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
         一括AIまとめ
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
-          まとめ: Claude
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+          aiSummaryProvider === 'ollama'
+            ? 'bg-emerald-100 text-emerald-700'
+            : 'bg-purple-100 text-purple-700'
+        }`}>
+          まとめ: {aiSummaryProvider === 'ollama' ? 'Ollama' : 'Claude'}
         </span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
           thumbnailProvider === 'openai'
@@ -878,7 +1056,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              5ch未まとめ
+              5ch・talk.jp未まとめ
             </>
           )}
         </button>
@@ -980,101 +1158,7 @@ export default function BulkProcessPanel({
         </div>
       )}
 
-      {/* 定期自動処理 */}
-      <div className="mt-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-        <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          定期自動処理
-        </h4>
-
-        <div className="space-y-2 mb-3">
-          {/* すべて */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoRun5chEnabled && autoRunGCEnabled}
-              onChange={(e) => {
-                setAutoRun5chEnabled(e.target.checked);
-                setAutoRunGCEnabled(e.target.checked);
-              }}
-              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-              disabled={isProcessing}
-            />
-            <span className="text-sm font-medium text-gray-700">すべて（5ch + ガルちゃん・Shikutoku）</span>
-          </label>
-
-          {/* 5ch */}
-          <label className="flex items-center gap-2 cursor-pointer ml-4">
-            <input
-              type="checkbox"
-              checked={autoRun5chEnabled}
-              onChange={(e) => setAutoRun5chEnabled(e.target.checked)}
-              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-              disabled={isProcessing}
-            />
-            <span className="text-sm font-medium text-gray-700">5ch未まとめ</span>
-          </label>
-
-          {/* ガルちゃん・Shikutoku */}
-          <label className="flex items-center gap-2 cursor-pointer ml-4">
-            <input
-              type="checkbox"
-              checked={autoRunGCEnabled}
-              onChange={(e) => setAutoRunGCEnabled(e.target.checked)}
-              className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
-              disabled={isProcessing}
-            />
-            <span className="text-sm font-medium text-gray-700">ガルちゃん・Shikutoku</span>
-          </label>
-        </div>
-
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm text-gray-600">チェック間隔:</span>
-          <select
-            value={autoRunInterval}
-            onChange={(e) => setAutoRunInterval(Number(e.target.value))}
-            className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-green-500 focus:border-green-500"
-            disabled={autoRunEnabled || isProcessing}
-          >
-            <option value={10}>10分</option>
-            <option value={15}>15分</option>
-            <option value={30}>30分</option>
-            <option value={60}>60分</option>
-          </select>
-        </div>
-
-        {autoRunEnabled && (
-          <div className="bg-white rounded-lg p-3 border border-green-200 text-sm space-y-1">
-            <p className="flex items-center gap-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                status.isProcessing
-                  ? currentAutoRunSource === '5ch'
-                    ? 'bg-indigo-100 text-indigo-800'
-                    : 'bg-pink-100 text-pink-800'
-                  : 'bg-green-100 text-green-800'
-              }`}>
-                {status.isProcessing
-                  ? currentAutoRunSource === '5ch' ? '5ch処理中' : 'ガルちゃん処理中'
-                  : '待機中'}
-              </span>
-              <span className="text-gray-600">
-                {status.isProcessing
-                  ? `${status.currentIndex + 1}/${status.totalCount}件を処理中...`
-                  : nextRunTime
-                    ? `次回チェック: ${formatTimeRemaining(nextRunTime)}`
-                    : '処理完了後に再チェックします'}
-              </span>
-            </p>
-            {lastRunTime && (
-              <p className="text-gray-500 text-xs">
-                前回実行: {lastRunTime.toLocaleTimeString('ja-JP')}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
     </div>
+    </>
   );
 }

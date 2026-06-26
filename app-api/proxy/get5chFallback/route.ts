@@ -64,6 +64,55 @@ function generate2chscDatUrls(info: ThreadInfo): string[] {
   ];
 }
 
+function scoreDecodedContent(content: string): number {
+  const sample = content.slice(0, 3000);
+  const replacementCount = (sample.match(/\uFFFD/g) || []).length;
+  const mojibakeCount = (sample.match(/[繧繝螟髮莉翫縺閾]/g) || []).length;
+  const controlCount = (sample.match(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g) || []).length;
+  const datSeparators = (sample.match(/<>/g) || []).length;
+  const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+
+  return (
+    replacementCount * 120 +
+    mojibakeCount * 25 +
+    controlCount * 80 -
+    datSeparators * 8 -
+    japaneseChars * 0.2
+  );
+}
+
+function decodeDatContent(uint8Array: Uint8Array): { content: string; encoding: string; score: number } {
+  const detectedEncoding = Encoding.detect(uint8Array);
+  const candidates = new Set<string>(['UTF8', 'SJIS', 'EUCJP']);
+  if (typeof detectedEncoding === 'string') {
+    candidates.add(detectedEncoding === 'ASCII' ? 'SJIS' : detectedEncoding);
+  }
+
+  const decoded = [...candidates].map((encoding) => {
+    try {
+      if (encoding === 'UTF8') {
+        const content = new TextDecoder('utf-8').decode(uint8Array);
+        return { content, encoding, score: scoreDecodedContent(content) };
+      }
+      const unicodeArray = Encoding.convert(uint8Array, {
+        to: 'UNICODE',
+        from: encoding as Encoding.Encoding,
+      });
+      const content = Encoding.codeToString(unicodeArray);
+      return { content, encoding, score: scoreDecodedContent(content) };
+    } catch {
+      return null;
+    }
+  }).filter((item): item is { content: string; encoding: string; score: number } => item !== null);
+
+  decoded.sort((a, b) => a.score - b.score);
+  return decoded[0] || {
+    content: new TextDecoder('utf-8', { fatal: false }).decode(uint8Array),
+    encoding: 'UTF8',
+    score: Number.POSITIVE_INFINITY,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const url = searchParams.get('url');
@@ -104,28 +153,15 @@ export async function GET(request: NextRequest) {
         const buffer = await response.arrayBuffer();
         const uint8Array = new Uint8Array(buffer);
 
-        // 2ch.scはShift_JISなので変換
-        let content: string;
-        const detectedEncoding = Encoding.detect(uint8Array);
+        const decoded = decodeDatContent(uint8Array);
 
-        if (detectedEncoding === 'SJIS' || detectedEncoding === 'EUCJP' || detectedEncoding === 'ASCII') {
-          // Shift_JIS または EUC-JP をUTF-8に変換
-          const unicodeArray = Encoding.convert(uint8Array, {
-            to: 'UNICODE',
-            from: detectedEncoding === 'ASCII' ? 'SJIS' : detectedEncoding,
-          });
-          content = Encoding.codeToString(unicodeArray);
-        } else {
-          // UTF-8の場合はそのままデコード
-          content = new TextDecoder('utf-8').decode(uint8Array);
-        }
-
-        logger.log(`Successfully fetched from 2ch.sc: ${datUrl}`);
+        logger.log(`Successfully fetched from 2ch.sc: ${datUrl} (${decoded.encoding}, score: ${decoded.score.toFixed(1)})`);
 
         return NextResponse.json({
-          content,
+          content: decoded.content,
           threadInfo,
           datUrl,
+          encoding: decoded.encoding,
           source: '2ch.sc',
         });
       } else {

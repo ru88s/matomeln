@@ -6,7 +6,32 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 const THREAD_MEMO_BASE_URL = 'https://thread-memo.starcrown.co.jp';
-const THREAD_MEMO_WORKERS_URL = 'https://thread-memo.w-yonamine.workers.dev';
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+};
+
+const globalMemoStore = globalThis as typeof globalThis & {
+  __matomelnSummarizedUrls?: Set<string>;
+  __matomelnSkippedUrls?: Set<string>;
+};
+
+function getSummarizedUrls(): Set<string> {
+  if (!globalMemoStore.__matomelnSummarizedUrls) {
+    globalMemoStore.__matomelnSummarizedUrls = new Set<string>();
+  }
+  return globalMemoStore.__matomelnSummarizedUrls;
+}
+
+function getSkippedUrls(): Set<string> {
+  if (!globalMemoStore.__matomelnSkippedUrls) {
+    globalMemoStore.__matomelnSkippedUrls = new Set<string>();
+  }
+  return globalMemoStore.__matomelnSkippedUrls;
+}
+
+function normalizeThreadMemoUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '');
+}
 
 // 未まとめURL取得
 export async function GET(request: NextRequest) {
@@ -39,7 +64,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data = await response.json() as { urls?: string[]; count?: number };
+    if (Array.isArray(data.urls)) {
+      const summarized = getSummarizedUrls();
+      const skipped = getSkippedUrls();
+      data.urls = data.urls.filter((url: string) => {
+        const normalizedUrl = normalizeThreadMemoUrl(url);
+        return !summarized.has(url) && !summarized.has(normalizedUrl) && !skipped.has(url) && !skipped.has(normalizedUrl);
+      });
+      data.count = data.urls.length;
+    }
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
@@ -65,14 +99,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedUrl = normalizeThreadMemoUrl(url);
+
     const response = await fetch(
-      `${THREAD_MEMO_WORKERS_URL}/api/threads/mark-summarized`,
+      `${THREAD_MEMO_BASE_URL}/api/threads/mark-summarized`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ url: normalizedUrl }),
       }
     );
 
@@ -84,8 +118,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    getSummarizedUrls().add(url);
+    getSummarizedUrls().add(normalizedUrl);
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return NextResponse.json(data);
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },

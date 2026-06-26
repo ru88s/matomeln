@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // ユーザーが手動で並べ替えた順番をそのまま使用します。
 
 interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp';
   originalUrl: string;
 }
 
@@ -23,7 +23,7 @@ interface HTMLGeneratorProps {
   customNameBold?: boolean;
   customNameColor?: string;
   thumbnailUrl?: string;
-  apiSettings?: { blogUrl: string; apiKey: string };
+  apiSettings?: { blogUrl: string; apiUsername?: string; apiKey: string };
   selectedBlogName?: string;
   selectedBlogType?: BlogType;
   showIdInHtml?: boolean;
@@ -163,6 +163,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           },
           body: JSON.stringify({
             blogId: apiSettings.blogUrl,
+            apiUsername: apiSettings.apiUsername || apiSettings.blogUrl,
             apiKey: apiSettings.apiKey,
             title: generatedHTML.title,
             body: fullBody,
@@ -214,6 +215,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                 },
                 body: JSON.stringify({
                   blogId: blog.blogId,
+                  apiUsername: blog.apiUsername || blog.blogId,
                   apiKey: blog.apiKey,
                   title: generatedHTML.title,
                   body: fullBody,

@@ -7,8 +7,27 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp';
   originalUrl: string;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }));
+
+  return results;
 }
 
 export async function generateMatomeHTML(
@@ -78,6 +97,14 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
     const match = url.match(/https?:\/\/girlschannel\.net\/topics\/(\d+)/i);
     if (match) {
       return `https://girlschannel.net/topics/${match[1]}/`;
+    }
+    return url;
+  }
+  if (sourceInfo?.source === 'talkjp' && sourceInfo.originalUrl) {
+    const url = sourceInfo.originalUrl.trim();
+    const match = url.match(/https?:\/\/talk\.jp\/boards\/([a-z0-9_]+)\/(\d+)/i);
+    if (match) {
+      return `https://talk.jp/boards/${match[1]}/${match[2]}`;
     }
     return url;
   }
@@ -452,17 +479,17 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (
       !skipOgp &&
       !/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl) &&
-      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)
+      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me|talk\.jp)\//.test(originalUrl)
     ) {
       ogpTargets.set(placeholder, originalUrl);
     }
   }
 
-  // OGPを並列取得
+  // OGPを少数並列で取得。外部URLが多い記事でローカルサーバーを詰まらせない。
   const ogpResults = new Map<string, Awaited<ReturnType<typeof fetchOGP>>>();
   if (ogpTargets.size > 0) {
     const entries = Array.from(ogpTargets.entries());
-    const results = await Promise.all(entries.map(([, originalUrl]) => fetchOGP(originalUrl)));
+    const results = await mapWithConcurrency(entries, 3, ([, originalUrl]) => fetchOGP(originalUrl));
     entries.forEach(([placeholder], i) => {
       ogpResults.set(placeholder, results[i]);
     });
@@ -476,7 +503,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
     }
-    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me)\//.test(originalUrl)) {
+    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me|talk\.jp)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
     }
     else if (skipOgp) {

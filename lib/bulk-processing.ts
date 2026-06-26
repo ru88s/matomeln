@@ -48,12 +48,9 @@ export async function fetchUnsummarizedUrls(options?: {
 
   const data = await response.json() as UnsummarizedUrlsResponse;
 
-  // talk.jp のURLを除外（一括処理対象外）
-  const filteredUrls = data.urls.filter(url => !url.includes('talk.jp'));
-
   // スレッドIDでソート（新しい順 = ID降順）
   // 5ch URLのスレッドIDはUnix timestamp形式
-  const sortedUrls = filteredUrls.sort((a, b) => {
+  const sortedUrls = data.urls.sort((a, b) => {
     const idA = extractThreadId(a);
     const idB = extractThreadId(b);
     if (!idA || !idB) return 0;
@@ -111,6 +108,9 @@ export async function markThreadAsSkipped(url: string, reason: string): Promise<
  * URLからスレッドIDを抽出
  */
 export function extractThreadId(url: string): string | null {
+  const talkJpMatch = url.match(/talk\.jp\/boards\/[a-z0-9_]+\/(\d+)/i);
+  if (talkJpMatch) return talkJpMatch[1];
+
   // 5ch URL format: https://hayabusa9.5ch.io/test/read.cgi/news/1234567890/
   const match = url.match(/\/(\d{10,})\/?$/);
   return match ? match[1] : null;

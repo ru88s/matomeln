@@ -16,6 +16,9 @@ interface LogDetails {
   threadUrl?: string;
   commentCount?: number;
   selectedCount?: number;
+  provider?: string;
+  modelName?: string;
+  durationSeconds?: number;
 
   // AI Thumbnail
   title?: string;

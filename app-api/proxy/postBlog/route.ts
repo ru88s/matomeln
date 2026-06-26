@@ -19,17 +19,57 @@ function generateWSSEHeader(username: string, password: string): string {
   return `UsernameToken Username="${username}", PasswordDigest="${digest}", Nonce="${nonceBase64}", Created="${created}"`;
 }
 
-// AtomPub用XMLペイロードを生成
-function buildAtomXml(title: string, body: string): string {
-  const escapedTitle = title
+function removeXmlInvalidChars(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  let result = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  let cleaned = '';
+  for (let i = 0; i < result.length; i++) {
+    const code = result.charCodeAt(i);
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      if (i + 1 < result.length) {
+        const nextCode = result.charCodeAt(i + 1);
+        if (nextCode >= 0xDC00 && nextCode <= 0xDFFF) {
+          cleaned += result[i] + result[i + 1];
+          i++;
+        }
+      }
+      continue;
+    }
+    if (code >= 0xDC00 && code <= 0xDFFF) {
+      continue;
+    }
+    cleaned += result[i];
+  }
+  return cleaned;
+}
+
+function escapeCDATA(str: string): string {
+  return str.replace(/\]\]>/g, ']]]]><![CDATA[>');
+}
+
+function escapeXml(str: string): string {
+  return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+// AtomPub用XMLペイロードを生成
+function buildAtomXml(title: string, body: string): string {
+  let cleanTitle = removeXmlInvalidChars(title);
+  const cleanBody = removeXmlInvalidChars(body);
+
+  if (cleanTitle.length > 80) {
+    cleanTitle = cleanTitle.substring(0, 77) + '...';
+  }
+
+  const escapedTitle = escapeXml(cleanTitle);
 
   // <!--more-->タグで本文と続きを分割
-  const parts = body.split('<!--more-->');
+  const parts = cleanBody.split('<!--more-->');
   const mainBody = parts[0] || '';
   const moreBody = parts[1] || '';
 
@@ -37,15 +77,16 @@ function buildAtomXml(title: string, body: string): string {
     '<?xml version="1.0" encoding="UTF-8"?>' +
     '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:app="http://www.w3.org/2007/app" xmlns:blogcms="http://blogcms.jp/-/spec/atompub/1.0/">' +
     '<title>' + escapedTitle + '</title>' +
-    '<content type="text/html" xml:lang="ja">' + body + '</content>' +
-    '<blogcms:source><blogcms:body><![CDATA[' + mainBody + ']]></blogcms:body>' +
-    '<blogcms:more><![CDATA[' + moreBody + ']]></blogcms:more></blogcms:source>' +
+    '<content type="text/html" xml:lang="ja">' + escapeXml(cleanBody) + '</content>' +
+    '<blogcms:source><blogcms:body><![CDATA[' + escapeCDATA(mainBody) + ']]></blogcms:body>' +
+    '<blogcms:more><![CDATA[' + escapeCDATA(moreBody) + ']]></blogcms:more></blogcms:source>' +
     '</entry>'
   );
 }
 
 interface PostBlogRequest {
   blogId: string;
+  apiUsername?: string;
   apiKey: string;
   title: string;
   body: string;
@@ -54,7 +95,7 @@ interface PostBlogRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const { blogId, apiKey, title, body, draft } = await request.json() as PostBlogRequest;
+    const { blogId, apiUsername, apiKey, title, body, draft } = await request.json() as PostBlogRequest;
 
     if (!blogId || !apiKey || !title || !body) {
       return NextResponse.json(
@@ -67,14 +108,13 @@ export async function POST(request: NextRequest) {
     const endpoint = `https://livedoor.blogcms.jp/atom/blog/${blogId}/article`;
 
     // WSSE認証ヘッダーを生成
-    const wsseHeader = generateWSSEHeader(blogId, apiKey);
+    const wsseHeader = generateWSSEHeader(apiUsername || blogId, apiKey);
 
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);
 
     logger.log('API endpoint:', endpoint);
     logger.log('Blog ID:', blogId);
-    logger.log('WSSE Header:', wsseHeader);
     logger.log('XML Payload (first 500 chars):', xmlPayload.substring(0, 500));
 
     // ライブドアブログAPIへPOST

@@ -26,6 +26,16 @@ export interface AISummarizeResponse {
   }[];
 }
 
+export type AISummarizeProvider = 'claude' | 'ollama';
+
+export interface LocalOllamaOptions {
+  endpoint?: string;
+  model?: string;
+}
+
+const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:e4b';
+
 // アダルト/エロ系コンテンツを検出
 export function isAdultContent(title: string, comments: Comment[]): { isAdult: boolean; reason: string } {
   // タイトルとコメント本文を結合
@@ -128,6 +138,197 @@ export function isKeywordSpam(text: string): boolean {
   return false;
 }
 
+const EXPLICIT_DISCRIMINATORY_TERMS = [
+  'ガイジ',
+  'がいじ',
+  '池沼',
+  '知恵遅れ',
+  '障がい者',
+  '障碍者',
+  'キチガイ',
+  'きちがい',
+  'チョン',
+  'チャンコロ',
+  '支那人',
+  'クロンボ',
+  '土人',
+  '穢多',
+  '非人',
+  '部落民',
+  'ホモ野郎',
+  'オカマ野郎',
+  '低学歴',
+  '高卒馬鹿',
+  '高卒バカ',
+  '中卒馬鹿',
+  '中卒バカ',
+  '落ちこぼれ',
+  'チー牛',
+  '弱者男性',
+  '弱者女性',
+  '女さん',
+  '男さん',
+  'まんさん',
+  'まんの人',
+  '発達カット',
+  '発達顔',
+  '発達系',
+  '発達っぽい',
+];
+
+const PROTECTED_GROUP_TERMS = [
+  '韓国人',
+  '中国人',
+  '日本人',
+  '外国人',
+  '黒人',
+  '白人',
+  '在日',
+  '移民',
+  '女',
+  '男',
+  '障害者',
+  '発達障害',
+  '精神障害',
+  'lgbt',
+  'ゲイ',
+  'レズ',
+  'トランス',
+  '高卒',
+  '中卒',
+  '大卒',
+  '低学歴',
+  '老人',
+  '年寄り',
+  '貧乏人',
+  '貧困層',
+  '弱者男性',
+  '弱者女性',
+  'デブ',
+  'ブス',
+  '障がい者',
+  '障碍者',
+  'ヘルプマーク',
+  '自衛隊',
+  '自衛隊員',
+  '公務員',
+];
+
+const HOSTILE_WORDS = [
+  '死ね',
+  '消えろ',
+  '出て行け',
+  '出てけ',
+  'いらない',
+  '劣等',
+  '下等',
+  '害悪',
+  'ゴミ',
+  '馬鹿',
+  'バカ',
+  '無能',
+  '頭悪い',
+  '落ちこぼれ',
+  '失敗作',
+  'ボロクソ',
+  'ブチギレ',
+  'クソ',
+  'キモい',
+  'きもい',
+  '汚い',
+  '臭い',
+  '犯罪者',
+  '駆除',
+  '多すぎ',
+];
+
+const SEVERE_HOSTILE_WORDS = [
+  '死ね',
+  '消えろ',
+  '出て行け',
+  '出てけ',
+  '駆除',
+  '犯罪者',
+  '害悪',
+  '下等',
+  '劣等',
+];
+
+function escapeRegExp(term: string): string {
+  return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function maskTermToInitial(term: string): string {
+  return Array.from(term)[0] || '';
+}
+
+function includesNormalized(normalized: string, term: string): boolean {
+  return normalized.includes(term.toLowerCase());
+}
+
+function getDiscriminatorySignals(text: string): {
+  normalized: string;
+  explicitCount: number;
+  hasProtectedGroup: boolean;
+  hasHostileWord: boolean;
+  hasSevereHostileWord: boolean;
+} {
+  const normalized = sanitizeText(text)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\s+/g, '');
+
+  return {
+    normalized,
+    explicitCount: EXPLICIT_DISCRIMINATORY_TERMS.filter((term) => includesNormalized(normalized, term)).length,
+    hasProtectedGroup: PROTECTED_GROUP_TERMS.some((group) => includesNormalized(normalized, group)),
+    hasHostileWord: HOSTILE_WORDS.some((word) => includesNormalized(normalized, word)),
+    hasSevereHostileWord: SEVERE_HOSTILE_WORDS.some((word) => includesNormalized(normalized, word)),
+  };
+}
+
+// 差別的・ヘイト的なレスを検出
+export function isDiscriminatoryContent(text: string): boolean {
+  const signals = getDiscriminatorySignals(text);
+
+  if (!signals.normalized) return false;
+
+  if (signals.explicitCount > 0) {
+    return true;
+  }
+
+  return signals.hasProtectedGroup && signals.hasHostileWord;
+}
+
+export function isSevereDiscriminatoryContent(text: string): boolean {
+  const signals = getDiscriminatorySignals(text);
+  if (!signals.normalized) return false;
+
+  if (signals.explicitCount >= 2) return true;
+  if (signals.explicitCount >= 1 && signals.hasSevereHostileWord) return true;
+  if (signals.hasProtectedGroup && signals.hasSevereHostileWord) return true;
+
+  return false;
+}
+
+export function sanitizeDiscriminatoryContentForPublishing(text: string): string {
+  let sanitized = sanitizeText(text);
+
+  for (const term of EXPLICIT_DISCRIMINATORY_TERMS) {
+    sanitized = sanitized.replace(new RegExp(escapeRegExp(term), 'gi'), maskTermToInitial(term));
+  }
+
+  const signals = getDiscriminatorySignals(sanitized);
+
+  if (signals.hasProtectedGroup && signals.hasHostileWord) {
+    for (const word of HOSTILE_WORDS) {
+      sanitized = sanitized.replace(new RegExp(escapeRegExp(word), 'gi'), maskTermToInitial(word));
+    }
+  }
+
+  return sanitized;
+}
+
 // アンカー（>>数字）を抽出（全角・半角両対応）
 function extractAnchors(text: string): number[] {
   const anchors: number[] = [];
@@ -194,6 +395,29 @@ function sanitizeText(text: string): string {
 }
 
 // プロンプト生成（軽量版：トークン削減のため簡潔に）
+function getSummaryTargetCount(totalPosts: number): number {
+  if (totalPosts <= 100) {
+    return Math.min(totalPosts, Math.max(18, Math.round(totalPosts * 0.28)));
+  }
+  if (totalPosts <= 300) {
+    return Math.round(28 + ((totalPosts - 100) / 200) * 17);
+  }
+  if (totalPosts <= 600) {
+    return Math.round(45 + ((totalPosts - 300) / 300) * 15);
+  }
+  if (totalPosts <= 1000) {
+    return Math.round(60 + ((totalPosts - 600) / 400) * 20);
+  }
+  return 80;
+}
+
+function getSummarySelectionRange(totalPosts: number): string {
+  const target = getSummaryTargetCount(totalPosts);
+  const min = Math.max(12, Math.round(target * 0.85));
+  const max = Math.min(90, Math.round(target * 1.15));
+  return `${min}〜${max}`;
+}
+
 export function buildAISummarizePrompt(title: string, comments: Comment[]): string {
   const totalPosts = comments.length;
 
@@ -209,11 +433,7 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
   // 1000レス: 100文字、500レス: 200文字、100レス以下: 制限なし
   const maxBodyLength = totalPosts > 500 ? 100 : totalPosts > 100 ? 200 : 1000;
 
-  // レス数に応じて選択数を調整（長いスレッドでも200以内に収める）
-  // アンカー先・後方参照で増えることを考慮して、AI選択は控えめに
-  const minSelection = Math.min(15, Math.floor(totalPosts * 0.1));
-  const maxSelection = Math.min(40, Math.floor(totalPosts * 0.15)); // 最大40個（アンカー追加後も200以内）
-  const selectionRange = `${Math.max(10, minSelection)}〜${Math.max(20, maxSelection)}`;
+  const selectionRange = getSummarySelectionRange(totalPosts);
 
   // タイトルもサニタイズ
   const sanitizedTitle = sanitizeText(title);
@@ -245,9 +465,12 @@ ${postsText}
 - 必ず${selectionRange}個のレスを選択してください（重要：全部選ばないでください）
 - 面白い、印象的、重要なレスのみを厳選してください
 - ストーリーの流れが分かるように選んでください
-- レス1は含めないでください（自動追加されます）
+- レス1、最初の反応、共感、反論、ツッコミ、体験談、意外な視点、短い笑いどころ、オチをできるだけ揃えてください
+- 面白さを優先し、必要なら少し多めに選んでください
+- レス1は必ず含めてください（スレの前提として重要です）
 - スレ主[主]のレスは優先的に選んでください
 - 10文字未満の短いレスは選ばないでください（「あ」「草」など）
+- 差別的、ヘイト的、属性への攻撃を含むレスは選ばないでください
 - アンカー（>>数字）付きレスを選ぶ場合、参照先も重要なら選んでください
 
 【色の使用ルール】
@@ -268,6 +491,106 @@ JSONのみを返してください。説明文は不要です。`;
 
   // 最終的にもう一度サニタイズして返す
   return sanitizeText(rawPrompt);
+}
+
+function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comment; originalPostNumber: number }[] {
+  const totalPosts = comments.length;
+  if (totalPosts <= 450) {
+    return comments.map((comment, index) => ({ comment, originalPostNumber: index + 1 }));
+  }
+
+  const replyCount = new Map<number, number>();
+  comments.forEach((comment) => {
+    for (const anchor of extractAnchors(comment.body)) {
+      replyCount.set(anchor, (replyCount.get(anchor) || 0) + 1);
+    }
+  });
+
+  const scored = comments.map((comment, index) => {
+    const postNumber = index + 1;
+    const body = sanitizeText(comment.body).replace(/\s+/g, ' ').trim();
+    const length = body.length;
+    const anchorCount = extractAnchors(body).length;
+    const replies = replyCount.get(postNumber) || 0;
+
+    let score = 0;
+    if (postNumber === 1) score += 1000;
+    if (postNumber <= 80) score += 70 - Math.floor(postNumber / 2);
+    if (comment.is_talk_owner) score += 80;
+    score += Math.min(replies * 18, 160);
+    score += Math.min(anchorCount * 12, 60);
+    if (/https?:\/\//i.test(body)) score += 18;
+    if (/[!?！？ｗw笑草]/.test(body)) score += 10;
+    if (length >= 20 && length <= 240) score += 22;
+    if (length > 500) score -= 20;
+    if (isSevereDiscriminatoryContent(body)) score -= 300;
+    if (isKeywordSpam(body)) score -= 80;
+
+    return { comment, originalPostNumber: postNumber, score };
+  });
+
+  const maxCandidates = totalPosts > 800 ? 360 : 400;
+  const selected = new Map<number, { comment: Comment; originalPostNumber: number }>();
+
+  for (const item of scored.slice(0, 80)) {
+    selected.set(item.originalPostNumber, item);
+  }
+
+  for (const item of [...scored].sort((a, b) => b.score - a.score)) {
+    selected.set(item.originalPostNumber, item);
+    for (const anchor of extractAnchors(item.comment.body)) {
+      const anchorComment = comments[anchor - 1];
+      if (anchorComment) {
+        selected.set(anchor, { comment: anchorComment, originalPostNumber: anchor });
+      }
+    }
+    if (selected.size >= maxCandidates) break;
+  }
+
+  return [...selected.values()].sort((a, b) => a.originalPostNumber - b.originalPostNumber);
+}
+
+function buildLocalOllamaSummarizePrompt(title: string, comments: Comment[]): string {
+  const totalPosts = comments.length;
+  const targetCount = getSummaryTargetCount(totalPosts);
+  const candidateEntries = buildLocalOllamaCandidateEntries(comments);
+  const maxBodyLength = candidateEntries.length > 300 ? 70 : totalPosts > 100 ? 120 : 220;
+  const sanitizedTitle = sanitizeText(title);
+
+  const postsText = candidateEntries
+    .map(({ comment, originalPostNumber }) => {
+      const ownerMark = comment.is_talk_owner ? '[主]' : '';
+      const sanitized = sanitizeText(comment.body).replace(/\s+/g, ' ').trim();
+      const body = sanitized.length > maxBodyLength
+        ? sanitized.slice(0, maxBodyLength) + '…'
+        : sanitized;
+      return `${originalPostNumber}${ownerMark}: ${body}`;
+    })
+    .join('\n');
+
+  return sanitizeText(`掲示板まとめ記事に使うレス番号だけを選んでください。
+
+タイトル: ${sanitizedTitle}
+レス数: ${totalPosts}件
+候補レス数: ${candidateEntries.length}件（番号は元スレのレス番号）
+
+【レス一覧】
+${postsText}
+
+【選択ルール】
+- ${targetCount}個前後のレス番号を選ぶ
+- レス1は必ず選ぶ（スレの前提として重要）
+- 短すぎるレス、重複、単なる相槌は避ける
+- 流れが分かるレス、面白いレス、質問への返答、スレ主[主]のレスを優先
+- レス1、最初の反応、共感、反論、ツッコミ、体験談、意外な視点、短い笑いどころ、オチをできるだけ揃える
+- 面白さを優先し、迷ったら少し多めに選ぶ
+- 差別的、ヘイト的、属性への攻撃を含むレスは選ばない
+- アンカー付きレスを選ぶ場合、必要なら参照先も選ぶ
+
+【出力形式】
+{"selected_posts":[2,5,9,12]}
+
+JSONだけを返してください。説明文、理由、Markdownは禁止です。`);
 }
 
 // 色名をカラーコードに変換
@@ -302,6 +625,17 @@ export function enhanceAIResponse(
 ): AISummarizeResponse {
   let selectedPosts = [...aiResponse.selected_posts];
   const totalPosts = comments.length;
+
+  // 置換でフォローしきれない強い差別・ヘイトだけ除外
+  selectedPosts = selectedPosts.filter(post => {
+    const comment = comments[post.post_number - 1];
+    if (!comment) return false;
+    if (isSevereDiscriminatoryContent(comment.body)) {
+      console.log(`🚫 強い差別・ヘイトレスを除外: ${post.post_number}`);
+      return false;
+    }
+    return true;
+  });
 
   // キーワードスパムを除外（レス1は除く）
   selectedPosts = selectedPosts.filter(post => {
@@ -371,7 +705,8 @@ export function enhanceAIResponse(
   }
 
   // レス1を追加（なければ）
-  if (!selectedNumbers.has(1)) {
+  const firstComment = comments[0];
+  if (!selectedNumbers.has(1) && firstComment) {
     selectedPosts.unshift({
       post_number: 1,
       decorations: { color: '#ef4444', size_boost: null },
@@ -399,7 +734,14 @@ export function enhanceAIResponse(
       // >>数字 のパターンを検出（全角・半角両対応）
       const anchorNums = extractAnchors(comment.body);
       for (const targetNum of anchorNums) {
-        if (targetNum > 0 && targetNum <= totalPosts && !selectedNumbers.has(targetNum)) {
+        const targetComment = comments[targetNum - 1];
+        if (
+          targetNum > 0 &&
+          targetNum <= totalPosts &&
+          !selectedNumbers.has(targetNum) &&
+          targetComment &&
+          !isSevereDiscriminatoryContent(targetComment.body)
+        ) {
           console.log(`🔗 アンカー先追加: >>${targetNum} (参照元: ${post.post_number})`);
           newPosts.push({
             post_number: targetNum,
@@ -429,7 +771,7 @@ export function enhanceAIResponse(
     // 全角・半角両対応でアンカーを検出
     const anchorNums = extractAnchors(comment.body);
     for (const targetNum of anchorNums) {
-      if (selectedNumbers.has(targetNum)) {
+      if (selectedNumbers.has(targetNum) && !isSevereDiscriminatoryContent(comment.body)) {
         console.log(`🔗 後方参照追加: ${postNum} (参照先: >>${targetNum})`);
         selectedPosts.push({
           post_number: postNum,
@@ -442,8 +784,8 @@ export function enhanceAIResponse(
     }
   }
 
-  // 200レス制限（読者の読み疲れ防止）
-  const MAX_SELECTED_POSTS = 200;
+  // 読者の読み疲れ防止。アンカー補完で増えすぎても目標数の少し上で止める。
+  const MAX_SELECTED_POSTS = Math.min(110, Math.max(45, Math.round(getSummaryTargetCount(totalPosts) * 1.35)));
   if (selectedPosts.length > MAX_SELECTED_POSTS) {
     console.warn(`⚠️ 選択レスが${selectedPosts.length}個 → ${MAX_SELECTED_POSTS}個に制限`);
 
@@ -643,6 +985,312 @@ function improveColorAndSizeDistribution(
   }
 }
 
+function parseAISummarizeContent(content: string, comments: Comment[]): AISummarizeResponse {
+  let jsonStr = extractJsonObject(content);
+
+  if (!jsonStr) {
+    console.error('❌ JSONオブジェクトが見つかりません:', content.substring(0, 500));
+    return buildFallbackAISummarizeResponse(comments);
+  }
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return enhanceAIResponse(normalizeAISummarizeResponse(parsed), comments);
+  } catch (e1) {
+    // 不完全なJSONを修復
+    try {
+      const repaired = repairIncompleteJson(jsonStr);
+      console.log('🔧 JSON修復を試行:', repaired.substring(0, 200));
+      const parsed = JSON.parse(repaired);
+      return enhanceAIResponse(normalizeAISummarizeResponse(parsed), comments);
+    } catch (e2) {
+      console.error('❌ JSON修復失敗:', e2);
+      console.error('❌ 元のJSON:', jsonStr.substring(0, 500));
+      return buildFallbackAISummarizeResponse(comments);
+    }
+  }
+}
+
+function extractJsonObject(content: string): string {
+  let text = content.trim();
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch) {
+    text = fencedMatch[1].trim();
+  }
+
+  const firstBrace = text.indexOf('{');
+  if (firstBrace < 0) return '';
+
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = firstBrace; i < text.length; i++) {
+    const char = text[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') depth++;
+    if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(firstBrace, i + 1).trim();
+      }
+    }
+  }
+
+  return text.slice(firstBrace).trim();
+}
+
+function normalizeAISummarizeResponse(value: unknown): AISummarizeResponse {
+  const obj = value as { selected_posts?: unknown; posts?: unknown; selectedPosts?: unknown };
+  const rawPosts = Array.isArray(obj.selected_posts)
+    ? obj.selected_posts
+    : Array.isArray(obj.posts)
+      ? obj.posts
+      : Array.isArray(obj.selectedPosts)
+        ? obj.selectedPosts
+        : [];
+
+  return {
+    selected_posts: rawPosts
+      .map((raw) => {
+        if (typeof raw === 'number' || typeof raw === 'string') {
+          const postNumber = Number(raw);
+          if (!Number.isInteger(postNumber) || postNumber < 1) return null;
+          return {
+            post_number: postNumber,
+            decorations: {
+              color: null,
+              size_boost: null,
+            },
+            reason: '',
+          };
+        }
+
+        const post = raw as {
+          post_number?: unknown;
+          postNumber?: unknown;
+          number?: unknown;
+          decorations?: { color?: unknown; size_boost?: unknown; sizeBoost?: unknown };
+          color?: unknown;
+          size_boost?: unknown;
+          sizeBoost?: unknown;
+          reason?: unknown;
+        };
+        const postNumber = Number(post.post_number ?? post.postNumber ?? post.number);
+        if (!Number.isInteger(postNumber) || postNumber < 1) return null;
+
+        const decorations = post.decorations || {};
+        const color = decorations.color ?? post.color;
+        const sizeBoost = decorations.size_boost ?? decorations.sizeBoost ?? post.size_boost ?? post.sizeBoost;
+
+        return {
+          post_number: postNumber,
+          decorations: {
+            color: typeof color === 'string' ? color : null,
+            size_boost: sizeBoost === 'large' || sizeBoost === 'small' ? sizeBoost : null,
+          },
+          reason: typeof post.reason === 'string' ? post.reason : '',
+        };
+      })
+      .filter((post): post is AISummarizeResponse['selected_posts'][number] => post !== null),
+  };
+}
+
+function buildFallbackAISummarizeResponse(comments: Comment[]): AISummarizeResponse {
+  console.warn('⚠️ AI応答の解析に失敗したため、ローカル選定フォールバックを使用します');
+
+  const totalPosts = comments.length;
+  const targetCount = getSummaryTargetCount(totalPosts);
+  const selected = new Set<number>();
+  const candidates = comments
+    .map((comment, index) => {
+      const postNumber = index + 1;
+      const body = sanitizeText(comment.body).replace(/\s+/g, ' ').trim();
+      const bodyWithoutAnchors = body.replace(/(?:>>|＞＞)[０-９\d]+/g, '').trim();
+      const anchorCount = extractAnchors(body).length;
+      const length = bodyWithoutAnchors.length;
+      const hasQuestion = /[?？]/.test(body);
+      const hasPunch = /笑|草|w|ｗ|怖|やば|ヤバ|すご|嘘|不思議|気になる/.test(body);
+
+      let score = 0;
+      if (comment.is_talk_owner) score += 8;
+      if (length >= 15 && length <= 160) score += 5;
+      if (length > 160 && length <= 320) score += 2;
+      if (length < 10) score -= 8;
+      if (anchorCount > 0) score += Math.min(anchorCount * 2, 6);
+      if (hasQuestion) score += 2;
+      if (hasPunch) score += 3;
+      score += Math.max(0, 4 - Math.abs((postNumber / Math.max(totalPosts, 1)) * 4 - 2));
+
+      return { postNumber, score, body };
+    })
+    .filter(({ postNumber, body }) =>
+      postNumber !== 1 &&
+      body.length >= 10 &&
+      !isKeywordSpam(body) &&
+      !isSevereDiscriminatoryContent(body)
+    )
+    .sort((a, b) => b.score - a.score);
+
+  for (const candidate of candidates) {
+    if (selected.size >= targetCount) break;
+    selected.add(candidate.postNumber);
+
+    for (const anchor of extractAnchors(comments[candidate.postNumber - 1]?.body || '')) {
+      if (anchor > 1 && anchor <= totalPosts && selected.size < targetCount) {
+        selected.add(anchor);
+      }
+    }
+  }
+
+  if (selected.size < targetCount) {
+    const step = Math.max(1, Math.floor(totalPosts / targetCount));
+    for (let postNumber = 2; postNumber <= totalPosts && selected.size < targetCount; postNumber += step) {
+      const body = comments[postNumber - 1]?.body || '';
+      if (body.length >= 10 && !isKeywordSpam(body) && !isSevereDiscriminatoryContent(body)) {
+        selected.add(postNumber);
+      }
+    }
+  }
+
+  return enhanceAIResponse({
+    selected_posts: [...selected]
+      .sort((a, b) => a - b)
+      .map((postNumber, index) => ({
+        post_number: postNumber,
+        decorations: {
+          color: index % 3 === 0 ? 'blue' : null,
+          size_boost: null,
+        },
+        reason: 'ローカルフォールバック選定',
+      })),
+  }, comments);
+}
+
+export function getAISummarizeProvider(): AISummarizeProvider {
+  if (typeof window === 'undefined') return 'claude';
+  const provider = localStorage.getItem('matomeln_ai_summary_provider');
+  return provider === 'ollama' ? 'ollama' : 'claude';
+}
+
+export function getLocalOllamaOptions(): Required<LocalOllamaOptions> {
+  if (typeof window === 'undefined') {
+    return {
+      endpoint: DEFAULT_OLLAMA_ENDPOINT,
+      model: DEFAULT_OLLAMA_MODEL,
+    };
+  }
+
+  return {
+    endpoint: localStorage.getItem('matomeln_ollama_endpoint') || DEFAULT_OLLAMA_ENDPOINT,
+    model: localStorage.getItem('matomeln_ollama_model') || DEFAULT_OLLAMA_MODEL,
+  };
+}
+
+export async function callAISummarize(
+  apiKey: string,
+  title: string,
+  comments: Comment[]
+): Promise<AISummarizeResponse> {
+  const provider = getAISummarizeProvider();
+  if (provider === 'ollama') {
+    return callLocalOllamaAPI(title, comments, getLocalOllamaOptions());
+  }
+  return callClaudeAPI(apiKey, title, comments);
+}
+
+// ローカルOllama APIを呼び出し
+export async function callLocalOllamaAPI(
+  title: string,
+  comments: Comment[],
+  options: LocalOllamaOptions = {}
+): Promise<AISummarizeResponse> {
+  const prompt = buildLocalOllamaSummarizePrompt(title, comments);
+  const endpoint = (options.endpoint || DEFAULT_OLLAMA_ENDPOINT).replace(/\/$/, '');
+  const model = options.model || DEFAULT_OLLAMA_MODEL;
+  console.log(`📊 Ollamaプロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件, モデル: ${model}`);
+
+  // ローカルモデルは初回ロードが重いので少し長めに待つ
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 180000);
+
+  let response: Response;
+  try {
+    response = await fetch(`${endpoint}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        think: false,
+        format: 'json',
+        options: {
+          temperature: 0,
+          num_ctx: 16384,
+          num_predict: 4000,
+        },
+        messages: [
+          {
+            role: 'system',
+            content: 'Return valid minified JSON only. The root object must be {"selected_posts":[numbers]}. No markdown. No explanation.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('ローカルAI分析がタイムアウトしました（180秒）。Ollamaが起動しているか確認してください。');
+    }
+    if (error instanceof TypeError) {
+      throw new Error('Ollamaに接続できません。MacでOllamaを起動してから再実行してください。');
+    }
+    throw error instanceof Error ? error : new Error('ローカルAI呼び出しに失敗しました');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    let errorMessage = 'Ollama API呼び出しに失敗しました';
+    try {
+      const errorData = await response.json() as { error?: string };
+      if (errorData.error) errorMessage = errorData.error;
+    } catch {
+      // JSON以外のエラーは既定メッセージを使う
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json() as { message?: { content?: string }; response?: string };
+  const content = data.message?.content || data.response || '';
+  return parseAISummarizeContent(content, comments);
+}
+
 // Claude APIを呼び出し
 export async function callClaudeAPI(
   apiKey: string,
@@ -722,32 +1370,7 @@ export async function callClaudeAPI(
   const data = await response.json() as { content: Array<{ text?: string }> };
   const content = data.content[0]?.text || '';
 
-  // JSONをパース
-  let jsonStr = content;
-
-  // ```json ブロックを除去
-  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1];
-  }
-
-  try {
-    const parsed = JSON.parse(jsonStr);
-    return enhanceAIResponse(parsed, comments);
-  } catch (e1) {
-    // 不完全なJSONを修復
-    try {
-      const repaired = repairIncompleteJson(jsonStr);
-      console.log('🔧 JSON修復を試行:', repaired.substring(0, 200));
-      const parsed = JSON.parse(repaired);
-      return enhanceAIResponse(parsed, comments);
-    } catch (e2) {
-      console.error('❌ JSON修復失敗:', e2);
-      console.error('❌ 元のJSON:', jsonStr.substring(0, 500));
-      // 修復も失敗した場合、空の結果を返す
-      throw new Error('AIの応答を解析できませんでした。スレッドが大きすぎる可能性があります。');
-    }
-  }
+  return parseAISummarizeContent(content, comments);
 }
 
 // 不完全なJSONを修復

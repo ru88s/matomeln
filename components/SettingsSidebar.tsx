@@ -44,6 +44,7 @@ export default function SettingsSidebar({
   return (
     <div className="w-56 flex-shrink-0">
       <div className="sticky top-20 bg-white rounded-2xl border border-orange-200 p-4 shadow-sm space-y-4">
+        <div id="auto-run-sidebar-slot" />
 
         {/* 選択状況 - 最も重要なので一番上 */}
         <div className="space-y-3">

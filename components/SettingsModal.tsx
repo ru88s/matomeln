@@ -51,6 +51,11 @@ export default function SettingsModal({
   onSaveSettings,
 }: SettingsModalProps) {
   const isAdmin = useIsAdmin();
+  const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
+  const [ollamaEndpoint, setOllamaEndpoint] = useState('http://127.0.0.1:11434');
+  const [ollamaModel, setOllamaModel] = useState('gemma4:e4b');
+  const [imageModerationEnabled, setImageModerationEnabled] = useState(true);
+  const [imageModerationModel, setImageModerationModel] = useState('gemma3:4b');
   const [claudeApiKey, setClaudeApiKey] = useState('');
   const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -106,6 +111,14 @@ export default function SettingsModal({
       if (savedClaudeApiKey) {
         setClaudeApiKey(savedClaudeApiKey);
       }
+      const savedAiSummaryProvider = localStorage.getItem('matomeln_ai_summary_provider');
+      if (savedAiSummaryProvider === 'claude' || savedAiSummaryProvider === 'ollama') {
+        setAiSummaryProvider(savedAiSummaryProvider);
+      }
+      setOllamaEndpoint(localStorage.getItem('matomeln_ollama_endpoint') || 'http://127.0.0.1:11434');
+      setOllamaModel(localStorage.getItem('matomeln_ollama_model') || 'gemma4:e4b');
+      setImageModerationEnabled(localStorage.getItem('matomeln_image_moderation_enabled') !== 'false');
+      setImageModerationModel(localStorage.getItem('matomeln_image_moderation_model') || 'gemma3:4b');
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
@@ -162,6 +175,30 @@ export default function SettingsModal({
       persistSettings({ matomeln_claude_api_key: null });
       toast.success('Claude APIキーを削除しました');
     }
+  };
+
+  // AIまとめプロバイダーを保存
+  const saveAISummaryProvider = (provider: 'claude' | 'ollama') => {
+    setAiSummaryProvider(provider);
+    persistSettings({ matomeln_ai_summary_provider: provider });
+    toast.success(`AIまとめを${provider === 'ollama' ? 'ローカルOllama' : 'Claude'}に変更しました`);
+  };
+
+  // Ollama接続設定を保存
+  const saveOllamaSettings = () => {
+    const endpoint = ollamaEndpoint.trim() || 'http://127.0.0.1:11434';
+    const model = ollamaModel.trim() || 'gemma4:e4b';
+    const moderationModel = imageModerationModel.trim() || 'gemma3:4b';
+    setOllamaEndpoint(endpoint);
+    setOllamaModel(model);
+    setImageModerationModel(moderationModel);
+    persistSettings({
+      matomeln_ollama_endpoint: endpoint,
+      matomeln_ollama_model: model,
+      matomeln_image_moderation_enabled: imageModerationEnabled ? 'true' : 'false',
+      matomeln_image_moderation_model: moderationModel,
+    });
+    toast.success('Ollama設定を保存しました');
   };
 
   // Gemini APIキーを保存
@@ -608,6 +645,96 @@ export default function SettingsModal({
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
+                      AIまとめプロバイダー
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveAISummaryProvider('claude')}
+                        className={`text-sm px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors ${
+                          aiSummaryProvider === 'claude'
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Claude
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveAISummaryProvider('ollama')}
+                        className={`text-sm px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors ${
+                          aiSummaryProvider === 'ollama'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        ローカルOllama
+                      </button>
+                    </div>
+                  </div>
+
+                  {aiSummaryProvider === 'ollama' && (
+                    <div className="space-y-2 border border-emerald-200 bg-emerald-50 rounded-lg p-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Ollama URL
+                        </label>
+                        <input
+                          type="text"
+                          value={ollamaEndpoint}
+                          onChange={(e) => setOllamaEndpoint(e.target.value)}
+                          placeholder="http://127.0.0.1:11434"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          モデル
+                        </label>
+                        <input
+                          type="text"
+                          value={ollamaModel}
+                          onChange={(e) => setOllamaModel(e.target.value)}
+                          placeholder="gemma4:e4b"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        />
+                      </div>
+                      <div className="border-t border-emerald-200 pt-3 space-y-2">
+                        <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={imageModerationEnabled}
+                            onChange={(e) => setImageModerationEnabled(e.target.checked)}
+                            className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-400"
+                          />
+                          画像付きレスのグロ・エロ判定を有効にする
+                        </label>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            画像判定モデル
+                          </label>
+                          <input
+                            type="text"
+                            value={imageModerationModel}
+                            onChange={(e) => setImageModerationModel(e.target.value)}
+                            placeholder="gemma3:4b"
+                            disabled={!imageModerationEnabled}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-gray-100 disabled:text-gray-400"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={saveOllamaSettings}
+                        className="w-full text-sm bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
+                      >
+                        Ollama設定を保存
+                      </button>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       APIキー
                     </label>
                     <div className="flex gap-2">
@@ -646,7 +773,7 @@ export default function SettingsModal({
                   </div>
 
                   <p className="text-xs text-purple-600">
-                    レスを自動選択・色付けするAIまとめ機能に使用
+                    レスを自動選択・色付けするAIまとめ機能に使用。ローカルOllama選択時はClaude APIキー不要です。
                   </p>
                 </div>
               </div>

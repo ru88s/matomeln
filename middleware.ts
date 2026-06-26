@@ -42,8 +42,22 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
+function isLocalDevRequest(request: NextRequest): boolean {
+  const host = request.headers.get('host') || '';
+  return (
+    process.env.NODE_ENV === 'development' ||
+    host.startsWith('localhost:') ||
+    host.startsWith('127.0.0.1:')
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ローカル作業中は認証を通さず、クライアント側で開発者ユーザーとして扱う
+  if (isLocalDevRequest(request)) {
+    return NextResponse.next();
+  }
 
   // Allow public paths
   if (isPublicPath(pathname)) {

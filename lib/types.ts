@@ -51,6 +51,7 @@ export interface BlogSettings {
   id: string;
   name: string;
   blogId: string;  // Livedoor: ブログID, girls-matome: APIのURL
+  apiUsername?: string;  // Livedoor AtomPub認証ユーザー名（未指定時はblogId）
   apiKey: string;
   blogType?: BlogType;  // デフォルト: 'livedoor'（後方互換性）
   disabled?: boolean;  // true: 選択不可（更新中止など）
