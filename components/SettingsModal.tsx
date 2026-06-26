@@ -555,7 +555,7 @@ export default function SettingsModal({
                 type="text"
                 value={customName}
                 onChange={(e) => onCustomNameChange(e.target.value)}
-                placeholder="名無しさん"
+                placeholder="未設定"
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent mb-3"
               />
               <div className="flex items-center justify-between">

@@ -29,6 +29,29 @@ type SettingsKey = typeof SYNCED_KEYS[number];
 
 type SettingsMap = Partial<Record<SettingsKey, string | null>>;
 
+function sanitizeCustomNameSettings(value: string): string {
+  try {
+    const settings = JSON.parse(value) as { name?: unknown; bold?: unknown; color?: unknown };
+    const name = typeof settings.name === 'string' ? settings.name.trim() : '';
+    const safeName = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name) ? '' : name;
+    return JSON.stringify({
+      name: safeName,
+      bold: settings.bold !== false,
+      color: typeof settings.color === 'string' && settings.color ? settings.color : '#ff69b4',
+    });
+  } catch {
+    return JSON.stringify({ name: '', bold: true, color: '#ff69b4' });
+  }
+}
+
+function normalizeSettingsForStorage(settings: SettingsMap): SettingsMap {
+  const normalized = { ...settings };
+  if (typeof normalized.customNameSettings === 'string') {
+    normalized.customNameSettings = sanitizeCustomNameSettings(normalized.customNameSettings);
+  }
+  return normalized;
+}
+
 // localStorageからすべての同期対象設定を読み取る
 function readAllFromLocalStorage(): SettingsMap {
   const result: SettingsMap = {};
@@ -87,8 +110,9 @@ export function useSettings() {
         return;
       }
 
-      const localSettings = readAllFromLocalStorage();
-      const hasServerData = Object.keys(serverSettings).length > 0;
+      const localSettings = normalizeSettingsForStorage(readAllFromLocalStorage());
+      const normalizedServerSettings = normalizeSettingsForStorage(serverSettings);
+      const hasServerData = Object.keys(normalizedServerSettings).length > 0;
       const hasLocalData = Object.keys(localSettings).length > 0;
 
       if (!hasServerData && hasLocalData) {
@@ -100,7 +124,7 @@ export function useSettings() {
       if (hasServerData) {
         // サーバーの設定をlocalStorageに反映（サーバー優先）
         for (const key of SYNCED_KEYS) {
-          const serverValue = serverSettings[key];
+          const serverValue = normalizedServerSettings[key];
           if (serverValue !== undefined && serverValue !== null) {
             localStorage.setItem(key, serverValue as string);
           }
@@ -123,8 +147,9 @@ export function useSettings() {
 
   // 設定を保存（localStorage即座 + サーバーはデバウンス付き非同期）
   const saveSettings = useCallback((updates: SettingsMap) => {
+    const normalizedUpdates = normalizeSettingsForStorage(updates);
     // localStorageに即座に書き込み
-    for (const [key, value] of Object.entries(updates)) {
+    for (const [key, value] of Object.entries(normalizedUpdates)) {
       if (value === null || value === undefined) {
         localStorage.removeItem(key);
       } else {

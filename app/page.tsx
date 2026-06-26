@@ -65,6 +65,14 @@ function getAISummarizeInputMode(): 'standard' | 'token-saving' {
     : 'standard';
 }
 
+function sanitizeCustomName(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return '';
+  return trimmed;
+}
+
 // アンカー（>>数字）から参照先のレス番号を抽出
 function extractAnchor(body: string): number | null {
   const match = body.match(/>>(\d+)/);
@@ -203,7 +211,7 @@ export default function Home() {
     if (savedNameSettings) {
       try {
         const settings = JSON.parse(savedNameSettings);
-        setCustomName(settings.name || '');
+        setCustomName(sanitizeCustomName(settings.name));
         setCustomNameBold(settings.bold !== false);
         setCustomNameColor(settings.color || '#ff69b4');
       } catch {
@@ -276,7 +284,12 @@ export default function Home() {
 
   // レス名設定をローカルストレージに保存
   useEffect(() => {
-    const value = JSON.stringify({ name: customName, bold: customNameBold, color: customNameColor });
+    const safeCustomName = sanitizeCustomName(customName);
+    if (customName !== safeCustomName) {
+      setCustomName(safeCustomName);
+      return;
+    }
+    const value = JSON.stringify({ name: safeCustomName, bold: customNameBold, color: customNameColor });
     localStorage.setItem('customNameSettings', value);
     saveSettings({ customNameSettings: value });
   }, [customName, customNameBold, customNameColor, saveSettings]);
@@ -660,7 +673,12 @@ export default function Home() {
       const savedNameSettings = localStorage.getItem('customNameSettings');
       if (savedNameSettings) {
         try {
-          customNameSettings = JSON.parse(savedNameSettings);
+          const parsedSettings = JSON.parse(savedNameSettings);
+          customNameSettings = {
+            name: sanitizeCustomName(parsedSettings.name),
+            bold: parsedSettings.bold !== false,
+            color: parsedSettings.color || '#ff69b4',
+          };
         } catch {
           console.warn('レス名設定の読み込みに失敗');
         }
