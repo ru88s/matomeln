@@ -13,7 +13,7 @@ interface TalkLoaderProps {
   commentsCount?: number;
   thumbnailUrl?: string;
   onThumbnailUrlChange?: (url: string) => void;
-  apiSettings?: { blogUrl: string; apiKey: string };
+  apiSettings?: { blogUrl: string; apiUsername?: string; apiKey: string };
   isDevMode?: boolean;
   clearInputOnLoad?: boolean;
 }
@@ -84,6 +84,9 @@ export default function TalkLoader({
     try {
       const formData = new FormData();
       formData.append('blogId', apiSettings.blogUrl);
+      if (apiSettings.apiUsername) {
+        formData.append('apiUsername', apiSettings.apiUsername);
+      }
       formData.append('apiKey', apiSettings.apiKey);
       formData.append('file', file);
 
@@ -186,6 +189,9 @@ export default function TalkLoader({
 
       const formData = new FormData();
       formData.append('blogId', apiSettings.blogUrl);
+      if (apiSettings.apiUsername) {
+        formData.append('apiUsername', apiSettings.apiUsername);
+      }
       formData.append('apiKey', apiSettings.apiKey);
       formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
 

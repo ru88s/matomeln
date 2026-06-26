@@ -44,10 +44,32 @@ function sanitizeCustomNameSettings(value: string): string {
   }
 }
 
+function normalizeBlogSettingsList(value: string): string {
+  try {
+    const blogs = JSON.parse(value) as Array<Record<string, unknown>>;
+    const normalizedBlogs = blogs.map((blog) => {
+      if (
+        blog.blogType !== 'girls-matome' &&
+        !blog.apiUsername &&
+        ['garlsvip', 'matome_blade', 'mnuhkhkbxmagwje'].includes(String(blog.blogId || ''))
+      ) {
+        return { ...blog, apiUsername: 'garlsvip' };
+      }
+      return blog;
+    });
+    return JSON.stringify(normalizedBlogs);
+  } catch {
+    return value;
+  }
+}
+
 function normalizeSettingsForStorage(settings: SettingsMap): SettingsMap {
   const normalized = { ...settings };
   if (typeof normalized.customNameSettings === 'string') {
     normalized.customNameSettings = sanitizeCustomNameSettings(normalized.customNameSettings);
+  }
+  if (typeof normalized.blogSettingsList === 'string') {
+    normalized.blogSettingsList = normalizeBlogSettingsList(normalized.blogSettingsList);
   }
   return normalized;
 }

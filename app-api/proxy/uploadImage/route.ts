@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const blogId = formData.get('blogId') as string;
+    const apiUsername = formData.get('apiUsername') as string | null;
     const apiKey = formData.get('apiKey') as string;
     const file = formData.get('file') as File;
 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     const endpoint = `https://livedoor.blogcms.jp/atom/blog/${blogId}/image`;
 
     // WSSE認証ヘッダーを生成
-    const wsseHeader = generateWSSEHeader(blogId, apiKey);
+    const wsseHeader = generateWSSEHeader(apiUsername || blogId, apiKey);
 
     // Content-Typeを取得（デフォルトはjpeg）
     const contentType = file.type || 'image/jpeg';

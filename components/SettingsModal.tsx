@@ -69,7 +69,7 @@ export default function SettingsModal({
   const [openaiImageQuality, setOpenaiImageQuality] = useState<OpenAIImageQuality>('medium');
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlog, setEditingBlog] = useState<BlogSettings | null>(null);
-  const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiKey: string; blogType: BlogType; disabled: boolean }>({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
+  const [blogForm, setBlogForm] = useState<{ name: string; blogId: string; apiUsername: string; apiKey: string; blogType: BlogType; disabled: boolean }>({ name: '', blogId: '', apiUsername: '', apiKey: '', blogType: 'livedoor', disabled: false });
   const [thumbnailCharacters, setThumbnailCharacters] = useState<ThumbnailCharacter[]>([]);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
@@ -404,14 +404,14 @@ export default function SettingsModal({
   // ブログ追加モーダルを開く
   const openAddBlogModal = () => {
     setEditingBlog(null);
-    setBlogForm({ name: '', blogId: '', apiKey: '', blogType: 'livedoor', disabled: false });
+    setBlogForm({ name: '', blogId: '', apiUsername: '', apiKey: '', blogType: 'livedoor', disabled: false });
     setShowBlogModal(true);
   };
 
   // ブログ編集モーダルを開く
   const openEditBlogModal = (blog: BlogSettings) => {
     setEditingBlog(blog);
-    setBlogForm({ name: blog.name, blogId: blog.blogId, apiKey: blog.apiKey, blogType: blog.blogType || 'livedoor', disabled: blog.disabled || false });
+    setBlogForm({ name: blog.name, blogId: blog.blogId, apiUsername: blog.apiUsername || '', apiKey: blog.apiKey, blogType: blog.blogType || 'livedoor', disabled: blog.disabled || false });
     setShowBlogModal(true);
   };
 
@@ -430,7 +430,7 @@ export default function SettingsModal({
       // 編集
       const updated = blogs.map(b =>
         b.id === editingBlog.id
-          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiKey: blogForm.apiKey, blogType: blogForm.blogType, disabled: blogForm.disabled }
+          ? { ...b, name: blogForm.name, blogId: blogForm.blogId, apiUsername: blogForm.apiUsername.trim() || undefined, apiKey: blogForm.apiKey, blogType: blogForm.blogType, disabled: blogForm.disabled }
           : b
       );
       onBlogsChange(updated);
@@ -441,6 +441,7 @@ export default function SettingsModal({
         id: crypto.randomUUID(),
         name: blogForm.name,
         blogId: blogForm.blogId,
+        apiUsername: blogForm.apiUsername.trim() || undefined,
         apiKey: blogForm.apiKey,
         blogType: blogForm.blogType,
         disabled: blogForm.disabled,
@@ -1319,6 +1320,23 @@ export default function SettingsModal({
                       : 'https://●●●.blog.jp の ●●● 部分'}
                 </p>
               </div>
+              {blogForm.blogType === 'livedoor' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    認証ユーザー名
+                  </label>
+                  <input
+                    type="text"
+                    value={blogForm.apiUsername}
+                    onChange={(e) => setBlogForm({ ...blogForm, apiUsername: e.target.value })}
+                    placeholder="未入力ならブログIDを使用"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    複数ブログを同じライブドアアカウントで投稿する場合は、ログイン側のユーザー名を指定します。
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   APIキー

@@ -161,6 +161,19 @@ function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWith
   ];
 }
 
+function normalizeBlogSettingsForAuth(blogs: BlogSettings[]): BlogSettings[] {
+  return blogs.map((blog) => {
+    if (
+      blog.blogType !== 'girls-matome' &&
+      !blog.apiUsername &&
+      ['garlsvip', 'matome_blade', 'mnuhkhkbxmagwje'].includes(blog.blogId)
+    ) {
+      return { ...blog, apiUsername: 'garlsvip' };
+    }
+    return blog;
+  });
+}
+
 export default function Home() {
   const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -240,7 +253,8 @@ export default function Home() {
     if (savedBlogs) {
       let blogsList: BlogSettings[] = [];
       try {
-        blogsList = JSON.parse(savedBlogs) as BlogSettings[];
+        blogsList = normalizeBlogSettingsForAuth(JSON.parse(savedBlogs) as BlogSettings[]);
+        localStorage.setItem('blogSettingsList', JSON.stringify(blogsList));
       } catch {
         console.warn('blogSettingsList の読み込みに失敗。デフォルト値を使用します。');
       }
@@ -297,8 +311,8 @@ export default function Home() {
   // 選択中のブログ設定
   const selectedBlog = blogs.find(b => b.id === selectedBlogId);
   const apiSettings = selectedBlog
-    ? { blogUrl: selectedBlog.blogId, apiKey: selectedBlog.apiKey }
-    : { blogUrl: '', apiKey: '' };
+    ? { blogUrl: selectedBlog.blogId, apiUsername: selectedBlog.apiUsername, apiKey: selectedBlog.apiKey }
+    : { blogUrl: '', apiUsername: undefined, apiKey: '' };
 
   // ブログ設定の更新
   const handleBlogsChange = useCallback((newBlogs: BlogSettings[]) => {
@@ -909,6 +923,9 @@ export default function Home() {
 
               const formData = new FormData();
               formData.append('blogId', blogSettings.blogId);
+              if (blogSettings.apiUsername) {
+                formData.append('apiUsername', blogSettings.apiUsername);
+              }
               formData.append('apiKey', blogSettings.apiKey);
               formData.append('file', blob, `ai-thumbnail-${Date.now()}.png`);
 
@@ -1054,6 +1071,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             blogId: blogSettings.blogId,
+            apiUsername: blogSettings.apiUsername,
             apiKey: blogSettings.apiKey,
             title: generatedHTML.title,
             body: fullBody,
@@ -1079,7 +1097,7 @@ export default function Home() {
           if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds?.length > 0) {
             const blogsStr = localStorage.getItem('blogSettingsList');
             if (blogsStr) {
-              const allBlogs = JSON.parse(blogsStr);
+              const allBlogs = normalizeBlogSettingsForAuth(JSON.parse(blogsStr) as BlogSettings[]);
               const otherBlogs = allBlogs.filter((b: { id: string }) =>
                 otherBlogsSettings.selectedOtherBlogIds.includes(b.id)
               );
@@ -1115,6 +1133,7 @@ export default function Home() {
                       },
                       body: JSON.stringify({
                         blogId: blog.blogId,
+                        apiUsername: blog.apiUsername,
                         apiKey: blog.apiKey,
                         title: generatedHTML.title,
                         body: fullBody,
@@ -1126,14 +1145,16 @@ export default function Home() {
                   if (otherResponse.ok) {
                     console.log(`✅ ${blog.name}にも投稿完了`);
                   } else {
-                    // 投稿制限などでエラーの場合は通知してスキップ
-                    console.warn(`⚠️ ${blog.name}への投稿失敗`);
-                    toast(`${blog.name}への投稿をスキップ（制限中の可能性）`, { icon: '⚠️' });
+                    const errorData = await otherResponse.json().catch(() => null) as { details?: string; error?: string } | null;
+                    const detail = errorData?.details || errorData?.error || `HTTP ${otherResponse.status}`;
+                    console.warn(`⚠️ ${blog.name}への投稿失敗:`, detail);
+                    toast(`${blog.name}への投稿をスキップ: ${detail}`, { icon: '⚠️' });
                   }
                 } catch (otherError) {
                   // エラーでも通知してスキップ
                   console.warn(`⚠️ ${blog.name}への投稿エラー:`, otherError);
-                  toast(`${blog.name}への投稿をスキップ`, { icon: '⚠️' });
+                  const message = otherError instanceof Error ? otherError.message : '不明なエラー';
+                  toast(`${blog.name}への投稿をスキップ: ${message}`, { icon: '⚠️' });
                 }
               }
             }

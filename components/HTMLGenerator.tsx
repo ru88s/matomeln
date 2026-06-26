@@ -23,7 +23,7 @@ interface HTMLGeneratorProps {
   customNameBold?: boolean;
   customNameColor?: string;
   thumbnailUrl?: string;
-  apiSettings?: { blogUrl: string; apiKey: string };
+  apiSettings?: { blogUrl: string; apiUsername?: string; apiKey: string };
   selectedBlogName?: string;
   selectedBlogType?: BlogType;
   showIdInHtml?: boolean;
@@ -185,6 +185,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           },
           body: JSON.stringify({
             blogId: apiSettings.blogUrl,
+            apiUsername: apiSettings.apiUsername,
             apiKey: apiSettings.apiKey,
             title: generatedHTML.title,
             body: fullBody,
@@ -253,6 +254,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                 },
                 body: JSON.stringify({
                   blogId: blog.blogId,
+                  apiUsername: blog.apiUsername,
                   apiKey: blog.apiKey,
                   title: generatedHTML.title,
                   body: fullBody,
