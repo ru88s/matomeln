@@ -255,9 +255,8 @@ export default function TalkLoader({
             <span className="font-medium text-gray-700">取得対応:</span>{' '}
             <a href="https://5ch.io" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.io</a> /{' '}
             <a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a> /{' '}
-            <a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a> /{' '}
-            <a href="https://talk.jp" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">talk.jp</a>
-            {isDevMode && <> / <a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}
+            <a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>
+            {isDevMode && <> / <a href="https://talk.jp" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">talk.jp</a> / <a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}
           </label>
           <input
             type="text"
