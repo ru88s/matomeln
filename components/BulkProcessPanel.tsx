@@ -947,27 +947,25 @@ export default function BulkProcessPanel({
     }[tone];
 
     return (
-      <button
-        type="button"
-        onClick={() => !disabled && onChange(!checked)}
-        disabled={disabled}
-        aria-pressed={checked}
-        className={`w-full rounded-lg border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      <label
+        className={`block w-full rounded-lg border px-3 py-2 text-left transition-all ${
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+        } ${toneClass}`}
       >
         <span className="flex items-center justify-between gap-2">
           <span className="min-w-0">
             <span className="block truncate text-xs font-bold">{label}</span>
             {subLabel && <span className="block truncate text-[11px] text-gray-500 mt-0.5">{subLabel}</span>}
           </span>
-          <span className={`inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition-colors ${
-            checked ? 'border-current bg-current text-white' : 'border-gray-300 bg-white text-transparent'
-          }`}>
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-          </span>
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.checked)}
+            className="h-5 w-5 flex-shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500 disabled:cursor-not-allowed"
+          />
         </span>
-      </button>
+      </label>
     );
   };
   const autoRunControls = (
@@ -987,7 +985,7 @@ export default function BulkProcessPanel({
       <div className="space-y-2 mb-3">
         <ToggleOption
           checked={autoRun5chEnabled && autoRunTalkEnabled && autoRunGCEnabled}
-          disabled={autoRunEnabled || isProcessing}
+          disabled={autoRunEnabled}
           label="すべて"
           subLabel="5ch + Talk + ガルちゃん"
           tone="green"
@@ -1000,21 +998,21 @@ export default function BulkProcessPanel({
 
         <ToggleOption
           checked={autoRun5chEnabled}
-          disabled={autoRunEnabled || isProcessing}
+          disabled={autoRunEnabled}
           label="5ch"
           tone="indigo"
           onChange={setAutoRun5chEnabled}
         />
         <ToggleOption
           checked={autoRunTalkEnabled}
-          disabled={autoRunEnabled || isProcessing}
+          disabled={autoRunEnabled}
           label="Talk"
           tone="cyan"
           onChange={setAutoRunTalkEnabled}
         />
         <ToggleOption
           checked={autoRunGCEnabled}
-          disabled={autoRunEnabled || isProcessing}
+          disabled={autoRunEnabled}
           label="ガルちゃん"
           tone="pink"
           onChange={setAutoRunGCEnabled}
