@@ -53,7 +53,6 @@ export default function Header() {
                 <span className="text-xl font-bold text-gray-900">
                   まとめるん
                 </span>
-                <span className="text-[10px] text-gray-400 font-normal ml-1">Beta</span>
               </a>
               {isDevMode && (
                 <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-purple-500 text-white rounded-full">

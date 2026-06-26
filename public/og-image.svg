@@ -27,9 +27,6 @@
   <!-- Title -->
   <text x="600" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="bold" fill="#1f2937">まとめるん</text>
 
-  <!-- Beta badge -->
-  <text x="820" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#9ca3af">Beta</text>
-
   <!-- Subtitle -->
   <text x="600" y="400" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#6b7280">掲示板まとめ作成ツール</text>
 
