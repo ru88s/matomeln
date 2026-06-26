@@ -121,6 +121,7 @@ export default function BulkProcessPanel({
 }: BulkProcessPanelProps) {
   const [urls, setUrls] = useState<string>('');
   const [status, setStatus] = useState<BulkProcessStatus>(getInitialBulkStatus());
+  const [isFetchingAll, setIsFetchingAll] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isFetchingTalk, setIsFetchingTalk] = useState(false);
   const [isFetchingGC, setIsFetchingGC] = useState(false);
@@ -245,6 +246,31 @@ export default function BulkProcessPanel({
       toast.error(stringifyError(error), { id: toastId });
     } finally {
       setIsFetching(false);
+    }
+  }, []);
+
+  const handleFetchAllUrls = useCallback(async () => {
+    setIsFetchingAll(true);
+    const toastId = toast.loading('すべての未まとめURLを取得中...');
+
+    try {
+      const [fiveChResult, talkResult, girlsChannelResult] = await Promise.all([
+        fetchUnsummarizedUrls({ limit: 1000, source: '5ch' }),
+        fetchTalkUrls({ limit: 1000 }),
+        fetchGirlsChannelUrls({ limit: 100 }),
+      ]);
+      const mergedUrls = [
+        ...fiveChResult.urls,
+        ...talkResult.urls,
+        ...girlsChannelResult.urls,
+      ].filter((url, index, allUrls) => allUrls.indexOf(url) === index);
+      setUrls(mergedUrls.join('\n'));
+      toast.success(`${mergedUrls.length}件のURLを取得しました`, { id: toastId });
+    } catch (error) {
+      console.error('Fetch all error:', error);
+      toast.error(stringifyError(error), { id: toastId });
+    } finally {
+      setIsFetchingAll(false);
     }
   }, []);
 
@@ -807,6 +833,7 @@ export default function BulkProcessPanel({
   };
 
   const isProcessing = status.isProcessing || isProcessingAI;
+  const isFetchingAny = isFetchingAll || isFetching || isFetchingTalk || isFetchingGC;
 
   const startAutoRun = useCallback(() => {
     if (!hasAutoRunTargets) {
@@ -1104,10 +1131,33 @@ export default function BulkProcessPanel({
       </div>
 
       {/* ボタン群 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+        <button
+          onClick={handleFetchAllUrls}
+          disabled={isProcessing || isFetchingAny}
+          className="h-11 rounded-lg border border-green-200 bg-white px-3 text-sm font-bold text-green-700 shadow-sm transition-all hover:border-green-300 hover:bg-green-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {isFetchingAll ? (
+            <>
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              取得中...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              すべて取得
+            </>
+          )}
+        </button>
+
         <button
           onClick={handleFetchUrls}
-          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-indigo-200 bg-white px-3 text-sm font-bold text-indigo-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {isFetching ? (
@@ -1130,7 +1180,7 @@ export default function BulkProcessPanel({
 
         <button
           onClick={handleFetchTalkUrls}
-          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-cyan-200 bg-white px-3 text-sm font-bold text-cyan-700 shadow-sm transition-all hover:border-cyan-300 hover:bg-cyan-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {isFetchingTalk ? (
@@ -1153,7 +1203,7 @@ export default function BulkProcessPanel({
 
         <button
           onClick={handleFetchGirlsChannelUrls}
-          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-pink-200 bg-white px-3 text-sm font-bold text-pink-700 shadow-sm transition-all hover:border-pink-300 hover:bg-pink-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {isFetchingGC ? (
@@ -1178,7 +1228,7 @@ export default function BulkProcessPanel({
           <button
             onClick={handleStartBulk}
             disabled={isProcessing || !urls.trim()}
-            className="h-11 rounded-lg bg-indigo-600 px-4 font-bold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:col-span-3 flex items-center justify-center gap-2 cursor-pointer"
+            className="h-11 rounded-lg bg-indigo-600 px-4 font-bold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:col-span-4 flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -1189,7 +1239,7 @@ export default function BulkProcessPanel({
         ) : (
           <button
             onClick={handleStop}
-            className="h-11 rounded-lg bg-red-500 px-4 font-bold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow sm:col-span-3 flex items-center justify-center gap-2 cursor-pointer"
+            className="h-11 rounded-lg bg-red-500 px-4 font-bold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow sm:col-span-4 flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

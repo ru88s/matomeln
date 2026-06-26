@@ -49,14 +49,17 @@ export async function fetchUnsummarizedUrls(options?: {
 
   const data = await response.json() as UnsummarizedUrlsResponse;
 
+  const isTalkUrl = (url: string) => /talk\.jp\/boards\//i.test(url);
+  const isGirlsChannelUrl = (url: string) => /girlschannel\.net\/topics\//i.test(url);
+
   // スレッドIDでソート（新しい順 = ID降順）
   // 5ch URLのスレッドIDはUnix timestamp形式
   const filteredUrls = data.urls.filter((url) => {
     if (options?.source === 'talk') {
-      return /talk\.jp\/boards\//i.test(url);
+      return isTalkUrl(url);
     }
     if (options?.source === '5ch') {
-      return !/talk\.jp\/boards\//i.test(url);
+      return !isTalkUrl(url) && !isGirlsChannelUrl(url);
     }
     return true;
   });
