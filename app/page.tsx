@@ -85,18 +85,17 @@ function extractAnchor(body: string): number | null {
 }
 
 // 選択済みコメントをアンカー順に並び替え（画面表示と一致させる）
+// 入れ子アンカーや循環があっても、選択したレスは必ず1回だけ残す。
 function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithStyle[] {
   if (selectedComments.length === 0) return [];
 
-  // res_idからコメントへのマップ
   const resIdToComment = new Map<number, CommentWithStyle>();
   selectedComments.forEach(c => {
     resIdToComment.set(Number(c.res_id), c);
   });
 
-  // アンカーを持つコメントをグループ化
-  const repliesMap = new Map<number, CommentWithStyle[]>(); // 親res_id -> 返信コメント配列
-  const commentsWithAnchor = new Set<string>();
+  const repliesMap = new Map<number, CommentWithStyle[]>();
+  const childCommentIds = new Set<string>();
 
   selectedComments.forEach(comment => {
     const anchorId = extractAnchor(comment.body);
@@ -105,30 +104,50 @@ function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithSty
         repliesMap.set(anchorId, []);
       }
       repliesMap.get(anchorId)!.push(comment);
-      commentsWithAnchor.add(comment.id);
+      childCommentIds.add(comment.id);
     }
   });
 
-  // 結果配列を構築（親コメントの後に返信を挿入）
   const result: CommentWithStyle[] = [];
+  const addedCommentIds = new Set<string>();
+  const visitingCommentIds = new Set<string>();
 
-  // レス番号順にソートした選択コメント
   const sortedComments = [...selectedComments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
+  repliesMap.forEach(replies => {
+    replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+  });
 
-  sortedComments.forEach(comment => {
-    // アンカーを持つコメントは親の後に挿入されるのでスキップ
-    if (commentsWithAnchor.has(comment.id)) {
+  const addWithReplies = (comment: CommentWithStyle) => {
+    if (addedCommentIds.has(comment.id)) {
       return;
     }
 
-    result.push(comment);
+    if (visitingCommentIds.has(comment.id)) {
+      result.push(comment);
+      addedCommentIds.add(comment.id);
+      return;
+    }
 
-    // このコメントへの返信を追加
+    visitingCommentIds.add(comment.id);
+    result.push(comment);
+    addedCommentIds.add(comment.id);
+
     const replies = repliesMap.get(Number(comment.res_id));
     if (replies) {
-      // 返信をres_id順でソート
-      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-      result.push(...replies);
+      replies.forEach(addWithReplies);
+    }
+    visitingCommentIds.delete(comment.id);
+  };
+
+  sortedComments.forEach(comment => {
+    if (!childCommentIds.has(comment.id)) {
+      addWithReplies(comment);
+    }
+  });
+
+  selectedComments.forEach(comment => {
+    if (!addedCommentIds.has(comment.id)) {
+      addWithReplies(comment);
     }
   });
 
@@ -279,6 +298,10 @@ export default function Home() {
   const apiSettings = selectedBlog
     ? { blogUrl: selectedBlog.blogId, apiKey: selectedBlog.apiKey }
     : { blogUrl: '', apiKey: '' };
+  const htmlSelectedComments = useMemo(
+    () => sortByAnchorOrder(selectedComments),
+    [selectedComments]
+  );
 
   // ブログ設定の更新
   const handleBlogsChange = useCallback((newBlogs: BlogSettings[]) => {
@@ -1254,7 +1277,7 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={sortByAnchorOrder(selectedComments)}
+                  selectedComments={htmlSelectedComments}
                   sourceInfo={sourceInfo}
                   onClose={() => setShowHTMLModal(false)}
                   customName={customName}
