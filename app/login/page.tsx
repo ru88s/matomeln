@@ -43,7 +43,7 @@ function LoginContent() {
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">まとめるん</h1>
-        <p className="text-sm text-gray-500 mt-1">掲示板まとめ作成ツール</p>
+        <p className="text-sm text-gray-500 mt-1">まとめブログを運営する人のためのツール</p>
       </div>
 
       {/* Error message */}
@@ -108,7 +108,7 @@ function LoginFallback() {
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">まとめるん</h1>
-        <p className="text-sm text-gray-500 mt-1">掲示板まとめ作成ツール</p>
+        <p className="text-sm text-gray-500 mt-1">まとめブログを運営する人のためのツール</p>
       </div>
       <div className="bg-gray-50 rounded-xl p-4 mb-6 animate-pulse">
         <p className="text-gray-400 text-sm text-center">読み込み中...</p>

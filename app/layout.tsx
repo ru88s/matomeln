@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
-  title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+  title: "まとめるん - まとめブログを運営する人のためのツール",
   description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
   keywords: "5ch,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,まとめるん,まとめ作成,ブログ記事,自動生成",
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+    title: "まとめるん - まとめブログを運営する人のためのツール",
     description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。",
     url: "https://matomeln.com",
     siteName: "まとめるん",
@@ -29,13 +29,13 @@ export const metadata: Metadata = {
         url: "https://matomeln.com/og-image.png",
         width: 1200,
         height: 630,
-        alt: "まとめるん - 掲示板まとめ作成ツール",
+        alt: "まとめるん - まとめブログを運営する人のためのツール",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "まとめるん - 掲示板まとめ作成ツール",
+    title: "まとめるん - まとめブログを運営する人のためのツール",
     description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
     images: ["https://matomeln.com/og-image.png"],
   },
