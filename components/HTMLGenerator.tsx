@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
@@ -52,6 +52,8 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+  const otherBlogsSettingsLoadedRef = useRef(false);
+  const skipInitialOtherBlogsSaveRef = useRef(true);
 
   // LocalStorageから設定を読み込み
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         }
       }
     }
+    otherBlogsSettingsLoadedRef.current = true;
     // カスタムフッターHTMLを読み込み
     const savedFooter = localStorage.getItem('matomeln_custom_footer_html');
     if (savedFooter) {
@@ -76,7 +79,12 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
   // 設定変更時にLocalStorageに保存
   useEffect(() => {
-    if (isDevMode) {
+    if (skipInitialOtherBlogsSaveRef.current) {
+      skipInitialOtherBlogsSaveRef.current = false;
+      return;
+    }
+
+    if (isDevMode && otherBlogsSettingsLoadedRef.current) {
       localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
         postToOtherBlogs,
         selectedOtherBlogIds,
