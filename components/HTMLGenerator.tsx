@@ -372,18 +372,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             />
           </div>
 
-          {/* タグ表示プレビュー */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h4 className="font-bold text-gray-900">発行タグの表示プレビュー:</h4>
-              <span className="text-xs text-gray-500">下のタグを貼った時の見た目です</span>
-            </div>
-            <div
-              className="matomeln-generated-preview"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-
           {/* 続きを読む */}
           <div>
             <div className="flex justify-between items-center mb-2">
@@ -399,6 +387,18 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               value={generatedHTML.footer}
               onChange={(e) => setGeneratedHTML({...generatedHTML, footer: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-[200px]"
+            />
+          </div>
+
+          {/* タグ表示プレビュー */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-bold text-gray-900">発行タグの表示プレビュー:</h4>
+              <span className="text-xs text-gray-500">下のタグを貼った時の見た目です</span>
+            </div>
+            <div
+              className="matomeln-generated-preview"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>
 
