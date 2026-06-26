@@ -227,13 +227,7 @@ export default function TalkLoader({
     const sourceType = detectSourceType(trimmedInput);
 
     if (sourceType === 'unknown') {
-      setError('有効な5ch、open2ch、2ch.sc、talk.jp、まとめ記事のURLを入力してください');
-      return;
-    }
-
-    // ガールズちゃんねるはDEVモード限定
-    if (sourceType === 'girlschannel' && !isDevMode) {
-      setError('ガールズちゃんねるは現在開発中です');
+      setError('有効な5ch、open2ch、2ch.sc、talk.jp、ガールズちゃんねる、まとめ記事のURLを入力してください');
       return;
     }
 
