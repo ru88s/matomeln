@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
+import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, fetchTalkUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
 import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
@@ -122,19 +122,22 @@ export default function BulkProcessPanel({
   const [urls, setUrls] = useState<string>('');
   const [status, setStatus] = useState<BulkProcessStatus>(getInitialBulkStatus());
   const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingTalk, setIsFetchingTalk] = useState(false);
   const [isFetchingGC, setIsFetchingGC] = useState(false);
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
 
-  // 定期実行機能（localStorageから初期値を読み込み）
+  // 定期実行機能: 対象選択と実行状態を分ける
   const [autoRun5chEnabled, setAutoRun5chEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('autoRun5chEnabled') === 'true';
+    return true;
+  });
+  const [autoRunTalkEnabled, setAutoRunTalkEnabled] = useState(() => {
+    return true;
   });
   const [autoRunGCEnabled, setAutoRunGCEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('autoRunGCEnabled') === 'true';
+    return true;
   });
+  const [autoRunActive, setAutoRunActive] = useState(false);
   const [autoRunInterval, setAutoRunInterval] = useState(() => {
     if (typeof window === 'undefined') return 30;
     const saved = localStorage.getItem('autoRunInterval');
@@ -151,30 +154,30 @@ export default function BulkProcessPanel({
   });
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
-  const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
+  const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'talk' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
   const [autoRunPortalTarget, setAutoRunPortalTarget] = useState<HTMLElement | null>(null);
-  // どちらかが有効かどうか
-  const autoRunEnabled = autoRun5chEnabled || autoRunGCEnabled;
+  const hasAutoRunTargets = autoRun5chEnabled || autoRunTalkEnabled || autoRunGCEnabled;
+  const autoRunEnabled = autoRunActive;
 
   // 初回マウント完了フラグ（ハイドレーション問題を回避）
   const isInitialMountRef = useRef(true);
 
   // クライアントサイドでlocalStorageから状態を復元（ハイドレーション後）
   useEffect(() => {
-    const saved5ch = localStorage.getItem('autoRun5chEnabled') === 'true';
-    const savedGC = localStorage.getItem('autoRunGCEnabled') === 'true';
+    const saved5ch = localStorage.getItem('autoRun5chSelected');
+    const savedTalk = localStorage.getItem('autoRunTalkSelected');
+    const savedGC = localStorage.getItem('autoRunGCSelected');
     const savedInterval = localStorage.getItem('autoRunInterval');
 
-    if (saved5ch !== autoRun5chEnabled) {
-      setAutoRun5chEnabled(saved5ch);
-    }
-    if (savedGC !== autoRunGCEnabled) {
-      setAutoRunGCEnabled(savedGC);
-    }
+    setAutoRunActive(false);
+    localStorage.setItem('autoRunActive', 'false');
+    if (saved5ch !== null) setAutoRun5chEnabled(saved5ch === 'true');
+    if (savedTalk !== null) setAutoRunTalkEnabled(savedTalk === 'true');
+    if (savedGC !== null) setAutoRunGCEnabled(savedGC === 'true');
     if (savedInterval && Number(savedInterval) !== autoRunInterval) {
       setAutoRunInterval(Number(savedInterval));
     }
@@ -185,12 +188,17 @@ export default function BulkProcessPanel({
   // 重要: これらのeffectは復元effectの後に宣言すること
   useEffect(() => {
     if (isInitialMountRef.current) return;
-    localStorage.setItem('autoRun5chEnabled', String(autoRun5chEnabled));
+    localStorage.setItem('autoRun5chSelected', String(autoRun5chEnabled));
   }, [autoRun5chEnabled]);
 
   useEffect(() => {
     if (isInitialMountRef.current) return;
-    localStorage.setItem('autoRunGCEnabled', String(autoRunGCEnabled));
+    localStorage.setItem('autoRunTalkSelected', String(autoRunTalkEnabled));
+  }, [autoRunTalkEnabled]);
+
+  useEffect(() => {
+    if (isInitialMountRef.current) return;
+    localStorage.setItem('autoRunGCSelected', String(autoRunGCEnabled));
   }, [autoRunGCEnabled]);
 
   useEffect(() => {
@@ -229,7 +237,7 @@ export default function BulkProcessPanel({
     const toastId = toast.loading('未まとめURLを取得中...');
 
     try {
-      const result = await fetchUnsummarizedUrls({ limit: 1000 });
+      const result = await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' });
       setUrls(result.urls.join('\n'));
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
@@ -237,6 +245,22 @@ export default function BulkProcessPanel({
       toast.error(stringifyError(error), { id: toastId });
     } finally {
       setIsFetching(false);
+    }
+  }, []);
+
+  const handleFetchTalkUrls = useCallback(async () => {
+    setIsFetchingTalk(true);
+    const toastId = toast.loading('Talk未まとめURLを取得中...');
+
+    try {
+      const result = await fetchTalkUrls({ limit: 1000 });
+      setUrls(result.urls.join('\n'));
+      toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
+    } catch (error) {
+      console.error('Fetch Talk error:', error);
+      toast.error(stringifyError(error), { id: toastId });
+    } finally {
+      setIsFetchingTalk(false);
     }
   }, []);
 
@@ -353,11 +377,9 @@ export default function BulkProcessPanel({
 
   // クレジット残高不足時に定期実行をオフにする
   const disableAutoRunForCreditError = useCallback(() => {
-    setAutoRun5chEnabled(false);
-    setAutoRunGCEnabled(false);
+    setAutoRunActive(false);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('autoRun5chEnabled', 'false');
-      localStorage.setItem('autoRunGCEnabled', 'false');
+      localStorage.setItem('autoRunActive', 'false');
     }
   }, []);
 
@@ -533,20 +555,22 @@ export default function BulkProcessPanel({
   }, []);
 
   // 定期実行: 1サイクル実行（処理完了後に再度URL取得して続行）
-  const runAutoProcessCycle = useCallback(async (source: '5ch' | 'gc'): Promise<boolean> => {
+  const runAutoProcessCycle = useCallback(async (source: '5ch' | 'talk' | 'gc'): Promise<boolean> => {
     // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
     if (isAutoRunningRef.current) return false;
     isAutoRunningRef.current = true;
     setCurrentAutoRunSource(source);
 
-    const sourceLabel = source === '5ch' ? '5ch' : 'ガルちゃん';
+    const sourceLabel = source === '5ch' ? '5ch' : source === 'talk' ? 'Talk' : 'ガルちゃん';
 
     try {
       // 1. 未まとめURLを取得（ソースに応じて異なるAPI）
       toast.loading(`定期実行[${sourceLabel}]: URL取得中...`, { id: 'auto-run' });
       const result = source === '5ch'
-        ? await fetchUnsummarizedUrls({ limit: 1000 })
-        : await fetchGirlsChannelUrls({ limit: 100 });
+        ? await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' })
+        : source === 'talk'
+          ? await fetchTalkUrls({ limit: 1000 })
+          : await fetchGirlsChannelUrls({ limit: 100 });
 
       if (result.urls.length === 0) {
         toast.success(`定期実行[${sourceLabel}]: 未まとめURLがありません`, { id: 'auto-run' });
@@ -740,7 +764,7 @@ export default function BulkProcessPanel({
 
   // 定期実行のメインループ（処理完了後に再チェック）
   startAutoRunLoopRef.current = async () => {
-    if (!autoRun5chEnabled && !autoRunGCEnabled) return;
+    if (!autoRunActive || !hasAutoRunTargets) return;
 
     let hasMoreUrls = false;
 
@@ -749,6 +773,17 @@ export default function BulkProcessPanel({
       hasMoreUrls = await runAutoProcessCycle('5ch');
       if (hasMoreUrls) {
         toast('5ch未まとめを再チェック中...', { icon: '🔄' });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        startAutoRunLoopRef.current?.();
+        return;
+      }
+    }
+
+    // Talkが有効ならTalkを処理
+    if (autoRunTalkEnabled) {
+      hasMoreUrls = await runAutoProcessCycle('talk');
+      if (hasMoreUrls) {
+        toast('Talk未まとめを再チェック中...', { icon: '🔄' });
         await new Promise(resolve => setTimeout(resolve, 3000));
         startAutoRunLoopRef.current?.();
         return;
@@ -771,74 +806,68 @@ export default function BulkProcessPanel({
     setNextRunTime(nextRun);
   };
 
-  // 定期実行のタイマー管理（チェックボックス変更時のみ発火）
-  // 初期値をlocalStorageから復元（リロード時に「無効→有効」と誤判定されるのを防止）
-  const prevAutoRun5chRef = useRef(
-    typeof window !== 'undefined' ? localStorage.getItem('autoRun5chEnabled') === 'true' : false
-  );
-  const prevAutoRunGCRef = useRef(
-    typeof window !== 'undefined' ? localStorage.getItem('autoRunGCEnabled') === 'true' : false
-  );
+  const isProcessing = status.isProcessing || isProcessingAI;
 
-  useEffect(() => {
-    const anyEnabled = autoRun5chEnabled || autoRunGCEnabled;
-    const wasEnabled = prevAutoRun5chRef.current || prevAutoRunGCRef.current;
-
-    // チェックボックスが変更された場合のみ処理
-    const changed5ch = autoRun5chEnabled !== prevAutoRun5chRef.current;
-    const changedGC = autoRunGCEnabled !== prevAutoRunGCRef.current;
-
-    // 状態を更新
-    prevAutoRun5chRef.current = autoRun5chEnabled;
-    prevAutoRunGCRef.current = autoRunGCEnabled;
-
-    // チェックボックスが変更されていない場合は何もしない（初回マウント時も含む）
-    if (!changed5ch && !changedGC) {
-      // ただし、有効中のインターバル変更はタイマーを再作成
-      if (anyEnabled && autoRunTimerRef.current) {
-        clearInterval(autoRunTimerRef.current);
-        autoRunTimerRef.current = setInterval(() => {
-          if (!isAutoRunningRef.current) {
-            startAutoRunLoopRef.current?.();
-          }
-        }, autoRunInterval * 60 * 1000);
-      }
+  const startAutoRun = useCallback(() => {
+    if (!hasAutoRunTargets) {
+      toast.error('定期処理の対象を1つ以上選択してください');
+      return;
+    }
+    if (isProcessing) {
+      toast.error('処理中は定期処理を開始できません');
       return;
     }
 
-    if (anyEnabled && !wasEnabled) {
-      // 無効→有効に変更された場合のみ開始
-      consecutiveErrorsRef.current = 0;
+    consecutiveErrorsRef.current = 0;
+    shouldStopRef.current = false;
+    setNextRunTime(null);
+    setAutoRunActive(true);
+    localStorage.setItem('autoRunActive', 'true');
+  }, [hasAutoRunTargets, isProcessing]);
 
-      const sources = [];
-      if (autoRun5chEnabled) sources.push('5ch');
-      if (autoRunGCEnabled) sources.push('ガルちゃん');
-      toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
-      startAutoRunLoopRef.current?.();
+  const stopAutoRun = useCallback(() => {
+    shouldStopRef.current = true;
+    setAutoRunActive(false);
+    setNextRunTime(null);
+    consecutiveErrorsRef.current = 0;
+    localStorage.setItem('autoRunActive', 'false');
+    if (autoRunTimerRef.current) {
+      clearInterval(autoRunTimerRef.current);
+      autoRunTimerRef.current = null;
+    }
+    toast('定期実行を停止しました', { icon: '⏹️' });
+  }, []);
 
-      // 指定間隔でも定期的に実行（バックアップ用）
-      autoRunTimerRef.current = setInterval(() => {
-        if (!isAutoRunningRef.current) {
-          startAutoRunLoopRef.current?.();
-        }
-      }, autoRunInterval * 60 * 1000);
-    } else if (!anyEnabled && wasEnabled) {
-      // 有効→無効に変更された場合のみ停止
+  useEffect(() => {
+    if (!autoRunActive) {
       if (autoRunTimerRef.current) {
         clearInterval(autoRunTimerRef.current);
         autoRunTimerRef.current = null;
       }
       setNextRunTime(null);
-      consecutiveErrorsRef.current = 0;
-      toast('定期実行を停止しました', { icon: '⏹️' });
+      return;
     }
+
+    const sources = [];
+    if (autoRun5chEnabled) sources.push('5ch');
+    if (autoRunTalkEnabled) sources.push('Talk');
+    if (autoRunGCEnabled) sources.push('ガルちゃん');
+    toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
+    startAutoRunLoopRef.current?.();
+
+    autoRunTimerRef.current = setInterval(() => {
+      if (!isAutoRunningRef.current) {
+        startAutoRunLoopRef.current?.();
+      }
+    }, autoRunInterval * 60 * 1000);
 
     return () => {
       if (autoRunTimerRef.current) {
         clearInterval(autoRunTimerRef.current);
+        autoRunTimerRef.current = null;
       }
     };
-  }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval]);
+  }, [autoRunActive, autoRun5chEnabled, autoRunTalkEnabled, autoRunGCEnabled, autoRunInterval]);
 
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
@@ -863,52 +892,106 @@ export default function BulkProcessPanel({
     return () => clearInterval(timer);
   }, [autoRunEnabled, nextRunTime]);
 
-  const isProcessing = status.isProcessing || isProcessingAI;
+  const activeSources = [
+    autoRun5chEnabled ? '5ch' : null,
+    autoRunTalkEnabled ? 'Talk' : null,
+    autoRunGCEnabled ? 'ガルちゃん' : null,
+  ].filter(Boolean).join(' / ');
+  const ToggleOption = ({
+    checked,
+    disabled,
+    label,
+    subLabel,
+    tone,
+    onChange,
+  }: {
+    checked: boolean;
+    disabled?: boolean;
+    label: string;
+    subLabel?: string;
+    tone: 'green' | 'indigo' | 'cyan' | 'pink';
+    onChange: (checked: boolean) => void;
+  }) => {
+    const toneClass = {
+      green: checked ? 'border-green-300 bg-green-50 text-green-800' : 'border-gray-200 bg-white text-gray-700 hover:border-green-300',
+      indigo: checked ? 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300',
+      cyan: checked ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-gray-200 bg-white text-gray-700 hover:border-cyan-300',
+      pink: checked ? 'border-pink-300 bg-pink-50 text-pink-800' : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300',
+    }[tone];
+
+    return (
+      <button
+        type="button"
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+        aria-pressed={checked}
+        className={`w-full rounded-lg border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      >
+        <span className="flex items-center justify-between gap-2">
+          <span className="min-w-0">
+            <span className="block truncate text-xs font-bold">{label}</span>
+            {subLabel && <span className="block truncate text-[11px] text-gray-500 mt-0.5">{subLabel}</span>}
+          </span>
+          <span className={`inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition-colors ${
+            checked ? 'border-current bg-current text-white' : 'border-gray-300 bg-white text-transparent'
+          }`}>
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
+        </span>
+      </button>
+    );
+  };
   const autoRunControls = (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
-      <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-xs">
+    <div className="rounded-xl border border-green-200 bg-white p-3 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <h4 className="font-bold text-gray-800 flex items-center gap-2 text-xs">
         <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         定期自動処理
-      </h4>
+        </h4>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${autoRunEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+          {autoRunEnabled ? '実行中' : '停止中'}
+        </span>
+      </div>
 
       <div className="space-y-2 mb-3">
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={autoRun5chEnabled && autoRunGCEnabled}
-            onChange={(e) => {
-              setAutoRun5chEnabled(e.target.checked);
-              setAutoRunGCEnabled(e.target.checked);
-            }}
-            className="w-4 h-4 mt-0.5 text-purple-600 rounded focus:ring-purple-500"
-            disabled={isProcessing}
-          />
-          <span className="text-xs font-medium text-gray-700 leading-relaxed">すべて（5ch + ガルちゃん）</span>
-        </label>
+        <ToggleOption
+          checked={autoRun5chEnabled && autoRunTalkEnabled && autoRunGCEnabled}
+          disabled={autoRunEnabled || isProcessing}
+          label="すべて"
+          subLabel="5ch + Talk + ガルちゃん"
+          tone="green"
+          onChange={(checked) => {
+            setAutoRun5chEnabled(checked);
+            setAutoRunTalkEnabled(checked);
+            setAutoRunGCEnabled(checked);
+          }}
+        />
 
-        <label className="flex items-center gap-2 cursor-pointer ml-4">
-          <input
-            type="checkbox"
-            checked={autoRun5chEnabled}
-            onChange={(e) => setAutoRun5chEnabled(e.target.checked)}
-            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-            disabled={isProcessing}
-          />
-          <span className="text-xs font-medium text-gray-700">5ch未まとめ</span>
-        </label>
-
-        <label className="flex items-center gap-2 cursor-pointer ml-4">
-          <input
-            type="checkbox"
-            checked={autoRunGCEnabled}
-            onChange={(e) => setAutoRunGCEnabled(e.target.checked)}
-            className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
-            disabled={isProcessing}
-          />
-          <span className="text-xs font-medium text-gray-700">ガルちゃん</span>
-        </label>
+        <ToggleOption
+          checked={autoRun5chEnabled}
+          disabled={autoRunEnabled || isProcessing}
+          label="5ch"
+          tone="indigo"
+          onChange={setAutoRun5chEnabled}
+        />
+        <ToggleOption
+          checked={autoRunTalkEnabled}
+          disabled={autoRunEnabled || isProcessing}
+          label="Talk"
+          tone="cyan"
+          onChange={setAutoRunTalkEnabled}
+        />
+        <ToggleOption
+          checked={autoRunGCEnabled}
+          disabled={autoRunEnabled || isProcessing}
+          label="ガルちゃん"
+          tone="pink"
+          onChange={setAutoRunGCEnabled}
+        />
       </div>
 
       <label className="block mb-3">
@@ -926,30 +1009,59 @@ export default function BulkProcessPanel({
         </select>
       </label>
 
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={startAutoRun}
+          disabled={autoRunEnabled || isProcessing || !hasAutoRunTargets}
+          className="h-9 rounded-lg bg-green-600 px-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
+        >
+          スタート
+        </button>
+        <button
+          type="button"
+          onClick={stopAutoRun}
+          disabled={!autoRunEnabled}
+          className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-xs font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          停止
+        </button>
+      </div>
+
       {autoRunEnabled && (
-        <div className="bg-white rounded-lg p-2.5 border border-green-200 text-xs space-y-1">
-          <p className="space-y-1">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+        <div className="rounded-lg border border-green-200 bg-green-50/60 p-2.5 text-xs space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
               status.isProcessing
                 ? currentAutoRunSource === '5ch'
                   ? 'bg-indigo-100 text-indigo-800'
-                  : 'bg-pink-100 text-pink-800'
+                  : currentAutoRunSource === 'talk'
+                    ? 'bg-cyan-100 text-cyan-800'
+                    : 'bg-pink-100 text-pink-800'
                 : 'bg-green-100 text-green-800'
             }`}>
               {status.isProcessing
-                ? currentAutoRunSource === '5ch' ? '5ch処理中' : 'ガルちゃん処理中'
+                ? currentAutoRunSource === '5ch' ? '5ch処理中' : currentAutoRunSource === 'talk' ? 'Talk処理中' : 'ガルちゃん処理中'
                 : '待機中'}
             </span>
-            <span className="block text-gray-600 leading-relaxed">
+            <span className="text-[11px] font-medium text-gray-500">{activeSources}</span>
+          </div>
+          <div className="rounded-md bg-white px-2 py-2 text-gray-700 shadow-sm">
+            <span className="block leading-relaxed">
               {status.isProcessing
                 ? `${status.currentIndex + 1}/${status.totalCount}件を処理中...`
                 : nextRunTime
-                  ? `次回チェック: ${formatTimeRemaining(nextRunTime)}`
+                  ? `次回チェックまで ${formatTimeRemaining(nextRunTime)}`
                   : '処理完了後に再チェックします'}
             </span>
-          </p>
+            {nextRunTime && !status.isProcessing && (
+              <span className="mt-1 block text-[11px] text-gray-500">
+                開始予定: {nextRunTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
           {lastRunTime && (
-            <p className="text-gray-500">
+            <p className="text-[11px] text-gray-500">
               前回実行: {lastRunTime.toLocaleTimeString('ja-JP')}
             </p>
           )}
@@ -992,11 +1104,11 @@ export default function BulkProcessPanel({
       </div>
 
       {/* ボタン群 */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <button
           onClick={handleFetchUrls}
-          disabled={isProcessing || isFetching || isFetchingGC}
-          className="flex-1 min-w-[140px] bg-white border border-indigo-300 text-indigo-700 font-bold py-2 px-3 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer text-sm"
+          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          className="h-11 rounded-lg border border-indigo-200 bg-white px-3 text-sm font-bold text-indigo-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {isFetching ? (
             <>
@@ -1011,15 +1123,38 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              5ch未まとめ
+              5ch取得
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleFetchTalkUrls}
+          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          className="h-11 rounded-lg border border-cyan-200 bg-white px-3 text-sm font-bold text-cyan-700 shadow-sm transition-all hover:border-cyan-300 hover:bg-cyan-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {isFetchingTalk ? (
+            <>
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              取得中...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Talk取得
             </>
           )}
         </button>
 
         <button
           onClick={handleFetchGirlsChannelUrls}
-          disabled={isProcessing || isFetching || isFetchingGC}
-          className="flex-1 min-w-[140px] bg-white border border-pink-300 text-pink-700 font-bold py-2 px-3 rounded-lg hover:bg-pink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer text-sm"
+          disabled={isProcessing || isFetching || isFetchingTalk || isFetchingGC}
+          className="h-11 rounded-lg border border-pink-200 bg-white px-3 text-sm font-bold text-pink-700 shadow-sm transition-all hover:border-pink-300 hover:bg-pink-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {isFetchingGC ? (
             <>
@@ -1034,7 +1169,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              ガルちゃん
+              ガルちゃん取得
             </>
           )}
         </button>
@@ -1043,7 +1178,7 @@ export default function BulkProcessPanel({
           <button
             onClick={handleStartBulk}
             disabled={isProcessing || !urls.trim()}
-            className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="h-11 rounded-lg bg-indigo-600 px-4 font-bold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:col-span-3 flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -1054,7 +1189,7 @@ export default function BulkProcessPanel({
         ) : (
           <button
             onClick={handleStop}
-            className="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="h-11 rounded-lg bg-red-500 px-4 font-bold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow sm:col-span-3 flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

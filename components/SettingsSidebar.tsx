@@ -66,15 +66,27 @@ export default function SettingsSidebar({
               解除
             </button>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
-            <input
-              type="checkbox"
-              checked={showOnlySelected}
-              onChange={(e) => onShowOnlySelectedChange(e.target.checked)}
-              className="h-4 w-4 text-orange-500 focus:ring-orange-400 border-gray-300 rounded cursor-pointer"
-            />
-            <span className="text-gray-700">選択済みのみ表示</span>
-          </label>
+          <button
+            type="button"
+            onClick={() => onShowOnlySelectedChange(!showOnlySelected)}
+            aria-pressed={showOnlySelected}
+            className={`w-full rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+              showOnlySelected
+                ? 'border-orange-300 bg-orange-50 text-orange-800'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-orange-200 hover:bg-orange-50/50'
+            }`}
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold">選択済みのみ表示</span>
+              <span className={`inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition-colors ${
+                showOnlySelected ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-300 bg-white text-transparent'
+              }`}>
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            </span>
+          </button>
         </div>
 
         <div id="bulk-auto-run-sidebar-slot" className="[&:empty]:hidden" />

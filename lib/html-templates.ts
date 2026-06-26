@@ -478,15 +478,16 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
   for (const [placeholder, url] of placeholders) {
     const originalUrl = unescapeHtml(url);
     let cardHTML = '';
+    const linkHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;word-break:break-all;">${url}</a>`;
 
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
-      cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
+      cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;word-break:break-all;">${url}</a>`;
     }
     else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)) {
-      cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
+      cardHTML = linkHTML;
     }
     else if (skipOgp) {
-      cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
+      cardHTML = linkHTML;
     }
     else {
       const ogp = ogpResults.get(placeholder);
@@ -499,7 +500,8 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
         } catch {
           hostname = ogp.siteName || originalUrl;
         }
-        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:10px 0;text-decoration:none;color:inherit;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hostname)}</div></div></div></a>`;
+        const ogpCardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:8px 0 10px;text-decoration:none;color:inherit;background:#fff;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hostname)}</div></div></div></a>`;
+        cardHTML = `${linkHTML}<br />\n${ogpCardHTML}`;
       } else {
         let hostname = '';
         try {
@@ -507,7 +509,8 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
         } catch {
           hostname = originalUrl;
         }
-        cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:10px 0;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${url}</div><div style="font-size:11px;color:#666;">${escapeHtml(hostname)}</div></a>`;
+        const fallbackCardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:8px 0 10px;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${url}</div><div style="font-size:11px;color:#666;">${escapeHtml(hostname)}</div></a>`;
+        cardHTML = `${linkHTML}<br />\n${fallbackCardHTML}`;
       }
     }
 

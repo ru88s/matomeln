@@ -254,6 +254,53 @@ const SEVERE_HOSTILE_WORDS = [
   '劣等',
 ];
 
+const LOW_QUALITY_SPAM_TERMS = [
+  '在日',
+  '特権',
+  '朝鮮',
+  '韓国',
+  'korea',
+  'fuckkorea',
+  '朝鮮犬',
+  '占領軍',
+  'プレスコード',
+  '共産党',
+  '東京新聞',
+  '中日新聞',
+  'aera',
+  'd4p',
+  '神原',
+  '金井',
+  '金英功',
+  'ミサイル',
+  'レイプ民族',
+  'くそ弁護士',
+  'npo学会',
+];
+
+const LOW_QUALITY_HOSTILE_TERMS = [
+  ...HOSTILE_WORDS,
+  ...SEVERE_HOSTILE_WORDS,
+  'fuck',
+  'くそ',
+  'クソ',
+  'レイプ',
+  '射殺',
+  '犬',
+  '犯罪',
+  '妄想',
+  '批判できない',
+];
+
+const LOW_QUALITY_GROUP_TERMS = [
+  ...PROTECTED_GROUP_TERMS,
+  '朝鮮',
+  '韓国',
+  'korea',
+  '在日',
+  '民族',
+];
+
 function escapeRegExp(term: string): string {
   return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -327,6 +374,55 @@ export function sanitizeDiscriminatoryContentForPublishing(text: string): string
   }
 
   return sanitized;
+}
+
+function countIncludedTerms(normalized: string, terms: string[]): number {
+  const uniqueTerms = new Set(terms.map((term) => term.toLowerCase()));
+  let count = 0;
+  for (const term of uniqueTerms) {
+    if (term && normalized.includes(term)) count++;
+  }
+  return count;
+}
+
+export function isLowQualitySpamCommentText(text: string): boolean {
+  const cleaned = sanitizeText(text).normalize('NFKC').trim();
+  if (cleaned.length < 20) return false;
+
+  const normalized = cleaned.toLowerCase().replace(/\s+/g, '');
+  const spamHits = countIncludedTerms(normalized, LOW_QUALITY_SPAM_TERMS);
+  const hostileHits = countIncludedTerms(normalized, LOW_QUALITY_HOSTILE_TERMS);
+  const groupHits = countIncludedTerms(normalized, LOW_QUALITY_GROUP_TERMS);
+  const hasHangul = /[\uac00-\ud7af]/.test(cleaned);
+  const hasKnownBadPhrase = /(fuck\s*korea|fuckkorea|レイプ民族|朝鮮犬|くそ在日特権)/i.test(cleaned);
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  const punctuationCount = (cleaned.match(/[。！？!?、,.]/g) || []).length;
+  const looksLikeKeywordSalad = tokens.length >= 8 && punctuationCount <= 1;
+
+  if (hasKnownBadPhrase) return true;
+  if (hasHangul && spamHits >= 2 && (hostileHits >= 1 || groupHits >= 1)) return true;
+  if (spamHits >= 6 && hostileHits >= 2) return true;
+  if (groupHits >= 2 && hostileHits >= 2 && spamHits >= 4) return true;
+  if (looksLikeKeywordSalad && spamHits >= 5 && (hostileHits >= 1 || groupHits >= 1)) return true;
+
+  return false;
+}
+
+export function filterLowQualitySpamComments<T extends { body: string; res_id?: string | number }>(
+  comments: T[]
+): { keptComments: T[]; removedComments: T[] } {
+  const keptComments: T[] = [];
+  const removedComments: T[] = [];
+
+  for (const comment of comments) {
+    if (isLowQualitySpamCommentText(comment.body)) {
+      removedComments.push(comment);
+    } else {
+      keptComments.push(comment);
+    }
+  }
+
+  return { keptComments, removedComments };
 }
 
 // アンカー（>>数字）を抽出（全角・半角両対応）
@@ -471,6 +567,7 @@ ${postsText}
 - スレ主[主]のレスは優先的に選んでください
 - 10文字未満の短いレスは選ばないでください（「あ」「草」など）
 - 差別的、ヘイト的、属性への攻撃を含むレスは選ばないでください
+- 意味不明な政治・民族・メディア名・団体名・暴言の羅列、韓国語/英語混じりのヘイトスパム、単語の詰め込みは選ばないでください
 - アンカー（>>数字）付きレスを選ぶ場合、参照先も重要なら選んでください
 
 【色の使用ルール】
@@ -585,6 +682,7 @@ ${postsText}
 - レス1、最初の反応、共感、反論、ツッコミ、体験談、意外な視点、短い笑いどころ、オチをできるだけ揃える
 - 面白さを優先し、迷ったら少し多めに選ぶ
 - 差別的、ヘイト的、属性への攻撃を含むレスは選ばない
+- 意味不明な政治・民族・メディア名・団体名・暴言の羅列、韓国語/英語混じりのヘイトスパム、単語の詰め込みは選ばない
 - アンカー付きレスを選ぶ場合、必要なら参照先も選ぶ
 
 【出力形式】
@@ -632,6 +730,18 @@ export function enhanceAIResponse(
     if (!comment) return false;
     if (isSevereDiscriminatoryContent(comment.body)) {
       console.log(`🚫 強い差別・ヘイトレスを除外: ${post.post_number}`);
+      return false;
+    }
+    return true;
+  });
+
+  // 意味不明な政治・民族・暴言の単語羅列を除外（レス1は除く）
+  selectedPosts = selectedPosts.filter(post => {
+    if (post.post_number === 1) return true;
+    const comment = comments[post.post_number - 1];
+    if (!comment) return false;
+    if (isLowQualitySpamCommentText(comment.body)) {
+      console.log(`🚫 低品質スパムレスを除外: ${post.post_number}`);
       return false;
     }
     return true;
@@ -740,7 +850,8 @@ export function enhanceAIResponse(
           targetNum <= totalPosts &&
           !selectedNumbers.has(targetNum) &&
           targetComment &&
-          !isSevereDiscriminatoryContent(targetComment.body)
+          !isSevereDiscriminatoryContent(targetComment.body) &&
+          !isLowQualitySpamCommentText(targetComment.body)
         ) {
           console.log(`🔗 アンカー先追加: >>${targetNum} (参照元: ${post.post_number})`);
           newPosts.push({
@@ -771,7 +882,11 @@ export function enhanceAIResponse(
     // 全角・半角両対応でアンカーを検出
     const anchorNums = extractAnchors(comment.body);
     for (const targetNum of anchorNums) {
-      if (selectedNumbers.has(targetNum) && !isSevereDiscriminatoryContent(comment.body)) {
+      if (
+        selectedNumbers.has(targetNum) &&
+        !isSevereDiscriminatoryContent(comment.body) &&
+        !isLowQualitySpamCommentText(comment.body)
+      ) {
         console.log(`🔗 後方参照追加: ${postNum} (参照先: >>${targetNum})`);
         selectedPosts.push({
           post_number: postNum,

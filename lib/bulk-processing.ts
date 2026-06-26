@@ -29,6 +29,7 @@ export async function fetchUnsummarizedUrls(options?: {
   date?: string;
   lifeOnly?: boolean;
   limit?: number;
+  source?: '5ch' | 'talk';
 }): Promise<UnsummarizedUrlsResponse> {
   const params = new URLSearchParams();
   if (options?.date) params.append('date', options.date);
@@ -50,7 +51,17 @@ export async function fetchUnsummarizedUrls(options?: {
 
   // スレッドIDでソート（新しい順 = ID降順）
   // 5ch URLのスレッドIDはUnix timestamp形式
-  const sortedUrls = data.urls.sort((a, b) => {
+  const filteredUrls = data.urls.filter((url) => {
+    if (options?.source === 'talk') {
+      return /talk\.jp\/boards\//i.test(url);
+    }
+    if (options?.source === '5ch') {
+      return !/talk\.jp\/boards\//i.test(url);
+    }
+    return true;
+  });
+
+  const sortedUrls = filteredUrls.sort((a, b) => {
     const idA = extractThreadId(a);
     const idB = extractThreadId(b);
     if (!idA || !idB) return 0;
@@ -62,6 +73,12 @@ export async function fetchUnsummarizedUrls(options?: {
     urls: sortedUrls,
     count: sortedUrls.length,
   };
+}
+
+export async function fetchTalkUrls(options?: {
+  limit?: number;
+}): Promise<UnsummarizedUrlsResponse> {
+  return fetchUnsummarizedUrls({ ...options, source: 'talk' });
 }
 
 /**

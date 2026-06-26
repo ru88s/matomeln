@@ -57,7 +57,13 @@ export async function onRequest(context: any) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status}`);
+      return new Response(
+        JSON.stringify(emptyOgpData(targetUrl)),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // バイナリデータとして取得
@@ -115,13 +121,23 @@ export async function onRequest(context: any) {
       console.error('OGP fetch error:', error);
     }
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch OGP data' }),
+      JSON.stringify(emptyOgpData(targetUrl)),
       {
-        status: 500,
+        status: 200,
         headers: { 'Content-Type': 'application/json' },
       }
     );
   }
+}
+
+function emptyOgpData(url: string) {
+  return {
+    title: '',
+    description: '',
+    image: '',
+    siteName: '',
+    url,
+  };
 }
 
 function decodeHTMLEntities(text: string): string {

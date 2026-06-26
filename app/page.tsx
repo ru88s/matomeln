@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
@@ -174,6 +174,7 @@ export default function Home() {
     setSelectedCommentsValue(keepSourceFirstCommentAsBody(nextComments));
   }, [setSelectedCommentsValue]);
   const [showHTMLModal, setShowHTMLModal] = useState(false);
+  const [htmlModalComments, setHtmlModalComments] = useState<CommentWithStyle[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog'; originalUrl: string } | null>(null);
@@ -285,10 +286,6 @@ export default function Home() {
   const apiSettings = selectedBlog
     ? { blogUrl: selectedBlog.blogId, apiKey: selectedBlog.apiKey }
     : { blogUrl: '', apiKey: '' };
-  const htmlSelectedComments = useMemo(
-    () => sortByAnchorOrder(selectedComments),
-    [selectedComments]
-  );
 
   // ブログ設定の更新
   const handleBlogsChange = useCallback((newBlogs: BlogSettings[]) => {
@@ -321,6 +318,7 @@ export default function Home() {
     if (pendingModalCommentCount !== null && selectedComments.length === pendingModalCommentCount) {
       console.log('🔓 モーダルを開く（selectedComments確定）:', selectedComments.map(c => `${c.res_id}`).join(', '));
       setPendingModalCommentCount(null);
+      setHtmlModalComments(selectedComments);
       setShowHTMLModal(true);
     }
   }, [pendingModalCommentCount, selectedComments]);
@@ -400,8 +398,9 @@ export default function Home() {
       toast.error('コメントを選択してください');
       return;
     }
+    setHtmlModalComments(selectedComments);
     setShowHTMLModal(true);
-  }, [currentTalk, selectedComments.length]);
+  }, [currentTalk, selectedComments]);
 
   // Ctrl+Enter / Cmd+Enter でタグ発行モーダルを開く
   useEffect(() => {
@@ -443,7 +442,12 @@ export default function Home() {
       return;
     }
 
-    const { callAISummarize, getAISummarizeProvider, sanitizeDiscriminatoryContentForPublishing } = await import('@/lib/ai-summarize');
+    const {
+      callAISummarize,
+      filterLowQualitySpamComments,
+      getAISummarizeProvider,
+      sanitizeDiscriminatoryContentForPublishing
+    } = await import('@/lib/ai-summarize');
     const aiProvider = getAISummarizeProvider();
     const apiKey = localStorage.getItem('matomeln_claude_api_key') || '';
     if (aiProvider === 'claude' && !apiKey) {
@@ -509,6 +513,13 @@ export default function Home() {
 
       // AIが返した順番をそのまま使用（ソートしない）
       // ユーザーは後からCommentPickerで並び替え可能
+      const spamFilterResult = filterLowQualitySpamComments(newSelectedComments.filter(comment => comment.res_id !== '1'));
+      const firstSelectedComments = newSelectedComments.filter(comment => comment.res_id === '1');
+      if (spamFilterResult.removedComments.length > 0) {
+        console.log('🚫 低品質スパムレスを除外:', spamFilterResult.removedComments.map(comment => comment.res_id).join(', '));
+      }
+      newSelectedComments = [...firstSelectedComments, ...spamFilterResult.keptComments];
+
       const firstComment = comments[0];
       if (firstComment && !newSelectedComments.some(comment => comment.id === firstComment.id)) {
         newSelectedComments = [{
@@ -599,7 +610,13 @@ export default function Home() {
       const savedBlogs = localStorage.getItem('blogSettingsList');
       // sessionStorageから読み込み（タブごとに独立したブログ選択）
       const savedSelectedBlogId = sessionStorage.getItem('selectedBlogId') || localStorage.getItem('selectedBlogId');
-      const { callAISummarize, getAISummarizeProvider, isAdultContent, sanitizeDiscriminatoryContentForPublishing } = await import('@/lib/ai-summarize');
+      const {
+        callAISummarize,
+        filterLowQualitySpamComments,
+        getAISummarizeProvider,
+        isAdultContent,
+        sanitizeDiscriminatoryContentForPublishing
+      } = await import('@/lib/ai-summarize');
       const aiProvider = getAISummarizeProvider();
 
       if (aiProvider === 'claude' && !claudeApiKey) {
@@ -731,6 +748,13 @@ export default function Home() {
       // AIが返した順番をそのまま使用（ソートしない）
       // デバッグ: AI選択結果を確認
       console.log('🤖 AI選択結果:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
+      const spamFilterResult = filterLowQualitySpamComments(newSelectedComments.filter(comment => comment.res_id !== '1'));
+      const firstSelectedComments = newSelectedComments.filter(comment => comment.res_id === '1');
+      if (spamFilterResult.removedComments.length > 0) {
+        console.log('🚫 低品質スパムレスを除外:', spamFilterResult.removedComments.map(comment => comment.res_id).join(', '));
+      }
+      newSelectedComments = [...firstSelectedComments, ...spamFilterResult.keptComments];
+
       const firstComment = loadedComments[0];
       if (firstComment && !newSelectedComments.some(comment => comment.id === firstComment.id)) {
         newSelectedComments = [{
@@ -1295,7 +1319,10 @@ export default function Home() {
                   タグ発行
                 </h2>
                 <button
-                  onClick={() => setShowHTMLModal(false)}
+                  onClick={() => {
+                    setShowHTMLModal(false);
+                    setHtmlModalComments([]);
+                  }}
                   className="p-2 hover:bg-orange-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
                   aria-label="閉じる"
                 >
@@ -1307,9 +1334,12 @@ export default function Home() {
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator
                   talk={currentTalk}
-                  selectedComments={htmlSelectedComments}
+                  selectedComments={htmlModalComments}
                   sourceInfo={sourceInfo}
-                  onClose={() => setShowHTMLModal(false)}
+                  onClose={() => {
+                    setShowHTMLModal(false);
+                    setHtmlModalComments([]);
+                  }}
                   customName={customName}
                   customNameBold={customNameBold}
                   customNameColor={customNameColor}
