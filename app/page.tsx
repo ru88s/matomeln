@@ -1,25 +1,42 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
-import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
-import SettingsModal from '@/components/SettingsModal';
-import BulkProcessPanel from '@/components/BulkProcessPanel';
 import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/LoadingSpinner';
 import { fetchThreadData } from '@/lib/shikutoku-api';
 import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
+import type { TagSearchResult } from '@/lib/tag-thumbnail-cache';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useSettings } from '@/hooks/useSettings';
-import { callAISummarize, AISummarizeResponse, getAISummarizeProvider, getLocalOllamaOptions, isAdultContent, sanitizeDiscriminatoryContentForPublishing } from '@/lib/ai-summarize';
-import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
-import { generateMatomeHTML } from '@/lib/html-templates';
-import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
-import { filterRiskyMediaUrlComments, filterUnsafeImageComments, getImageModerationOptions } from '@/lib/image-moderation';
+import { useIsAdmin } from '@/lib/auth-context';
 import toast from 'react-hot-toast';
+
+const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-purple-100 bg-white p-4 text-sm text-gray-500 shadow-sm">
+      一括処理パネルを読み込み中...
+    </div>
+  ),
+});
+
+const HTMLGenerator = dynamic(() => import('@/components/HTMLGenerator'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-orange-100 bg-white p-6 text-sm text-gray-500">
+      タグ発行ツールを読み込み中...
+    </div>
+  ),
+});
+
+const SettingsModal = dynamic(() => import('@/components/SettingsModal'), {
+  ssr: false,
+});
 
 // タイムアウト付きfetch（30秒）
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
@@ -42,40 +59,10 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(1)}秒`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
-  return `${minutes}分${remainingSeconds.toString().padStart(2, '0')}秒`;
-}
-
-function getAISummaryModelLabel(): string {
-  const provider = getAISummarizeProvider();
-  if (provider === 'ollama') return getLocalOllamaOptions().model;
-  return 'claude-haiku-4-5-20251001';
-}
-
-function ensureFirstCommentSelected(
-  selectedComments: CommentWithStyle[],
-  comments: Comment[],
-  editedComments: Record<string, string>,
-  stripMedia: boolean = false
-): CommentWithStyle[] {
-  const firstComment = comments[0];
-  if (!firstComment || selectedComments.some(comment => comment.id === firstComment.id)) {
-    return selectedComments;
-  }
-
-  const firstCommentBody = editedComments[firstComment.id] || firstComment.body;
-  const firstCommentWithStyle: CommentWithStyle = {
-    ...firstComment,
-    body: sanitizeDiscriminatoryContentForPublishing(firstCommentBody),
-    color: '#ef4444',
-    fontSize: 'medium',
-    images: stripMedia ? [] : firstComment.images,
-  };
-
-  return [firstCommentWithStyle, ...selectedComments];
+function getAISummarizeInputMode(): 'standard' | 'token-saving' {
+  return localStorage.getItem('matomeln_ai_input_mode') === 'token-saving'
+    ? 'token-saving'
+    : 'standard';
 }
 
 // アンカー（>>数字）から参照先のレス番号を抽出
@@ -154,13 +141,26 @@ function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithSty
   return result;
 }
 
+function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWithStyle[] {
+  const sourceFirstIndex = comments.findIndex((comment) => Number(comment.res_id) === 1);
+  if (sourceFirstIndex <= 0) return comments;
+
+  const sourceFirstComment = comments[sourceFirstIndex];
+  return [
+    sourceFirstComment,
+    ...comments.slice(0, sourceFirstIndex),
+    ...comments.slice(sourceFirstIndex + 1),
+  ];
+}
+
 export default function Home() {
+  const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
   const [currentTalk, setCurrentTalk] = useState<Talk | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const {
     value: selectedComments,
-    setValue: setSelectedComments,
+    setValue: setSelectedCommentsValue,
     canUndo,
     canRedo,
     undo,
@@ -170,18 +170,13 @@ export default function Home() {
     initialState: [],
     maxHistorySize: 30
   });
+  const setSelectedComments = useCallback((nextComments: CommentWithStyle[]) => {
+    setSelectedCommentsValue(keepSourceFirstCommentAsBody(nextComments));
+  }, [setSelectedCommentsValue]);
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
-  const [aiSummaryStartedAt, setAiSummaryStartedAt] = useState<number | null>(null);
-  const [aiSummaryElapsedSeconds, setAiSummaryElapsedSeconds] = useState(0);
-  const [lastAISummaryStats, setLastAISummaryStats] = useState<{
-    modelName: string;
-    durationSeconds: number;
-    selectedCount: number;
-    totalCount: number;
-  } | null>(null);
-  const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp'; originalUrl: string } | null>(null);
+  const [sourceInfo, setSourceInfo] = useState<{ source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog'; originalUrl: string } | null>(null);
   const [customName, setCustomName] = useState('');
   const [customNameBold, setCustomNameBold] = useState(true);
   const [customNameColor, setCustomNameColor] = useState('#ff69b4');
@@ -196,21 +191,7 @@ export default function Home() {
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理後にモーダルを開くための期待するコメント数
   const [pendingModalCommentCount, setPendingModalCommentCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!aiSummaryStartedAt) {
-      setAiSummaryElapsedSeconds(0);
-      return;
-    }
-
-    const updateElapsed = () => {
-      setAiSummaryElapsedSeconds((Date.now() - aiSummaryStartedAt) / 1000);
-    };
-
-    updateElapsed();
-    const intervalId = window.setInterval(updateElapsed, 500);
-    return () => window.clearInterval(intervalId);
-  }, [aiSummaryStartedAt]);
+  const canUseAdminAiTools = isAdmin && isDevMode;
 
   // サーバー同期
   const { saveSettings } = useSettings();
@@ -234,10 +215,16 @@ export default function Home() {
     if (savedShowIdInHtml !== null) {
       setShowIdInHtml(savedShowIdInHtml === 'true');
     }
-    // 開発者モードを読み込み
+    // 開発者モードを読み込み（admin専用機能のため、非adminでは強制OFF）
     const savedDevMode = localStorage.getItem('matomeln_dev_mode');
-    if (savedDevMode === 'true') {
+    if (isAdmin) {
       setIsDevMode(true);
+      if (savedDevMode !== 'true') {
+        localStorage.setItem('matomeln_dev_mode', 'true');
+        window.dispatchEvent(new CustomEvent('devModeChanged'));
+      }
+    } else {
+      setIsDevMode(false);
     }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
@@ -284,7 +271,7 @@ export default function Home() {
         }
       }
     }
-  }, []);
+  }, [isAdmin]);
 
   // レス名設定をローカルストレージに保存
   useEffect(() => {
@@ -456,23 +443,19 @@ export default function Home() {
       return;
     }
 
-    // AIまとめ設定を取得
+    const { callAISummarize, getAISummarizeProvider, sanitizeDiscriminatoryContentForPublishing } = await import('@/lib/ai-summarize');
     const aiProvider = getAISummarizeProvider();
-    const aiModelName = getAISummaryModelLabel();
-    const apiKey = localStorage.getItem('matomeln_claude_api_key');
+    const apiKey = localStorage.getItem('matomeln_claude_api_key') || '';
     if (aiProvider === 'claude' && !apiKey) {
       toast.error('Claude APIキーが設定されていません。設定ページで入力してください。');
       return;
     }
 
     setGeneratingAI(true);
-    setAiSummaryStartedAt(Date.now());
-    setLastAISummaryStats(null);
-    const aiSummaryStartMs = performance.now();
     const toastId = toast.loading(aiProvider === 'ollama' ? 'ローカルAIがレスを分析中...' : 'AIがレスを分析中...');
 
     try {
-      const aiResponse = await callAISummarize(apiKey || '', currentTalk.title, comments);
+      const aiResponse = await callAISummarize(apiKey, currentTalk.title, comments);
 
       // AIの選択結果をCommentWithStyle[]に変換
       // 後方互換性のためのカラーマップ（古い形式 red/blue/green にも対応）
@@ -516,11 +499,9 @@ export default function Home() {
         // CommentWithStyleを作成
         const fontSize: 'small' | 'medium' | 'large' =
           size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
-        const commentBody = editedComments[comment.id] || comment.body;
-
         newSelectedComments.push({
           ...comment,
-          body: sanitizeDiscriminatoryContentForPublishing(commentBody),
+          body: sanitizeDiscriminatoryContentForPublishing(editedComments[comment.id] || comment.body),
           color,
           fontSize
         });
@@ -528,52 +509,39 @@ export default function Home() {
 
       // AIが返した順番をそのまま使用（ソートしない）
       // ユーザーは後からCommentPickerで並び替え可能
-      newSelectedComments = ensureFirstCommentSelected(newSelectedComments, comments, editedComments);
-
+      const firstComment = comments[0];
+      if (firstComment && !newSelectedComments.some(comment => comment.id === firstComment.id)) {
+        newSelectedComments = [{
+          ...firstComment,
+          body: sanitizeDiscriminatoryContentForPublishing(editedComments[firstComment.id] || firstComment.body),
+          color: '#ef4444',
+          fontSize: 'medium',
+        }, ...newSelectedComments];
+        newCommentColors[firstComment.id] = '#ef4444';
+      }
+      const { filterRiskyMediaUrlComments, filterUnsafeImageComments, getImageModerationOptions } = await import('@/lib/image-moderation');
       const riskyMediaUrlResult = filterRiskyMediaUrlComments(newSelectedComments);
       newSelectedComments = riskyMediaUrlResult.keptComments;
-      if (riskyMediaUrlResult.removedComments.length > 0) {
-        toast.success(`危険メディアURL付きレスを${riskyMediaUrlResult.removedComments.length}件除外しました`, { id: toastId });
-      }
 
       const imageModerationOptions = getImageModerationOptions();
       if (imageModerationOptions.enabled && newSelectedComments.some(comment => comment.images && comment.images.length > 0)) {
         toast.loading(`画像付きレスをチェック中（${imageModerationOptions.model}）...`, { id: toastId });
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
-
-        if (moderationResult.removedComments.length > 0) {
-          toast.success(`画像NGレスを${moderationResult.removedComments.length}件除外しました`, { id: toastId });
-        } else if (moderationResult.unavailable) {
-          toast.error('画像判定モデルを確認できませんでした。画像付きレスは保持しました。', { id: toastId });
-        }
       }
-
-      newSelectedComments = ensureFirstCommentSelected(newSelectedComments, comments, editedComments, true);
-
-      const durationSeconds = (performance.now() - aiSummaryStartMs) / 1000;
 
       // 状態を更新
       setCommentColors(newCommentColors);
       setCommentSizes(newCommentSizes);
       setSelectedComments(newSelectedComments);
-      setLastAISummaryStats({
-        modelName: aiModelName,
-        durationSeconds,
-        selectedCount: newSelectedComments.length,
-        totalCount: comments.length,
-      });
 
-      toast.success(`${newSelectedComments.length}件のレスを選択しました（${formatDuration(durationSeconds)}）`, { id: toastId });
+      toast.success(`${newSelectedComments.length}件のレスを選択しました`, { id: toastId });
 
       // ログ記録
       logActivity('ai_summarize', {
         threadUrl: sourceInfo?.originalUrl,
         commentCount: comments.length,
         selectedCount: newSelectedComments.length,
-        provider: aiProvider,
-        modelName: aiModelName,
-        durationSeconds: Number(durationSeconds.toFixed(1)),
       });
     } catch (error) {
       console.error('AI summarize error:', error);
@@ -586,7 +554,6 @@ export default function Home() {
       logError(errorMessage, { action: 'ai_summarize', threadUrl: sourceInfo?.originalUrl });
     } finally {
       setGeneratingAI(false);
-      setAiSummaryStartedAt(null);
     }
   };
 
@@ -602,7 +569,7 @@ export default function Home() {
       setComments(loadedComments);
       setSourceInfo({ source, originalUrl: input });
 
-      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : source === 'talkjp' ? 'talk.jp' : 'Shikutoku';
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : source === 'talkjp' ? 'talk.jp' : source === 'matomeBlog' ? 'まとめ記事' : '掲示板';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
     } catch (error) {
       // 開発環境のみエラーログを出力
@@ -627,13 +594,13 @@ export default function Home() {
   const handleBulkProcess = useCallback(async (url: string) => {
     try {
       // 設定を取得
-      const aiProvider = getAISummarizeProvider();
-      const aiModelName = getAISummaryModelLabel();
-      const claudeApiKey = localStorage.getItem('matomeln_claude_api_key');
+      const claudeApiKey = localStorage.getItem('matomeln_claude_api_key') || '';
       const geminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       const savedBlogs = localStorage.getItem('blogSettingsList');
       // sessionStorageから読み込み（タブごとに独立したブログ選択）
       const savedSelectedBlogId = sessionStorage.getItem('selectedBlogId') || localStorage.getItem('selectedBlogId');
+      const { callAISummarize, getAISummarizeProvider, isAdultContent, sanitizeDiscriminatoryContentForPublishing } = await import('@/lib/ai-summarize');
+      const aiProvider = getAISummarizeProvider();
 
       if (aiProvider === 'claude' && !claudeApiKey) {
         throw new Error('Claude APIキーが設定されていません');
@@ -699,7 +666,7 @@ export default function Home() {
       setSourceInfo({ source, originalUrl: url });
       setLoading(false);
 
-      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : source === 'talkjp' ? 'talk.jp' : 'Shikutoku';
+      const sourceLabel = source === '5ch' ? '5ch' : source === 'open2ch' ? 'open2ch' : source === '2chsc' ? '2ch.sc' : source === 'girlschannel' ? 'ガルちゃん' : source === 'talkjp' ? 'talk.jp' : source === 'matomeBlog' ? 'まとめ記事' : '掲示板';
       toast.success(`「${talk.title}」を読み込みました（${sourceLabel}）`);
 
       // =====================
@@ -717,8 +684,7 @@ export default function Home() {
       setGeneratingAI(true);
       toast.loading(aiProvider === 'ollama' ? 'ローカルAIがレスを分析中...' : 'AIがレスを分析中...', { id: 'bulk-step' });
 
-      const bulkAISummaryStartMs = performance.now();
-      const aiResponse = await callAISummarize(claudeApiKey || '', talk.title, loadedComments);
+      const aiResponse = await callAISummarize(claudeApiKey, talk.title, loadedComments);
 
       const colorMap: Record<string, string> = {
         red: '#ef4444',
@@ -756,7 +722,7 @@ export default function Home() {
           size === 22 ? 'large' : size === 14 ? 'small' : 'medium';
         newSelectedComments.push({
           ...comment,
-          body: comment.body,
+          body: sanitizeDiscriminatoryContentForPublishing(comment.body),
           color,
           fontSize
         });
@@ -765,42 +731,83 @@ export default function Home() {
       // AIが返した順番をそのまま使用（ソートしない）
       // デバッグ: AI選択結果を確認
       console.log('🤖 AI選択結果:', newSelectedComments.map(c => `${c.res_id}`).join(', '));
-
-      setCommentColors(newCommentColors);
-      setCommentSizes(newCommentSizes);
-
+      const firstComment = loadedComments[0];
+      if (firstComment && !newSelectedComments.some(comment => comment.id === firstComment.id)) {
+        newSelectedComments = [{
+          ...firstComment,
+          body: sanitizeDiscriminatoryContentForPublishing(firstComment.body),
+          color: '#ef4444',
+          fontSize: 'medium',
+        }, ...newSelectedComments];
+        newCommentColors[firstComment.id] = '#ef4444';
+      }
+      const { filterRiskyMediaUrlComments, filterUnsafeImageComments, getImageModerationOptions } = await import('@/lib/image-moderation');
       const riskyMediaUrlResult = filterRiskyMediaUrlComments(newSelectedComments);
       newSelectedComments = riskyMediaUrlResult.keptComments;
-      if (riskyMediaUrlResult.removedComments.length > 0) {
-        console.log(`🚫 危険メディアURL付きレスを${riskyMediaUrlResult.removedComments.length}件除外`);
-      }
 
       const imageModerationOptions = getImageModerationOptions();
       if (imageModerationOptions.enabled && newSelectedComments.some(comment => comment.images && comment.images.length > 0)) {
         toast.loading(`画像付きレスをチェック中（${imageModerationOptions.model}）...`, { id: 'bulk-step' });
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
-
-        if (moderationResult.removedComments.length > 0) {
-          console.log(`🚫 画像NGレスを${moderationResult.removedComments.length}件除外`);
-        } else if (moderationResult.unavailable) {
-          console.warn('画像判定モデルを確認できませんでした。画像付きレスは保持しました。');
-        }
       }
 
-      const bulkAISummaryDurationSeconds = (performance.now() - bulkAISummaryStartMs) / 1000;
-
+      setCommentColors(newCommentColors);
+      setCommentSizes(newCommentSizes);
       setSelectedComments(newSelectedComments);
       setGeneratingAI(false);
 
-      console.log(`⏱️ AIまとめ時間: ${formatDuration(bulkAISummaryDurationSeconds)} (${aiModelName})`);
-      toast.success(`${newSelectedComments.length}件のレスを選択（${formatDuration(bulkAISummaryDurationSeconds)}）`, { id: 'bulk-step' });
+      toast.success(`${newSelectedComments.length}件のレスを選択`, { id: 'bulk-step' });
 
       // =====================
       // 3. AIサムネ生成 & アップロード
       // =====================
       let generatedThumbnailUrl = '';
       let generatedThumbnailBase64 = '';  // girls-matome用のbase64
+
+      // ===== サムネイル生成ON/OFFチェック =====
+      const thumbnailEnabledSetting = localStorage.getItem('matomeln_thumbnail_enabled');
+      const isThumbnailEnabled = thumbnailEnabledSetting !== 'false';
+
+      // ===== タグサムネイルキャッシュ検索 =====
+      let cachedTagResult: TagSearchResult | null = null;
+      let skipThumbnailGeneration = !isThumbnailEnabled;  // OFFなら最初からスキップ
+
+      if (!isThumbnailEnabled) {
+        console.log('AIサムネイル生成はOFFです。スキップします。');
+        toast.success('サムネイル生成スキップ（OFF設定）', { id: 'bulk-step' });
+      }
+
+      try {
+        if (!isThumbnailEnabled) {
+          // サムネイルOFFの場合はキャッシュ検索もスキップ
+        } else {
+        toast.loading('サムネイルキャッシュを検索中...', { id: 'bulk-step' });
+        const { searchTagByTitle } = await import('@/lib/tag-thumbnail-cache');
+        cachedTagResult = await searchTagByTitle(talk.title);
+
+        if (cachedTagResult?.tag?.thumbnail_url && cachedTagResult.tag.is_original) {
+          // オリジナルサムネのキャッシュヒット - そのまま使用
+          generatedThumbnailUrl = cachedTagResult.tag.thumbnail_url;
+          skipThumbnailGeneration = true;
+          console.log('キャッシュサムネイル使用:', cachedTagResult.tag.tag);
+          toast.success(`キャッシュサムネイル使用（${cachedTagResult.tag.tag}）`, { id: 'bulk-step' });
+        } else if (cachedTagResult?.tag?.thumbnail_url && !cachedTagResult.tag.is_original) {
+          // 旧サムネ → AI生成して置換（skipしない）
+          console.log('旧サムネを検出、オリジナル生成で置換:', cachedTagResult.tag.tag);
+          toast.loading(`旧サムネを置換生成中（${cachedTagResult.tag.tag}）...`, { id: 'bulk-step' });
+        } else if (cachedTagResult?.categoryFallback?.thumbnail_url && cachedTagResult.categoryFallback.is_original) {
+          // カテゴリフォールバック（オリジナルサムネ）
+          generatedThumbnailUrl = cachedTagResult.categoryFallback.thumbnail_url;
+          skipThumbnailGeneration = true;
+          console.log('カテゴリサムネイル使用');
+          toast.success('カテゴリサムネイル使用', { id: 'bulk-step' });
+        }
+        } // end if isThumbnailEnabled
+      } catch (e) {
+        console.warn('タグキャッシュ検索失敗:', e);
+      }
+
       // サムネイルプロバイダーを読み込み
       const thumbnailProvider = localStorage.getItem('matomeln_thumbnail_provider') || 'gemini';
       const openaiApiKey = localStorage.getItem('matomeln_openai_api_key') || '';
@@ -809,25 +816,38 @@ export default function Home() {
       const useOpenAI = thumbnailProvider === 'openai' && openaiApiKey;
       const thumbnailApiKey = useOpenAI ? openaiApiKey : geminiApiKey;
 
-      if (thumbnailApiKey && blogSettings) {
+      if (!skipThumbnailGeneration && thumbnailApiKey && blogSettings) {
         // キャラクターが複数ある場合、AIが記事に合うキャラを選択（常にGemini使用）
         if (allCharacters.length > 0 && geminiApiKey) {
+          const { selectCharacterForArticle } = await import('@/lib/ai-thumbnail');
           toast.loading('キャラクターを選択中...', { id: 'bulk-step' });
           thumbnailCharacter = await selectCharacterForArticle(geminiApiKey, talk.title, allCharacters);
           if (thumbnailCharacter) {
-            console.log('📷 選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
+            console.log('選択されたキャラクター:', thumbnailCharacter.name, '参考画像:', thumbnailCharacter.referenceImageUrls?.length || 0, '枚');
           }
         }
 
         const providerLabel = useOpenAI ? 'OpenAI' : 'Gemini';
+        const {
+          generateThumbnail,
+          generateThumbnailWithOpenAI,
+          generateGenericTitleForTag,
+        } = await import('@/lib/ai-thumbnail');
+        // タグがヒットしてるがthumbnail_urlがない場合、汎用タイトルで生成（キャッシュ再利用のため）
+        const titleForThumbnail = (cachedTagResult?.tag && !cachedTagResult.tag.thumbnail_url)
+          ? generateGenericTitleForTag(cachedTagResult.tag.tag, cachedTagResult.tag.girlsvip_category)
+          : talk.title;
+        if (titleForThumbnail !== talk.title) {
+          console.log('汎用サムネイル生成:', titleForThumbnail);
+        }
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: 'bulk-step' });
         try {
           const thumbnailResult = useOpenAI
-            ? await generateThumbnailWithOpenAI(openaiApiKey, talk.title, thumbnailCharacter, false, openaiModel, openaiQuality)
-            : await generateThumbnail(geminiApiKey!, talk.title, thumbnailCharacter);
+            ? await generateThumbnailWithOpenAI(openaiApiKey, titleForThumbnail, thumbnailCharacter, false, openaiModel, openaiQuality)
+            : await generateThumbnail(geminiApiKey!, titleForThumbnail, thumbnailCharacter);
 
           if (thumbnailResult.referenceImageFailures && thumbnailResult.referenceImageFailures > 0) {
-            console.warn(`⚠️ 参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);
+            console.warn(`参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);
           }
 
           if (thumbnailResult.success && thumbnailResult.imageBase64) {
@@ -861,6 +881,32 @@ export default function Home() {
                   generatedThumbnailUrl = uploadData.url;
                   setThumbnailUrl(generatedThumbnailUrl);
                   toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+
+                  // 生成したサムネイルURLをタグキャッシュに保存（Livedoorの場合のみ）
+                  // タグヒット＆サムネなし、またはタグヒット＆旧サムネ置換の場合
+                  if (cachedTagResult?.tag?.id && (!cachedTagResult.tag.thumbnail_url || !cachedTagResult.tag.is_original)) {
+                    try {
+                      const { saveThumbnailToTag } = await import('@/lib/tag-thumbnail-cache');
+                      await saveThumbnailToTag(cachedTagResult.tag.id, generatedThumbnailUrl);
+                      console.log('サムネイルをタグキャッシュに保存:', cachedTagResult.tag.tag);
+                    } catch (e) {
+                      console.warn('サムネイルキャッシュ保存失敗:', e);
+                    }
+                  } else if (!cachedTagResult?.tag) {
+                    // タグ不一致 → タイトルからキーワード抽出して新しいタグを自動登録
+                    try {
+                      const { extractKeywordFromTitle, registerNewTag } = await import('@/lib/tag-thumbnail-cache');
+                      const keyword = extractKeywordFromTitle(talk.title);
+                      if (keyword.length >= 2) {
+                        const newTag = await registerNewTag(keyword, keyword, generatedThumbnailUrl);
+                        if (newTag) {
+                          console.log('新しいタグを自動登録:', keyword);
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('タグ自動登録失敗:', e);
+                    }
+                  }
                 }
               } else {
                 console.warn('サムネイルアップロード失敗');
@@ -885,6 +931,7 @@ export default function Home() {
       const sortedComments = sortByAnchorOrder(newSelectedComments);
 
       // HTML生成（記事要点・編集部まとめを含む）
+      const { generateMatomeHTML } = await import('@/lib/html-templates');
       const generatedHTML = await generateMatomeHTML(
         talk,
         sortedComments,
@@ -965,7 +1012,6 @@ export default function Home() {
           },
           body: JSON.stringify({
             blogId: blogSettings.blogId,
-            apiUsername: blogSettings.apiUsername || blogSettings.blogId,
             apiKey: blogSettings.apiKey,
             title: generatedHTML.title,
             body: fullBody,
@@ -985,18 +1031,11 @@ export default function Home() {
       // 4.5. 他のブログにも同時投稿（設定がある場合）
       // =====================
       try {
-        const serverSettingsResponse = await fetch('/api/settings', { credentials: 'include' }).catch(() => null);
-        const serverSettings = serverSettingsResponse?.ok
-          ? ((await serverSettingsResponse.json()) as { settings?: Record<string, string> }).settings
-          : undefined;
-        const otherBlogsSettingsStr =
-          serverSettings?.matomeln_other_blogs_settings ||
-          localStorage.getItem('matomeln_other_blogs_settings');
-
+        const otherBlogsSettingsStr = localStorage.getItem('matomeln_other_blogs_settings');
         if (otherBlogsSettingsStr) {
           const otherBlogsSettings = JSON.parse(otherBlogsSettingsStr);
           if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds?.length > 0) {
-            const blogsStr = serverSettings?.blogSettingsList || localStorage.getItem('blogSettingsList');
+            const blogsStr = localStorage.getItem('blogSettingsList');
             if (blogsStr) {
               const allBlogs = JSON.parse(blogsStr);
               const otherBlogs = allBlogs.filter((b: { id: string }) =>
@@ -1034,7 +1073,6 @@ export default function Home() {
                       },
                       body: JSON.stringify({
                         blogId: blog.blogId,
-                        apiUsername: blog.apiUsername || blog.blogId,
                         apiKey: blog.apiKey,
                         title: generatedHTML.title,
                         body: fullBody,
@@ -1068,6 +1106,7 @@ export default function Home() {
       // 5. スレメモくんに投稿済みとして登録
       // =====================
       try {
+        const { markThreadAsSummarized } = await import('@/lib/bulk-processing');
         await markThreadAsSummarized(url);
         console.log('✅ スレメモくんに登録完了:', url);
       } catch (memoError) {
@@ -1127,6 +1166,10 @@ export default function Home() {
     <div className="flex gap-6">
       {/* メインコンテンツ */}
       <div className="flex-1 min-w-0 space-y-6">
+        <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-center text-xs font-bold text-orange-700 sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+          更新: レス一覧でIDごとの一括除外ができるようになりました
+        </div>
+
         <div className="relative">
           <TalkLoader
             onLoad={handleLoadThread}
@@ -1146,7 +1189,7 @@ export default function Home() {
         </div>
 
         {/* 開発者モードのAI機能 */}
-        {isDevMode && (
+        {canUseAdminAiTools && (
           <>
             {/* 一括AIまとめパネル */}
             <BulkProcessPanel
@@ -1156,7 +1199,7 @@ export default function Home() {
 
             {/* AIまとめボタン（スレッド読み込み後のみ表示） */}
             {currentTalk && comments.length > 0 && (
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex justify-end">
                 <button
                   onClick={handleAISummarize}
                   disabled={generatingAI}
@@ -1173,19 +1216,6 @@ export default function Home() {
                     </>
                   )}
                 </button>
-                {(generatingAI || lastAISummaryStats) && (
-                  <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-                    {generatingAI ? (
-                      <span>
-                        AIまとめ実行中: {formatDuration(aiSummaryElapsedSeconds)}
-                      </span>
-                    ) : lastAISummaryStats ? (
-                      <span>
-                        前回のAIまとめ: {formatDuration(lastAISummaryStats.durationSeconds)} / {lastAISummaryStats.modelName} / {lastAISummaryStats.selectedCount} / {lastAISummaryStats.totalCount}件
-                      </span>
-                    ) : null}
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -1316,25 +1346,27 @@ export default function Home() {
       />
 
       {/* 設定モーダル */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        isDevMode={isDevMode}
-        onDevModeChange={setIsDevMode}
-        customName={customName}
-        onCustomNameChange={setCustomName}
-        customNameBold={customNameBold}
-        onCustomNameBoldChange={setCustomNameBold}
-        customNameColor={customNameColor}
-        onCustomNameColorChange={setCustomNameColor}
-        showIdInHtml={showIdInHtml}
-        onShowIdInHtmlChange={handleShowIdInHtmlChange}
-        blogs={blogs}
-        selectedBlogId={selectedBlogId}
-        onBlogsChange={handleBlogsChange}
-        onSelectedBlogIdChange={handleSelectedBlogIdChange}
-        onSaveSettings={saveSettings}
-      />
+      {showSettingsModal && (
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          isDevMode={isDevMode}
+          onDevModeChange={setIsDevMode}
+          customName={customName}
+          onCustomNameChange={setCustomName}
+          customNameBold={customNameBold}
+          onCustomNameBoldChange={setCustomNameBold}
+          customNameColor={customNameColor}
+          onCustomNameColorChange={setCustomNameColor}
+          showIdInHtml={showIdInHtml}
+          onShowIdInHtmlChange={handleShowIdInHtmlChange}
+          blogs={blogs}
+          selectedBlogId={selectedBlogId}
+          onBlogsChange={handleBlogsChange}
+          onSelectedBlogIdChange={handleSelectedBlogIdChange}
+          onSaveSettings={saveSettings}
+        />
+      )}
     </div>
   );
 }

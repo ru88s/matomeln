@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import 'react-tweet/theme.css';
 import { Toaster } from 'react-hot-toast';
 import Header from '@/components/Header';
+import WebFeedbackButton from '@/components/WebFeedbackButton';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
-  title: "まとめるん - まとめブログを運営する人のためのツール",
-  description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
-  keywords: "5ch,Shikutoku,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,まとめるん,まとめ作成,ブログ記事,自動生成",
+  title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+  description: "5ch、open2ch、2ch.scのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。まとめブログ運営者必見！",
+  keywords: "5ch,open2ch,2ch.sc,まとめ,ブログ,掲示板,まとめサイト,まとめツール,ライブドアブログ,無料,まとめるん,まとめ作成,ブログ記事,自動生成",
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -18,8 +20,8 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "まとめるん - まとめブログを運営する人のためのツール",
-    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。",
+    title: "まとめるん - 掲示板まとめ作成ツール | 無料でかんたんブログ記事作成",
+    description: "5ch、open2ch、2ch.scのスレッドを簡単にまとめてブログ記事に。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。",
     url: "https://matomeln.com",
     siteName: "まとめるん",
     type: "website",
@@ -29,14 +31,14 @@ export const metadata: Metadata = {
         url: "https://matomeln.com/og-image.png",
         width: 1200,
         height: 630,
-        alt: "まとめるん - まとめブログを運営する人のためのツール",
+        alt: "まとめるん - 掲示板まとめ作成ツール",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "まとめるん - まとめブログを運営する人のためのツール",
-    description: "5chやShikutokuのスレッドを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
+    title: "まとめるん - 掲示板まとめ作成ツール",
+    description: "5ch、open2ch、2ch.scのスレッドを簡単にまとめてブログ記事に。無料で使える便利なまとめ作成ツール。",
     images: ["https://matomeln.com/og-image.png"],
   },
   metadataBase: new URL('https://matomeln.com'),
@@ -67,7 +69,7 @@ export default function RootLayout({
     name: 'まとめるん',
     alternateName: 'Matomeln',
     url: 'https://matomeln.com',
-    description: '5chやShikutokuのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。',
+    description: '5ch、open2ch、2ch.scのスレッドを簡単にまとめてブログ記事にできる無料ツール。コメント選択&カスタマイズで簡単作成、ライブドアブログへ直接投稿可能。',
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'Web',
     offers: {
@@ -76,7 +78,7 @@ export default function RootLayout({
       priceCurrency: 'JPY',
     },
     featureList: [
-      '5ch・Shikutokuスレッドのまとめ作成',
+      '5ch・open2ch・2ch.scスレッドのまとめ作成',
       'ドラッグ&ドロップによるコメント並べ替え',
       'コメントの色・サイズカスタマイズ',
       'HTMLタグ自動生成',
@@ -94,11 +96,62 @@ export default function RootLayout({
     <html lang="ja">
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function () {
+  var storageKey = 'matomeln:last-chunk-reload';
+  var reloadWindowMs = 60000;
+
+  function messageFrom(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return [value.message, value.stack, value.name].filter(Boolean).join(' ');
+  }
+
+  function isChunkFailure(value) {
+    var message = messageFrom(value);
+    return /ChunkLoadError|Failed to load chunk|Loading chunk \\d+ failed|_next\\/static\\/chunks\\//i.test(message);
+  }
+
+  function reloadOnce() {
+    try {
+      var lastReload = Number(sessionStorage.getItem(storageKey) || '0');
+      var now = Date.now();
+      if (now - lastReload < reloadWindowMs) return;
+      sessionStorage.setItem(storageKey, String(now));
+    } catch (_) {}
+    window.location.reload();
+  }
+
+  window.addEventListener('error', function (event) {
+    var target = event && event.target;
+    if (target && target.tagName === 'SCRIPT' && target.src && target.src.indexOf('/_next/static/chunks/') !== -1) {
+      reloadOnce();
+      return;
+    }
+    if (isChunkFailure(event && (event.error || event.message))) {
+      reloadOnce();
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (event) {
+    if (isChunkFailure(event && event.reason)) {
+      reloadOnce();
+    }
+  });
+})();`,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {/* Cloudflare Web Analytics */}
-        <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "d9c88df490414f3996a1358c65d64642"}'></script>
+        <Script
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          strategy="lazyOnload"
+          data-cf-beacon='{"token":"d9c88df490414f3996a1358c65d64642"}'
+        />
       </head>
       <body className="bg-gray-50 min-h-screen">
         <AuthProvider>
@@ -137,6 +190,8 @@ export default function RootLayout({
                 <a href="/contact" className="text-gray-500 hover:text-gray-700 transition-colors">
                   お問い合わせ
                 </a>
+                <span className="text-gray-300">|</span>
+                <WebFeedbackButton />
               </div>
               <p className="text-xs text-gray-400">
                 © 2025 まとめるん

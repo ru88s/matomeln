@@ -14,7 +14,7 @@ function LoginContent() {
     if (errorParam) {
       switch (errorParam) {
         case 'access_denied':
-          setError('このGoogleアカウントではログインできませんでした。別のアカウントでお試しください。');
+          setError('ログインできませんでした。もう一度Googleログインをお試しください。');
           break;
         case 'oauth_error':
           setError('Googleログインに失敗しました。もう一度お試しください。');
@@ -56,7 +56,7 @@ function LoginContent() {
       {/* Info */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
         <p className="text-gray-600 text-sm text-center">
-          このツールを利用するにはログインが必要です
+          Googleアカウントでログインすると、すぐに利用できます。
         </p>
       </div>
 

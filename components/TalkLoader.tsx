@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { extractTalkIdFromUrl, detectSourceType } from '@/lib/shikutoku-api';
+import { detectSourceType } from '@/lib/shikutoku-api';
 import { Talk, ThumbnailCharacter } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -227,7 +227,7 @@ export default function TalkLoader({
     const sourceType = detectSourceType(trimmedInput);
 
     if (sourceType === 'unknown') {
-      setError('有効なShikutoku、5ch、open2ch、2ch.sc、talk.jpのURLを入力してください');
+      setError('有効な5ch、open2ch、2ch.sc、talk.jp、まとめ記事のURLを入力してください');
       return;
     }
 
@@ -235,15 +235,6 @@ export default function TalkLoader({
     if (sourceType === 'girlschannel' && !isDevMode) {
       setError('ガールズちゃんねるは現在開発中です');
       return;
-    }
-
-    // Shikutokuの場合はIDを抽出して検証
-    if (sourceType === 'shikutoku') {
-      const talkId = extractTalkIdFromUrl(trimmedInput);
-      if (!talkId) {
-        setError('有効なShikutoku URLを入力してください');
-        return;
-      }
     }
 
     onLoad(trimmedInput);
@@ -261,14 +252,14 @@ export default function TalkLoader({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm text-gray-600 mb-1">
-            <a href="https://5ch.io" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.io</a>、<a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>、<a href="https://talk.jp" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">talk.jp</a>{isDevMode && <>、<a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}、<a href="https://shikutoku.me" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">shikutoku.me</a> のURL
+            <a href="https://5ch.io" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">5ch.io</a>、<a href="https://2ch.sc" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">2ch.sc</a>、<a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>、<a href="https://talk.jp" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">talk.jp</a>{isDevMode && <>、<a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}、まとめ記事 のURL
           </label>
           <input
             type="text"
             id="url"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isDevMode ? "https://xxx.5ch.io/... または https://talk.jp/boards/..." : "https://xxx.5ch.io/... または https://talk.jp/boards/..."}
+            placeholder={isDevMode ? "https://xxx.5ch.io/... または https://talk.jp/boards/..." : "https://xxx.5ch.io/... または https://matomeblade.com/archives/..."}
             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm bg-white"
           />
         </div>

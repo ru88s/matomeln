@@ -1,7 +1,7 @@
 {
   "name": "まとめるん - まとめブログを運営する人のためのツール",
   "short_name": "まとめるん",
-  "description": "5chやShikutokuのスレッドを簡単にまとめてブログ記事に",
+  "description": "5ch、open2ch、2ch.scのスレッドを簡単にまとめてブログ記事に",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",

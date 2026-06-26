@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // ユーザーが手動で並べ替えた順番をそのまま使用します。
 
 interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog';
   originalUrl: string;
 }
 
@@ -23,13 +23,19 @@ interface HTMLGeneratorProps {
   customNameBold?: boolean;
   customNameColor?: string;
   thumbnailUrl?: string;
-  apiSettings?: { blogUrl: string; apiUsername?: string; apiKey: string };
+  apiSettings?: { blogUrl: string; apiKey: string };
   selectedBlogName?: string;
   selectedBlogType?: BlogType;
   showIdInHtml?: boolean;
   isDevMode?: boolean;
   blogs?: BlogSettings[];
   selectedBlogId?: string;
+}
+
+function buildFullGeneratedHtml(html: GeneratedHTML): string {
+  return html.footer
+    ? `${html.body}\n<!--more-->\n${html.footer}`
+    : html.body;
 }
 
 export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onClose, customName = '', customNameBold = true, customNameColor = '#ff69b4', thumbnailUrl = '', apiSettings = { blogUrl: '', apiKey: '' }, selectedBlogName = '', selectedBlogType = 'livedoor', showIdInHtml = true, isDevMode = false, blogs = [], selectedBlogId = '' }: HTMLGeneratorProps) {
@@ -52,8 +58,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
-  const otherBlogsSettingsLoadedRef = useRef(false);
-  const skipInitialOtherBlogsSaveRef = useRef(true);
+  const previewHtml = generatedHTML ? buildFullGeneratedHtml(generatedHTML) : '';
 
   // LocalStorageから設定を読み込み
   useEffect(() => {
@@ -69,7 +74,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         }
       }
     }
-    otherBlogsSettingsLoadedRef.current = true;
     // カスタムフッターHTMLを読み込み
     const savedFooter = localStorage.getItem('matomeln_custom_footer_html');
     if (savedFooter) {
@@ -79,12 +83,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
   // 設定変更時にLocalStorageに保存
   useEffect(() => {
-    if (skipInitialOtherBlogsSaveRef.current) {
-      skipInitialOtherBlogsSaveRef.current = false;
-      return;
-    }
-
-    if (isDevMode && otherBlogsSettingsLoadedRef.current) {
+    if (isDevMode) {
       localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
         postToOtherBlogs,
         selectedOtherBlogIds,
@@ -138,14 +137,29 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
 
     try {
       // 本文と続きを読むを組み合わせてブログ記事の内容を作成
-      const fullBody = generatedHTML.footer
-        ? `${generatedHTML.body}\n<!--more-->\n${generatedHTML.footer}`
-        : generatedHTML.body;
+      const fullBody = buildFullGeneratedHtml(generatedHTML);
 
       // ブログタイプに応じたAPI呼び出し
       let response: Response;
 
-      if (selectedBlogType === 'girls-matome') {
+      if (selectedBlogType === 'kotoria') {
+        // Kotoriaへ投稿
+        response = await fetch('/api/proxy/postKotoria', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            apiUrl: apiSettings.blogUrl,
+            apiKey: apiSettings.apiKey,
+            title: generatedHTML.title,
+            body: fullBody,
+            sourceUrl: sourceInfo?.originalUrl || '',
+            tags: talk?.tag_names?.join(',') || '',
+            thumbnailUrl: thumbnailUrl || '',
+          }),
+        });
+      } else if (selectedBlogType === 'girls-matome') {
         // ガールズまとめ速報へ投稿
         response = await fetch('/api/proxy/postGirlsMatome', {
           method: 'POST',
@@ -171,7 +185,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           },
           body: JSON.stringify({
             blogId: apiSettings.blogUrl,
-            apiUsername: apiSettings.apiUsername || apiSettings.blogUrl,
             apiKey: apiSettings.apiKey,
             title: generatedHTML.title,
             body: fullBody,
@@ -197,7 +210,24 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           try {
             let otherResponse: Response;
 
-            if (blog.blogType === 'girls-matome') {
+            if (blog.blogType === 'kotoria') {
+              // Kotoriaへ投稿
+              otherResponse = await fetch('/api/proxy/postKotoria', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  apiUrl: blog.blogId,
+                  apiKey: blog.apiKey,
+                  title: generatedHTML.title,
+                  body: fullBody,
+                  sourceUrl: sourceInfo?.originalUrl || '',
+                  tags: talk?.tag_names?.join(',') || '',
+                  thumbnailUrl: thumbnailUrl || '',
+                }),
+              });
+            } else if (blog.blogType === 'girls-matome') {
               // ガールズまとめ速報へ投稿
               otherResponse = await fetch('/api/proxy/postGirlsMatome', {
                 method: 'POST',
@@ -223,7 +253,6 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                 },
                 body: JSON.stringify({
                   blogId: blog.blogId,
-                  apiUsername: blog.apiUsername || blog.blogId,
                   apiKey: blog.apiKey,
                   title: generatedHTML.title,
                   body: fullBody,
@@ -340,6 +369,18 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               value={generatedHTML.body}
               onChange={(e) => setGeneratedHTML({...generatedHTML, body: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-[200px]"
+            />
+          </div>
+
+          {/* タグ表示プレビュー */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-bold text-gray-900">発行タグの表示プレビュー:</h4>
+              <span className="text-xs text-gray-500">下のタグを貼った時の見た目です</span>
+            </div>
+            <div
+              className="matomeln-generated-preview"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>
 

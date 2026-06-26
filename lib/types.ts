@@ -45,7 +45,7 @@ export interface MatomeOptions {
   };
 }
 
-export type BlogType = 'livedoor' | 'girls-matome';
+export type BlogType = 'livedoor' | 'girls-matome' | 'kotoria';
 
 export interface BlogSettings {
   id: string;

@@ -149,30 +149,16 @@ export default function BulkProcessPanel({
     if (typeof window === 'undefined') return 'gpt-image-1';
     return localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1';
   });
-  const [nextRunTime, setNextRunTime] = useState<Date | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('autoRunNextRunTime');
-    if (!saved) return null;
-    const restored = new Date(saved);
-    return Number.isNaN(restored.getTime()) ? null : restored;
-  });
+  const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'5ch' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
+  const [autoRunPortalTarget, setAutoRunPortalTarget] = useState<HTMLElement | null>(null);
   // どちらかが有効かどうか
   const autoRunEnabled = autoRun5chEnabled || autoRunGCEnabled;
-
-  const updateNextRunTime = useCallback((nextRun: Date | null) => {
-    setNextRunTime(nextRun);
-    if (nextRun) {
-      localStorage.setItem('autoRunNextRunTime', nextRun.toISOString());
-    } else {
-      localStorage.removeItem('autoRunNextRunTime');
-    }
-  }, []);
 
   // 初回マウント完了フラグ（ハイドレーション問題を回避）
   const isInitialMountRef = useRef(true);
@@ -218,6 +204,10 @@ export default function BulkProcessPanel({
     isInitialMountRef.current = false;
   }, []);
 
+  useEffect(() => {
+    setAutoRunPortalTarget(document.getElementById('bulk-auto-run-sidebar-slot'));
+  }, []);
+
   // サムネイルプロバイダーの変更を監視
   useEffect(() => {
     const handleStorage = () => {
@@ -250,10 +240,10 @@ export default function BulkProcessPanel({
     }
   }, []);
 
-  // ガールズちゃんねる + Shikutoku 未まとめURL取得
+  // ガールズちゃんねる未まとめURL取得
   const handleFetchGirlsChannelUrls = useCallback(async () => {
     setIsFetchingGC(true);
-    const toastId = toast.loading('ガルちゃん・Shikutoku未まとめURLを取得中...');
+    const toastId = toast.loading('ガルちゃん未まとめURLを取得中...');
 
     try {
       const result = await fetchGirlsChannelUrls({ limit: 100 });
@@ -308,6 +298,12 @@ export default function BulkProcessPanel({
       'トピックの取得に失敗',
       'Invalid GirlsChannel',
       'girlschannel',
+      // Shikutokuログイン必須トーク（loginEnabled=true）
+      'Login required',
+      'login required',
+      'ログインが必要',
+      'UNAUTHORIZED',
+      '401',
       // コンテンツ検証エラー
       'タイトルが空のため投稿できません',
       '本文が空のため投稿できません',
@@ -347,13 +343,23 @@ export default function BulkProcessPanel({
     return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
   };
 
-  const isImmediateSkipError = (errorMsg: string): boolean => {
-    const immediateSkipPatterns = [
-      'アダルトコンテンツ',
-      'アダルトキーワード',
-    ];
-    return immediateSkipPatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+  // Anthropic APIのクレジット残高不足エラーを判定
+  const isCreditBalanceError = (errorMsg: string): boolean => {
+    const msg = errorMsg.toLowerCase();
+    return msg.includes('credit balance is too low')
+      || msg.includes('credit balance')
+      || (msg.includes('plans & billing') && msg.includes('anthropic'));
   };
+
+  // クレジット残高不足時に定期実行をオフにする
+  const disableAutoRunForCreditError = useCallback(() => {
+    setAutoRun5chEnabled(false);
+    setAutoRunGCEnabled(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('autoRun5chEnabled', 'false');
+      localStorage.setItem('autoRunGCEnabled', 'false');
+    }
+  }, []);
 
   // 一括処理開始
   const handleStartBulk = useCallback(async () => {
@@ -431,12 +437,7 @@ export default function BulkProcessPanel({
           }
           console.error(`Stringified error: ${lastError}`);
 
-          // 判定が確定しているスキップ対象はリトライしない
-          if (isImmediateSkipError(lastError)) {
-            break;
-          }
-
-          // スキップ可能な一時エラーの場合はリトライ
+          // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
             toast(`(${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
             await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
@@ -453,7 +454,12 @@ export default function BulkProcessPanel({
               failedUrls: [...prev.failedUrls, { url, error: safeError }],
             }));
             toast.error(`(${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-            toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
+            if (isCreditBalanceError(lastError)) {
+              toast.error('Claude APIのクレジット残高不足です。Anthropic Consoleで補充してください: https://console.anthropic.com/settings/billing', { duration: 10000 });
+              disableAutoRunForCreditError();
+            } else {
+              toast.error('投稿エラーが発生したため処理を中断しました', { duration: 5000 });
+            }
             shouldStopRef.current = true;
             break;
           }
@@ -533,7 +539,7 @@ export default function BulkProcessPanel({
     isAutoRunningRef.current = true;
     setCurrentAutoRunSource(source);
 
-    const sourceLabel = source === '5ch' ? '5ch・talk.jp' : 'ガルちゃん';
+    const sourceLabel = source === '5ch' ? '5ch' : 'ガルちゃん';
 
     try {
       // 1. 未まとめURLを取得（ソースに応じて異なるAPI）
@@ -611,12 +617,7 @@ export default function BulkProcessPanel({
               lastError = 'エラーの詳細を取得できませんでした';
             }
 
-            // 判定が確定しているスキップ対象はリトライしない
-            if (isImmediateSkipError(lastError)) {
-              break;
-            }
-
-            // スキップ可能な一時エラーの場合はリトライ
+            // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {
               toast(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
               await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
@@ -635,8 +636,13 @@ export default function BulkProcessPanel({
                 failedUrls: [...prev.failedUrls, { url, error: safeError }],
               }));
               toast.error(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー: ${safeError}`, { id: 'bulk-progress' });
-              toast.error(`投稿エラーが発生したため処理を一時停止しました。次回チェック時に再試行します`, { duration: 5000 });
-              // チェックボックスは外さない（次回チェック時に再試行）
+              if (isCreditBalanceError(lastError)) {
+                toast.error('Claude APIのクレジット残高不足です。定期実行をオフにしました。Anthropic Consoleで補充後、再度オンにしてください: https://console.anthropic.com/settings/billing', { duration: 12000 });
+                disableAutoRunForCreditError();
+              } else {
+                toast.error(`投稿エラーが発生したため処理を一時停止しました。次回チェック時に再試行します`, { duration: 5000 });
+              }
+              // クレジット残高不足以外はチェックボックスを外さない（次回チェック時に再試行）
               shouldStopRef.current = true;
               break;
             }
@@ -738,11 +744,11 @@ export default function BulkProcessPanel({
 
     let hasMoreUrls = false;
 
-    // 5ch/talk.jpが有効なら処理
+    // 5chが有効なら5chを処理
     if (autoRun5chEnabled) {
       hasMoreUrls = await runAutoProcessCycle('5ch');
       if (hasMoreUrls) {
-        toast('5ch・talk.jp未まとめを再チェック中...', { icon: '🔄' });
+        toast('5ch未まとめを再チェック中...', { icon: '🔄' });
         await new Promise(resolve => setTimeout(resolve, 3000));
         startAutoRunLoopRef.current?.();
         return;
@@ -762,7 +768,7 @@ export default function BulkProcessPanel({
 
     // どちらもURLがないので、指定時間待機
     const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
-    updateNextRunTime(nextRun);
+    setNextRunTime(nextRun);
   };
 
   // 定期実行のタイマー管理（チェックボックス変更時のみ発火）
@@ -805,7 +811,7 @@ export default function BulkProcessPanel({
       consecutiveErrorsRef.current = 0;
 
       const sources = [];
-      if (autoRun5chEnabled) sources.push('5ch・talk.jp');
+      if (autoRun5chEnabled) sources.push('5ch');
       if (autoRunGCEnabled) sources.push('ガルちゃん');
       toast.success(`定期実行[${sources.join('・')}]を開始しました（${autoRunInterval}分間隔）`);
       startAutoRunLoopRef.current?.();
@@ -822,7 +828,7 @@ export default function BulkProcessPanel({
         clearInterval(autoRunTimerRef.current);
         autoRunTimerRef.current = null;
       }
-      updateNextRunTime(null);
+      setNextRunTime(null);
       consecutiveErrorsRef.current = 0;
       toast('定期実行を停止しました', { icon: '⏹️' });
     }
@@ -834,50 +840,19 @@ export default function BulkProcessPanel({
     };
   }, [autoRun5chEnabled, autoRunGCEnabled, autoRunInterval]);
 
-  useEffect(() => {
-    if (!autoRunEnabled || status.isProcessing || nextRunTime) return;
-    updateNextRunTime(new Date(Date.now() + autoRunInterval * 60 * 1000));
-  }, [autoRunEnabled, autoRunInterval, nextRunTime, status.isProcessing, updateNextRunTime]);
-
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
     const now = new Date();
     const diff = targetTime.getTime() - now.getTime();
-    if (diff <= 0) return 'まもなく実行';
+    if (diff <= 0) return '実行中...';
 
     const minutes = Math.floor(diff / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
     return `${minutes}分${seconds}秒`;
   };
 
-  const formatNextRunTime = (targetTime: Date): string => {
-    return targetTime.toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
   // 1秒ごとに残り時間を更新
-  const [tick, setTick] = useState(0);
-  const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
-
-  useEffect(() => {
-    const readAISummaryProvider = () => {
-      const savedProvider = localStorage.getItem('matomeln_ai_summary_provider');
-      setAiSummaryProvider(savedProvider === 'ollama' ? 'ollama' : 'claude');
-    };
-
-    readAISummaryProvider();
-    window.addEventListener('storage', readAISummaryProvider);
-    window.addEventListener('settingsSynced', readAISummaryProvider);
-
-    return () => {
-      window.removeEventListener('storage', readAISummaryProvider);
-      window.removeEventListener('settingsSynced', readAISummaryProvider);
-    };
-  }, []);
-
+  const [, setTick] = useState(0);
   useEffect(() => {
     if (!autoRunEnabled || !nextRunTime) return;
 
@@ -888,25 +863,11 @@ export default function BulkProcessPanel({
     return () => clearInterval(timer);
   }, [autoRunEnabled, nextRunTime]);
 
-  useEffect(() => {
-    if (!autoRunEnabled || status.isProcessing || isAutoRunningRef.current || !nextRunTime) return;
-    if (nextRunTime.getTime() > Date.now()) return;
-
-    updateNextRunTime(null);
-    startAutoRunLoopRef.current?.();
-  }, [autoRunEnabled, nextRunTime, status.isProcessing, tick, updateNextRunTime]);
-
   const isProcessing = status.isProcessing || isProcessingAI;
-  const [autoRunPortalTarget, setAutoRunPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setAutoRunPortalTarget(document.getElementById('auto-run-sidebar-slot'));
-  }, []);
-
   const autoRunControls = (
     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200">
-      <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
-        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-xs">
+        <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         定期自動処理
@@ -921,41 +882,41 @@ export default function BulkProcessPanel({
               setAutoRun5chEnabled(e.target.checked);
               setAutoRunGCEnabled(e.target.checked);
             }}
-            className="mt-0.5 w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+            className="w-4 h-4 mt-0.5 text-purple-600 rounded focus:ring-purple-500"
             disabled={isProcessing}
           />
-          <span className="text-xs font-medium text-gray-700 leading-5">すべて</span>
+          <span className="text-xs font-medium text-gray-700 leading-relaxed">すべて（5ch + ガルちゃん）</span>
         </label>
 
-        <label className="flex items-start gap-2 cursor-pointer pl-3">
+        <label className="flex items-center gap-2 cursor-pointer ml-4">
           <input
             type="checkbox"
             checked={autoRun5chEnabled}
             onChange={(e) => setAutoRun5chEnabled(e.target.checked)}
-            className="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
             disabled={isProcessing}
           />
-          <span className="text-xs font-medium text-gray-700 leading-5">5ch・talk.jp未まとめ</span>
+          <span className="text-xs font-medium text-gray-700">5ch未まとめ</span>
         </label>
 
-        <label className="flex items-start gap-2 cursor-pointer pl-3">
+        <label className="flex items-center gap-2 cursor-pointer ml-4">
           <input
             type="checkbox"
             checked={autoRunGCEnabled}
             onChange={(e) => setAutoRunGCEnabled(e.target.checked)}
-            className="mt-0.5 w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
+            className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
             disabled={isProcessing}
           />
-          <span className="text-xs font-medium text-gray-700 leading-5">ガルちゃん・Shikutoku</span>
+          <span className="text-xs font-medium text-gray-700">ガルちゃん</span>
         </label>
       </div>
 
-      <div className="mb-3">
-        <label className="block text-xs text-gray-600 mb-1">チェック間隔</label>
+      <label className="block mb-3">
+        <span className="block text-xs text-gray-600 mb-1">チェック間隔</span>
         <select
           value={autoRunInterval}
           onChange={(e) => setAutoRunInterval(Number(e.target.value))}
-          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-green-500 focus:border-green-500"
+          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-green-500 focus:border-green-500 bg-white"
           disabled={autoRunEnabled || isProcessing}
         >
           <option value={10}>10分</option>
@@ -963,12 +924,12 @@ export default function BulkProcessPanel({
           <option value={30}>30分</option>
           <option value={60}>60分</option>
         </select>
-      </div>
+      </label>
 
       {autoRunEnabled && (
-        <div className="bg-white rounded-lg p-3 border border-green-200 text-xs space-y-2">
+        <div className="bg-white rounded-lg p-2.5 border border-green-200 text-xs space-y-1">
           <p className="space-y-1">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
               status.isProcessing
                 ? currentAutoRunSource === '5ch'
                   ? 'bg-indigo-100 text-indigo-800'
@@ -976,20 +937,20 @@ export default function BulkProcessPanel({
                 : 'bg-green-100 text-green-800'
             }`}>
               {status.isProcessing
-                ? currentAutoRunSource === '5ch' ? '5ch・talk.jp処理中' : 'ガルちゃん処理中'
+                ? currentAutoRunSource === '5ch' ? '5ch処理中' : 'ガルちゃん処理中'
                 : '待機中'}
             </span>
-            <span className="block text-gray-600 leading-5">
+            <span className="block text-gray-600 leading-relaxed">
               {status.isProcessing
-                ? `${status.currentIndex + 1}/${status.totalCount}件を処理中`
+                ? `${status.currentIndex + 1}/${status.totalCount}件を処理中...`
                 : nextRunTime
-                  ? `次回: ${formatNextRunTime(nextRunTime)}（あと ${formatTimeRemaining(nextRunTime)}）`
-                  : '次回チェック時刻を準備中'}
+                  ? `次回チェック: ${formatTimeRemaining(nextRunTime)}`
+                  : '処理完了後に再チェックします'}
             </span>
           </p>
           {lastRunTime && (
             <p className="text-gray-500">
-              前回: {lastRunTime.toLocaleTimeString('ja-JP')}
+              前回実行: {lastRunTime.toLocaleTimeString('ja-JP')}
             </p>
           )}
         </div>
@@ -998,20 +959,14 @@ export default function BulkProcessPanel({
   );
 
   return (
-    <>
-    {autoRunPortalTarget ? createPortal(autoRunControls, autoRunPortalTarget) : null}
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100 shadow-sm">
       <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
         一括AIまとめ
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-          aiSummaryProvider === 'ollama'
-            ? 'bg-emerald-100 text-emerald-700'
-            : 'bg-purple-100 text-purple-700'
-        }`}>
-          まとめ: {aiSummaryProvider === 'ollama' ? 'Ollama' : 'Claude'}
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
+          まとめ: Claude
         </span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
           thumbnailProvider === 'openai'
@@ -1056,7 +1011,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              5ch・talk.jp未まとめ
+              5ch未まとめ
             </>
           )}
         </button>
@@ -1079,7 +1034,7 @@ export default function BulkProcessPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              ガルちゃん・Shikutoku
+              ガルちゃん
             </>
           )}
         </button>
@@ -1158,7 +1113,7 @@ export default function BulkProcessPanel({
         </div>
       )}
 
+      {autoRunPortalTarget ? createPortal(autoRunControls, autoRunPortalTarget) : null}
     </div>
-    </>
   );
 }

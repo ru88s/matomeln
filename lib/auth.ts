@@ -17,16 +17,20 @@ export interface Session {
   created_at: string;
 }
 
-// Admin email
+// Admin email - keeps admin privileges while general users can sign in.
 export const ADMIN_EMAIL = 'lulu.y0812@gmail.com';
+
+// Legacy allowlist retained for older imports. Login is no longer restricted by it.
+export const ALLOWLIST_EMAILS: string[] = [
+  ADMIN_EMAIL,
+];
 
 // Check if email is admin
 export function isAdmin(email: string): boolean {
   return email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
-// Allow any Google account that returns an email address.
-// Admin-only features are still guarded by role === 'admin'.
+// Check if email is allowed to sign in
 export function isAllowed(email: string): boolean {
   return email.trim().length > 0;
 }

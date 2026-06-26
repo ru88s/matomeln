@@ -26,6 +26,26 @@ const PUBLIC_PATHS = [
   '/og-image.svg',
 ];
 
+const SECURITY_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'Strict-Transport-Security': 'max-age=31536000',
+};
+
+function withSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
   const pathname = url.pathname;
@@ -36,17 +56,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     pathname.startsWith('/static/') ||
     pathname.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)
   ) {
-    return context.next();
+    return withSecurityHeaders(await context.next());
   }
 
   // Allow public paths
   if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + '/'))) {
-    return context.next();
+    return withSecurityHeaders(await context.next());
   }
 
   // Allow API routes (except protected ones)
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/protected/')) {
-    return context.next();
+    return withSecurityHeaders(await context.next());
   }
 
   // Check for session cookie
@@ -59,7 +79,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (pathname.startsWith('/') && !pathname.startsWith('//')) {
       loginUrl.searchParams.set('returnTo', pathname);
     }
-    return Response.redirect(loginUrl.toString(), 302);
+    return withSecurityHeaders(Response.redirect(loginUrl.toString(), 302));
   }
 
   // Validate session with database
@@ -69,7 +89,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       console.error('D1 database not bound');
       const loginUrl = new URL('/login', url.origin);
       loginUrl.searchParams.set('returnTo', pathname);
-      return Response.redirect(loginUrl.toString(), 302);
+      return withSecurityHeaders(Response.redirect(loginUrl.toString(), 302));
     }
 
     const session = await db.prepare(
@@ -83,16 +103,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const response = Response.redirect(loginUrl.toString(), 302);
       // Clear invalid cookie
       response.headers.append('Set-Cookie', 'matomeln_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-      return response;
+      return withSecurityHeaders(response);
     }
 
     // Session is valid, continue
-    return context.next();
+    return withSecurityHeaders(await context.next());
   } catch (error) {
     console.error('Middleware error:', error);
     // Fail closed: redirect to login on error to prevent unauthorized access
     const loginUrl = new URL('/login', url.origin);
     loginUrl.searchParams.set('returnTo', pathname);
-    return Response.redirect(loginUrl.toString(), 302);
+    return withSecurityHeaders(Response.redirect(loginUrl.toString(), 302));
   }
 };

@@ -19,7 +19,7 @@ interface CommentPickerProps {
   onCommentSizesChange?: (sizes: Record<string, number>) => void;
 }
 
-function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveUp, onMoveDown, onMoveToPosition, onDragHandleStart, displayName, displayNameBold, displayNameColor, firstPosterId }: {
+function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEdit, onSizeChange, color, fontSize, colorPalette, showId, onHover, isEditing, onEditingChange, onExpandImage, isFirstSelected, isInSortMode, onMoveToEnd, onMoveToTop, onMoveUp, onMoveDown, onMoveToPosition, onDragHandleStart, onExcludePosterId, displayName, displayNameBold, displayNameColor, firstPosterId }: {
   comment: Comment;
   isSelected: boolean;
   onToggle: () => void;
@@ -42,6 +42,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   onMoveDown?: () => void;
   onMoveToPosition?: (targetResId: string) => void;
   onDragHandleStart?: (e: React.DragEvent) => void;
+  onExcludePosterId?: (nameId: string) => void;
   displayName?: string;
   displayNameBold?: boolean;
   displayNameColor?: string;
@@ -51,7 +52,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
   const [isHovered, setIsHovered] = useState(false);
   const [editingBody, setEditingBody] = useState(comment.body);
   const [targetPosition, setTargetPosition] = useState<string>('');  // 移動先番号入力用
-  const [showMoveMenu, setShowMoveMenu] = useState(false);  // 移動メニュー表示
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
 
   // 編集開始時に現在のbodyを設定
   useEffect(() => {
@@ -84,22 +85,22 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
     return () => document.removeEventListener('click', handleClickOutside, true);
   }, [isEditing, comment.body, onEditingChange]);
 
-  // 移動メニューを外側クリックで閉じる
+  // オプションメニューを外側クリックで閉じる
   useEffect(() => {
-    if (!showMoveMenu) return;
+    if (!showOptionsMenu) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // メニュー内のクリックは無視
-      if (target.closest('[data-move-menu]')) {
+      if (target.closest('[data-options-menu]')) {
         return;
       }
-      setShowMoveMenu(false);
+      setShowOptionsMenu(false);
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [showMoveMenu]);
+  }, [showOptionsMenu]);
 
   // ホバー中のキーボード処理
   useEffect(() => {
@@ -127,10 +128,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
         const index = keyNum === '0' ? 9 : parseInt(keyNum) - 1;
         if (index < colorPalette.length) {
           onColorChange(colorPalette[index]);
-          // 色選択時に自動的にコメントを選択状態にする
-          if (!isSelected) {
-            onToggle();
-          }
         }
       }
 
@@ -138,23 +135,14 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       if (e.key.toLowerCase() === 'q') {
         e.preventDefault();
         onSizeChange('large');
-        if (!isSelected) {
-          onToggle();
-        }
       }
       if (e.key.toLowerCase() === 'w') {
         e.preventDefault();
         onSizeChange('medium');
-        if (!isSelected) {
-          onToggle();
-        }
       }
       if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         onSizeChange('small');
-        if (!isSelected) {
-          onToggle();
-        }
       }
     };
 
@@ -179,6 +167,9 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
 
     return `${year}/${month}/${day}(${dayOfWeek}) ${hour}:${minute}:${second}`;
   };
+
+  const hasPosterIdOption = Boolean(showId && comment.name_id);
+  const canShowOptions = !isFirstSelected || hasPosterIdOption;
 
   return (
     <div
@@ -236,9 +227,10 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 </span>
               )}
             </div>
-            {/* 本文バッジ */}
-            {isFirstSelected && (
-              <div className="absolute top-0 right-0 flex items-center gap-2">
+            <div className="absolute top-0 right-0 flex items-center gap-1" data-options-menu>
+              {/* 本文バッジ */}
+              {isFirstSelected && (
+                <>
                 <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
                   本文
                 </span>
@@ -248,48 +240,51 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   </svg>
                   固定
                 </span>
-              </div>
-            )}
-            {/* 移動メニュー */}
-            {!isFirstSelected && (
-              <div className="absolute top-0 right-0 flex items-center gap-1" data-move-menu>
-                {/* ドラッグハンドル */}
-                {isSelected && (
-                  <div
-                    className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
-                    draggable={true}
-                    onDragStart={(e) => {
-                      e.stopPropagation();
-                      e.dataTransfer.setData('text/plain', comment.id);
-                      e.dataTransfer.effectAllowed = 'move';
-                      onDragHandleStart?.(e);
-                    }}
-                    title="ドラッグして並べ替え"
-                  >
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                    </svg>
-                  </div>
-                )}
+                </>
+              )}
+              {/* ドラッグハンドル */}
+              {!isFirstSelected && isSelected && (
+                <div
+                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.setData('text/plain', comment.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    onDragHandleStart?.(e);
+                  }}
+                  title="ドラッグして並べ替え"
+                >
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
+                </div>
+              )}
+              {canShowOptions && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowMoveMenu(!showMoveMenu);
+                    setShowOptionsMenu(prev => !prev);
                   }}
                   className="bg-gray-600 hover:bg-gray-700 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer flex items-center gap-1"
+                  title="レスのオプション"
                 >
-                  移動
-                  <svg className={`w-3 h-3 transition-transform ${showMoveMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  オプション
+                  <svg className={`w-3 h-3 transition-transform ${showOptionsMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                {showMoveMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
+              )}
+              {showOptionsMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                  {!isFirstSelected && (
+                    <>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveUp?.();
-                        setShowMoveMenu(false);
+                        setShowOptionsMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
                     >
@@ -302,7 +297,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveDown?.();
-                        setShowMoveMenu(false);
+                        setShowOptionsMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
@@ -316,7 +311,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToTop?.();
-                          setShowMoveMenu(false);
+                          setShowOptionsMenu(false);
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       >
@@ -329,7 +324,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToEnd?.();
-                          setShowMoveMenu(false);
+                          setShowOptionsMenu(false);
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       >
@@ -355,7 +350,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                               if (!isNaN(targetResId) && targetResId > 0) {
                                 onMoveToPosition?.(targetPosition);
                                 setTargetPosition('');
-                                setShowMoveMenu(false);
+                                setShowOptionsMenu(false);
                               }
                             }
                           }}
@@ -372,7 +367,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                             if (!isNaN(targetResId) && targetResId > 0) {
                               onMoveToPosition?.(targetPosition);
                               setTargetPosition('');
-                              setShowMoveMenu(false);
+                              setShowOptionsMenu(false);
                             }
                           }}
                           disabled={!targetPosition || isNaN(parseInt(targetPosition))}
@@ -382,10 +377,31 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    </>
+                  )}
+                  {hasPosterIdOption && (
+                    <div className={`${!isFirstSelected ? 'border-t border-gray-200' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const ok = window.confirm(`ID:${comment.name_id} のレスをまとめて除外しますか？`);
+                          if (!ok) return;
+                          onExcludePosterId?.(comment.name_id!);
+                          setShowOptionsMenu(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 ${isFirstSelected ? 'rounded-t-lg' : ''} rounded-b-lg`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        このIDを除外
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* カラーパレット - 名前欗の下に表示 */}
@@ -402,10 +418,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   onClick={(e) => {
                     e.stopPropagation();
                     onColorChange(paletteColor);
-                    // 色選択時に自動的にコメントを選択状態にする
-                    if (!isSelected) {
-                      onToggle();
-                    }
                   }}
                   title={`色を選択 (キー: ${keyHint})`}
                 >
@@ -425,9 +437,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('large');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 22 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -445,9 +454,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('medium');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 18 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -465,9 +471,6 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('small');
-                if (!isSelected) {
-                  onToggle();
-                }
               }}
               className={`relative px-3 py-1 min-h-[32px] text-xs rounded border transition-all cursor-pointer ${
                 fontSize === 14 ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -612,6 +615,21 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
   const parts = body.split(pattern);
   const elements: React.ReactElement[] = [];
 
+  const pushTextWithLineBreaks = (text: string, keyPrefix: string) => {
+    text.split(/\r\n?|\n/).forEach((line, lineIndex, lines) => {
+      if (line) {
+        elements.push(
+          <span key={`${keyPrefix}-line-${lineIndex}`} style={{ color: color || '#000000' }}>
+            {line}
+          </span>
+        );
+      }
+      if (lineIndex < lines.length - 1) {
+        elements.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
+      }
+    });
+  };
+
   // テキスト、アンカー、URLを出現順に処理
   parts.forEach((part, index) => {
     // URLの場合
@@ -629,7 +647,7 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
     }
     // 通常のテキスト
     else if (part) {
-      elements.push(<span key={`text-${index}`} style={{ color: color || '#000000' }}>{part}</span>);
+      pushTextWithLineBreaks(part, `text-${index}`);
     }
   });
 
@@ -643,6 +661,83 @@ function extractAnchor(body: string): number | null {
     return parseInt(match[1]);
   }
   return null;
+}
+
+function buildFullDisplayComments(
+  comments: Comment[],
+  commentPositions: Record<string, number>,
+  editedComments: Record<string, string>,
+): Array<Comment & { body: string; sortKey: number }> {
+  const resIdToComment = new Map<number, Comment>();
+  comments.forEach(c => {
+    resIdToComment.set(Number(c.res_id), c);
+  });
+
+  const repliesMap = new Map<number, Comment[]>();
+  const commentsWithAnchor = new Set<string>();
+
+  comments.forEach(comment => {
+    const body = editedComments[comment.id] || comment.body;
+    const anchorId = extractAnchor(body);
+    if (anchorId !== null && resIdToComment.has(anchorId)) {
+      if (!repliesMap.has(anchorId)) {
+        repliesMap.set(anchorId, []);
+      }
+      repliesMap.get(anchorId)!.push(comment);
+      commentsWithAnchor.add(comment.id);
+    }
+  });
+
+  const result: Array<Comment & { body: string; sortKey: number }> = [];
+  let sortIndex = 0;
+
+  comments.forEach((c) => {
+    if (commentsWithAnchor.has(c.id)) {
+      return;
+    }
+
+    const targetPosition = commentPositions[c.id] !== undefined
+      ? commentPositions[c.id]
+      : sortIndex;
+
+    result.push({
+      ...c,
+      body: editedComments[c.id] || c.body,
+      sortKey: targetPosition
+    });
+    sortIndex++;
+
+    const replies = repliesMap.get(Number(c.res_id));
+    if (replies) {
+      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
+      replies.forEach(reply => {
+        const replyPosition = commentPositions[reply.id] !== undefined
+          ? commentPositions[reply.id]
+          : sortIndex;
+        result.push({
+          ...reply,
+          body: editedComments[reply.id] || reply.body,
+          sortKey: replyPosition
+        });
+        sortIndex++;
+      });
+    }
+  });
+
+  return result.sort((a, b) => a.sortKey - b.sortKey);
+}
+
+function orderSelectedCommentsByDisplay(
+  selected: CommentWithStyle[],
+  displayComments: Comment[],
+): CommentWithStyle[] {
+  const displayOrder = new Map(displayComments.map((comment, index) => [comment.id, index]));
+  return [...selected].sort((a, b) => {
+    const aOrder = displayOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = displayOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return Number(a.res_id) - Number(b.res_id);
+  });
 }
 
 export default function CommentPicker({
@@ -671,6 +766,8 @@ export default function CommentPicker({
   const [dragOverCommentId, setDragOverCommentId] = useState<string | null>(null);
   // 選択済みコメントの位置を全コメント中のインデックスで管理
   const [commentPositions, setCommentPositions] = useState<Record<string, number>>({});
+  const [excludedNameIds, setExcludedNameIds] = useState<Set<string>>(() => new Set());
+  const [hiddenNameIdCommentIds, setHiddenNameIdCommentIds] = useState<Set<string>>(() => new Set());
   // 表示するコメント件数（遅延ローディング用）
   const INITIAL_DISPLAY_COUNT = 1000;
   const LOAD_MORE_COUNT = 500;
@@ -684,8 +781,24 @@ export default function CommentPicker({
   // コメントが変更されたら位置情報と表示件数をリセット
   useEffect(() => {
     setCommentPositions({});
+    setExcludedNameIds(new Set());
+    setHiddenNameIdCommentIds(new Set());
     setDisplayCount(INITIAL_DISPLAY_COUNT);
   }, [comments]);
+
+  const hideNameId = useCallback(<T extends Comment>(comment: T): T => {
+    if (!hiddenNameIdCommentIds.has(comment.id)) return comment;
+    return { ...comment, name_id: undefined };
+  }, [hiddenNameIdCommentIds]);
+
+  const visibleComments = useMemo(() => {
+    if (excludedNameIds.size === 0) return comments;
+    return comments.filter(c => !c.name_id || !excludedNameIds.has(c.name_id));
+  }, [comments, excludedNameIds]);
+
+  const fullDisplayComments = useMemo(() => {
+    return buildFullDisplayComments(visibleComments, commentPositions, editedComments);
+  }, [visibleComments, commentPositions, editedComments]);
 
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
@@ -699,10 +812,60 @@ export default function CommentPicker({
       // サイズマップ変換
       const sizeValue = commentSizes[comment.id];
       const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
-      const newComment: CommentWithStyle = { ...comment, body, color, fontSize };
-      onSelectionChange([...selectedComments, newComment]);
+      const newComment: CommentWithStyle = { ...hideNameId(comment), body, color, fontSize };
+      onSelectionChange(orderSelectedCommentsByDisplay([...selectedComments, newComment], fullDisplayComments));
     }
-  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes]);
+  }, [selectedComments, onSelectionChange, commentColors, editedComments, commentSizes, fullDisplayComments, hideNameId]);
+
+  const excludePosterId = useCallback((nameId: string) => {
+    const targetIds = new Set(comments.filter(c => c.name_id === nameId).map(c => c.id));
+    if (targetIds.size === 0) return;
+
+    setExcludedNameIds(prev => {
+      const next = new Set(prev);
+      next.add(nameId);
+      return next;
+    });
+    setCommentPositions(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
+    setEditedComments(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
+    setCommentColors(prev => Object.fromEntries(Object.entries(prev).filter(([commentId]) => !targetIds.has(commentId))));
+    setHiddenNameIdCommentIds(prev => new Set([...prev].filter(commentId => !targetIds.has(commentId))));
+    setCommentSizes(Object.fromEntries(Object.entries(commentSizes).filter(([commentId]) => !targetIds.has(commentId))));
+    onSelectionChange(selectedComments.filter(sc => !targetIds.has(sc.id)));
+    setLastHoveredCommentId(prev => prev && targetIds.has(prev) ? null : prev);
+    setEditingCommentId(prev => prev && targetIds.has(prev) ? null : prev);
+    toast.success(`ID:${nameId} のレス ${targetIds.size}件を除外しました`);
+  }, [comments, commentSizes, onSelectionChange, selectedComments, setCommentSizes]);
+
+  const restorePosterId = useCallback((nameId: string) => {
+    setExcludedNameIds(prev => {
+      const next = new Set(prev);
+      next.delete(nameId);
+      return next;
+    });
+    toast.success(`ID:${nameId} を表示に戻しました`);
+  }, []);
+
+  const selectedCommentsWithNameIdCount = useMemo(() => {
+    return selectedComments.filter(comment => Boolean(comment.name_id)).length;
+  }, [selectedComments]);
+
+  const clearSelectedNameIds = useCallback(() => {
+    const targetIds = selectedComments
+      .filter(comment => Boolean(comment.name_id))
+      .map(comment => comment.id);
+    if (targetIds.length === 0) return;
+
+    setHiddenNameIdCommentIds(prev => {
+      const next = new Set(prev);
+      targetIds.forEach(commentId => next.add(commentId));
+      return next;
+    });
+    onSelectionChange(selectedComments.map(comment => (
+      comment.name_id ? { ...comment, name_id: undefined } : comment
+    )));
+    toast.success(`選択済みレス ${targetIds.length}件のIDを消しました`);
+  }, [onSelectionChange, selectedComments]);
 
   // グローバルなスペースキー処理（最後にホバーしたコメントを選択/解除）
   useEffect(() => {
@@ -716,7 +879,7 @@ export default function CommentPicker({
       // スペースキーで最後にホバーしたコメントを選択/解除
       if (e.code === 'Space' && lastHoveredCommentId) {
         e.preventDefault(); // スクロールを防ぐ
-        const comment = comments.find(c => c.id === lastHoveredCommentId);
+        const comment = visibleComments.find(c => c.id === lastHoveredCommentId);
         if (comment) {
           toggleComment(comment);
         }
@@ -731,7 +894,7 @@ export default function CommentPicker({
 
     window.addEventListener('keydown', handleGlobalKeyPress);
     return () => window.removeEventListener('keydown', handleGlobalKeyPress);
-  }, [lastHoveredCommentId, comments, toggleComment]);
+  }, [lastHoveredCommentId, visibleComments, toggleComment]);
 
   // カラーパレットの定義
   const colorPalette = [
@@ -752,11 +915,30 @@ export default function CommentPicker({
     // 色情報を保存
     setCommentColors(prev => ({ ...prev, [commentId]: color }));
 
-    // 選択済みコメントの色を更新
-    const updated = selectedComments.map(c =>
-      c.id === commentId ? { ...c, color } : c
-    );
-    onSelectionChange(updated);
+    const isSelected = selectedComments.some(c => c.id === commentId);
+    if (isSelected) {
+      // 選択済みコメントの色を更新
+      const updated = selectedComments.map(c =>
+        c.id === commentId ? { ...c, color } : c
+      );
+      onSelectionChange(updated);
+      return;
+    }
+
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    const sizeValue = commentSizes[commentId];
+    const fontSize: 'small' | 'medium' | 'large' = sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium';
+    onSelectionChange([
+      ...selectedComments,
+      {
+        ...hideNameId(comment),
+        body: editedComments[commentId] || comment.body,
+        color,
+        fontSize,
+      },
+    ]);
   };
 
   const updateCommentSize = (commentId: string, size: 'small' | 'medium' | 'large') => {
@@ -766,11 +948,28 @@ export default function CommentPicker({
     // サイズ情報を保存
     setCommentSizes({ ...commentSizes, [commentId]: fontSizeValue });
 
-    // 選択済みコメントのサイズを更新
-    const updated = selectedComments.map(c =>
-      c.id === commentId ? { ...c, fontSize: size } : c
-    );
-    onSelectionChange(updated);
+    const isSelected = selectedComments.some(c => c.id === commentId);
+    if (isSelected) {
+      // 選択済みコメントのサイズを更新
+      const updated = selectedComments.map(c =>
+        c.id === commentId ? { ...c, fontSize: size } : c
+      );
+      onSelectionChange(updated);
+      return;
+    }
+
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    onSelectionChange([
+      ...selectedComments,
+      {
+        ...hideNameId(comment),
+        body: editedComments[commentId] || comment.body,
+        color: commentColors[commentId] || '#000000',
+        fontSize: size,
+      },
+    ]);
   };
 
   const updateCommentBody = (commentId: string, newBody: string) => {
@@ -792,72 +991,16 @@ export default function CommentPicker({
     if (showOnlySelected) {
       return selectedComments
         .map(sc => {
+          if (sc.name_id && excludedNameIds.has(sc.name_id)) return null;
           const found = comments.find(c => c.id === sc.id);
           if (!found) return null;
-          return { ...found, body: editedComments[sc.id] || sc.body };
+          return hideNameId({ ...found, body: editedComments[sc.id] || sc.body });
         })
         .filter((c): c is NonNullable<typeof c> => c !== null);
     } else {
-      const selectedIds = new Set(selectedComments.map(sc => sc.id));
-      const resIdToComment = new Map<number, Comment>();
-      comments.forEach(c => {
-        resIdToComment.set(Number(c.res_id), c);
-      });
-
-      const repliesMap = new Map<number, Comment[]>();
-      const commentsWithAnchor = new Set<string>();
-
-      comments.forEach(comment => {
-        const body = editedComments[comment.id] || comment.body;
-        const anchorId = extractAnchor(body);
-        if (anchorId !== null && resIdToComment.has(anchorId)) {
-          if (!repliesMap.has(anchorId)) {
-            repliesMap.set(anchorId, []);
-          }
-          repliesMap.get(anchorId)!.push(comment);
-          commentsWithAnchor.add(comment.id);
-        }
-      });
-
-      const result: Array<Comment & { body: string; sortKey: number }> = [];
-      let sortIndex = 0;
-
-      comments.forEach((c) => {
-        if (commentsWithAnchor.has(c.id)) {
-          return;
-        }
-
-        const targetPosition = commentPositions[c.id] !== undefined
-          ? commentPositions[c.id]
-          : sortIndex;
-
-        result.push({
-          ...c,
-          body: editedComments[c.id] || c.body,
-          sortKey: targetPosition
-        });
-        sortIndex++;
-
-        const replies = repliesMap.get(Number(c.res_id));
-        if (replies) {
-          replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-          replies.forEach(reply => {
-            const replyPosition = commentPositions[reply.id] !== undefined
-              ? commentPositions[reply.id]
-              : sortIndex;
-            result.push({
-              ...reply,
-              body: editedComments[reply.id] || reply.body,
-              sortKey: replyPosition
-            });
-            sortIndex++;
-          });
-        }
-      });
-
-      return result.sort((a, b) => a.sortKey - b.sortKey);
+      return fullDisplayComments;
     }
-  }, [comments, selectedComments, showOnlySelected, editedComments, commentPositions]);
+  }, [comments, selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
@@ -868,15 +1011,48 @@ export default function CommentPicker({
         <h2 className="text-lg font-bold text-gray-800">コメントを選択</h2>
       </div>
 
+      {excludedNameIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2">
+          <span className="text-xs font-bold text-red-600">除外中のID</span>
+          {[...excludedNameIds].map(nameId => (
+            <button
+              key={nameId}
+              type="button"
+              onClick={() => restorePosterId(nameId)}
+              className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-red-500 border border-red-200 hover:bg-red-100 transition-colors"
+              title="このIDのレスを表示に戻す"
+            >
+              ID:{nameId} を戻す
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selectedCommentsWithNameIdCount > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={clearSelectedNameIds}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+            title="選択済みレスのIDを消す"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M8 6V4h8v2m-9 4l1 10h8l1-10" />
+            </svg>
+            選択済みのIDを消す ({selectedCommentsWithNameIdCount})
+          </button>
+        </div>
+      )}
+
       <div className="space-y-2">
         {arrangedComments.slice(0, showOnlySelected ? undefined : displayCount).map(comment => {
           const displayComment = {
-            ...comment,
+            ...hideNameId(comment),
             body: editedComments[comment.id] || comment.body
           };
           const isSelected = selectedComments.some(sc => sc.id === comment.id);
           const anchorId = extractAnchor(displayComment.body);
-          const isReply = anchorId !== null && comments.some(c => Number(c.res_id) === anchorId);
+          const isReply = anchorId !== null && visibleComments.some(c => Number(c.res_id) === anchorId);
 
           // 本文バッジの表示判定
           // 並び替え順序の最初のコメントが本文
@@ -974,13 +1150,14 @@ export default function CommentPicker({
                     e.dataTransfer.effectAllowed = 'move';
                   }
                 }}
+                onExcludePosterId={excludePosterId}
                 onExpandImage={setExpandedImage}
                 isInSortMode={showOnlySelected}
                 onMoveToEnd={() => {
                   // 未選択の場合は自動選択してから移動
                   if (!isSelected) {
                     const newComment: CommentWithStyle = {
-                      ...comment,
+                      ...hideNameId(comment),
                       color: commentColors[comment.id] || '#000000',
                       fontSize: commentSizes[comment.id] === 14 ? 'small' : commentSizes[comment.id] === 22 ? 'large' : 'medium',
                       body: editedComments[comment.id] || comment.body
@@ -1086,32 +1263,34 @@ export default function CommentPicker({
                 }}
                 onMoveToPosition={(targetResId) => {
                   const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  // 全コメントから対象のコメントを探す
-                  const targetCommentIndex = comments.findIndex(c => String(c.res_id) === String(targetResId));
+                  // 画面上の並び順から対象コメントを探す
+                  const targetDisplayIndex = arrangedComments.findIndex(c => Number(c.res_id) === Number(targetResId));
 
-                  if (targetCommentIndex === -1) {
+                  if (targetDisplayIndex === -1) {
                     toast.error(`${targetResId}番のコメントが見つかりません`);
                     return;
                   }
 
                   if (currentIndex !== -1) {
-                    // ターゲットコメントの下に配置するため、targetIndex + 0.5 の位置を設定
-                    setCommentPositions(prev => ({
-                      ...prev,
-                      [comment.id]: targetCommentIndex + 0.5
-                    }));
-
-                    const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-
-                    // selectedCommentsの中で適切な位置に挿入
-                    const selectedTargetIndex = selectedComments.findIndex(sc => String(sc.res_id) === String(targetResId));
-                    if (selectedTargetIndex !== -1) {
-                      const insertIndex = currentIndex < selectedTargetIndex ? selectedTargetIndex : selectedTargetIndex + 1;
-                      newSelectedComments.splice(insertIndex, 0, movedComment);
-                    } else {
-                      newSelectedComments.push(movedComment);
+                    const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
+                    const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => Number(c.res_id) === Number(targetResId));
+                    if (targetIndexInNextDisplay === -1) {
+                      toast.error(`${targetResId}番のコメントが見つかりません`);
+                      return;
                     }
+                    nextDisplayOrder.splice(targetIndexInNextDisplay + 1, 0, comment);
+
+                    const nextPositions: Record<string, number> = {};
+                    nextDisplayOrder.forEach((displayComment, index) => {
+                      nextPositions[displayComment.id] = index;
+                    });
+                    setCommentPositions(nextPositions);
+
+                    const selectedById = new Map(selectedComments.map(sc => [sc.id, sc]));
+                    const selectedIds = new Set(selectedComments.map(sc => sc.id));
+                    const newSelectedComments = nextDisplayOrder
+                      .filter(displayComment => selectedIds.has(displayComment.id))
+                      .map(displayComment => selectedById.get(displayComment.id) ?? displayComment as CommentWithStyle);
 
                     onSelectionChange(newSelectedComments);
                     toast.success(`コメントを${targetResId}番の下に移動しました`);
@@ -1124,18 +1303,18 @@ export default function CommentPicker({
       </div>
 
       {/* もっと見るボタン（全表示モードで、まだ表示していないコメントがある場合） */}
-      {!showOnlySelected && comments.length > displayCount && (
+      {!showOnlySelected && visibleComments.length > displayCount && (
         <div className="text-center py-4">
           <button
             onClick={() => setDisplayCount(prev => prev + LOAD_MORE_COUNT)}
             className="px-6 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors cursor-pointer font-bold"
           >
-            もっと見る（残り{comments.length - displayCount}件）
+            もっと見る（残り{visibleComments.length - displayCount}件）
           </button>
         </div>
       )}
 
-      {comments.length === 0 && (
+      {visibleComments.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           コメントがありません
         </div>

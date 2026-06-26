@@ -34,7 +34,7 @@ npm install
 6. ビルド設定:
    - Framework preset: `Next.js`
    - Build command: `npm run build`
-   - Build output directory: `.vercel/output/static`
+   - Build output directory: `out`
 7. 「Save and Deploy」をクリック
 
 ### 方法2: CLIから直接デプロイ
@@ -42,9 +42,6 @@ npm install
 ```bash
 # ビルド
 npm run build
-
-# Cloudflare Pages用にビルド
-npm run pages:build
 
 # デプロイ
 npm run pages:deploy
@@ -80,12 +77,8 @@ npm run build
 すべてのAPIルートに `export const runtime = 'edge'` が設定されていることを確認
 
 ### 互換性の問題
-Next.js 15.5.4を使用しているため、一部の機能が制限される場合があります。
-問題が発生した場合は、以下を試してください:
-
-```bash
-npm install --legacy-peer-deps
-```
+Next.jsはCloudflare Pages向けの静的exportで運用します。
+`@cloudflare/next-on-pages` は使用しないため、peer依存回避目的の `--legacy-peer-deps` は通常不要です。
 
 ## 注意事項
 
@@ -102,7 +95,6 @@ GitHubと連携している場合、mainブランチへのpushで自動的にデ
 ### 手動更新
 ```bash
 npm run build
-npm run pages:build
 npm run pages:deploy
 ```
 

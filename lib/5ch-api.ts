@@ -106,7 +106,17 @@ function isMojibake(text: string): boolean {
     return true;
   }
 
-  // 3. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
+  // 3. 同じ文字の異常な連続（◇◇◇◇のような文字化け特有パターン）
+  // ただし、5chでよく使われる文字は除外（w, ー, -, =, _, ・, 草, 笑, !,?など）
+  const commonRepeatChars = /[wWｗＷー\-=_・草笑!?！？\s。、\.]/;
+  const repeatedCharMatches = text.match(/(.)\1{14,}/g) || []; // 15文字以上に緩和
+  const suspiciousRepeats = repeatedCharMatches.filter(match => !commonRepeatChars.test(match[0]));
+  if (suspiciousRepeats.length > 0) {
+    console.log(`[mojibake] 同一文字の異常連続を検出: ${suspiciousRepeats[0]?.substring(0, 20)}`);
+    return true;
+  }
+
+  // 4. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
   // 最初の1000文字で判定（スレタイと1レス目を含む）
   const sample = text.substring(0, 1000);
   const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
@@ -280,27 +290,17 @@ function extractImagesFromBody(body: string): string[] {
   const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
   const matches = body.match(imgRegex);
   if (matches) {
-    images.push(...matches.filter(imageUrl => !isFiveChannelIconUrl(imageUrl)));
+    images.push(...matches);
   }
   return images;
 }
 
-function isFiveChannelIconUrl(imageUrl: string): boolean {
-  try {
-    const url = new URL(imageUrl);
-    return /^img\.5ch\.(?:net|io)$/i.test(url.hostname) &&
-      (url.pathname.startsWith('/ico/') || url.pathname.startsWith('/premium/'));
-  } catch {
-    return false;
-  }
-}
-
 // URLがどのサービスか判定
-export type SourceType = 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'unknown';
+export type SourceType = '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog' | 'unknown';
 
 export function detectSourceType(url: string): SourceType {
-  if (/shikutoku\.me/i.test(url) || /^\d+$/.test(url.trim())) {
-    return 'shikutoku';
+  if (/https?:\/\/(?:girlsvip-matome\.com|matomeblade\.com|[^/]+\.livedoor\.blog|blog\.livedoor\.jp)\/(?:archives|acv)\/\d+\.html/i.test(url)) {
+    return 'matomeBlog';
   }
   if (/\.5ch\.(?:net|io)/i.test(url)) {
     return '5ch';
@@ -320,7 +320,6 @@ export function detectSourceType(url: string): SourceType {
   return 'unknown';
 }
 
-// talk.jp URLから情報を抽出
 export interface TalkJpThreadInfo {
   board: string;
   threadKey: string;
@@ -350,7 +349,6 @@ interface TalkJpComment {
   body?: string;
   timestamp?: number;
   writer?: TalkJpWriter | null;
-  is_sensitive?: boolean;
 }
 
 interface TalkJpThreadPayload {
@@ -1207,7 +1205,6 @@ export async function fetch2chscThread(url: string): Promise<{ talk: Talk; comme
   }
 }
 
-// talk.jpスレッドデータを取得
 export async function fetchTalkJpThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
   const threadInfo = parseTalkJpUrl(url);
   if (!threadInfo) {

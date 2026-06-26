@@ -40,7 +40,6 @@ export async function onRequest(context: any) {
     const allowedDomains = [
       'livedoor.blogimg.jp',
       'livedoor.sp.blogimg.jp',
-      'shikutoku.me',
     ];
 
     const isAllowed = allowedDomains.some(domain =>

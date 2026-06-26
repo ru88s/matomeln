@@ -358,7 +358,8 @@ npm run build  # ビルド
 
 ### 選択済みのみ表示モード（showOnlySelected = true）
 ```typescript
-// 選択したコメントのみをユーザーが並べ替えた順番で表示
+// 選択したコメントのみを、画面表示順・手動移動後の順番で表示
+// res_id昇順に並べ替えない
 selectedComments.map(sc => ({
   ...comments.find(c => c.id === sc.id)!,
   body: editedComments[sc.id] || sc.body
@@ -367,40 +368,17 @@ selectedComments.map(sc => ({
 
 ### 全コメント表示モード（showOnlySelected = false）
 ```typescript
-// 選択済みコメントを位置情報に基づいて全コメント中に挿入
-const selectedIds = new Set(selectedComments.map(sc => sc.id));
-const result: Array<Comment & { body: string; sortKey: number }> = [];
-
-// 未選択コメントに元のインデックスを割り当て
-comments.forEach((c, index) => {
-  if (!selectedIds.has(c.id)) {
-    result.push({ ...c, body: editedComments[c.id] || c.body, sortKey: index });
-  }
-});
-
-// 選択済みコメントを位置情報に基づいて挿入
-selectedComments.forEach(sc => {
-  const comment = comments.find(c => c.id === sc.id);
-  if (comment) {
-    const originalIndex = comments.findIndex(c => c.id === sc.id);
-    const targetPosition = commentPositions[sc.id] !== undefined
-      ? commentPositions[sc.id]
-      : originalIndex;
-    result.push({ ...comment, body: editedComments[comment.id] || comment.body, sortKey: targetPosition });
-  }
-});
-
-// sortKeyでソートして返す
-return result.sort((a, b) => a.sortKey - b.sortKey);
+// 全件表示で使う現在の画面表示順を共通化する
+const fullDisplayComments = buildFullDisplayComments(visibleComments, commentPositions, editedComments);
+return fullDisplayComments;
 ```
 
 ### 位置管理システム
-- **commentPositions**: 各選択コメントの全コメント中の位置を記録
-- **小数値での挿入**: 元のコメントの間に挿入するため小数値を使用
-  - 最初に移動: `-0.5`
-  - 最後に移動: `comments.length - 1 + 0.5`
-  - 特定位置の後: `targetIndex + 0.5`
-  - ドラッグ&ドロップ: `dropIndex - 0.1`
+- **fullDisplayComments**: 全件表示・選択追加・選択済みのみ表示・手動移動の共通基準。
+- **commentPositions**: 手動移動後の全コメント中の位置を記録。移動後は対象1件だけでなく、表示順全体から再計算する。
+- **禁止**: 小数値（`targetIndex + 0.5` など）だけで挿入位置を表現しない。アンカー返信や未選択レスが混ざると表示順がズレる。
+- **禁止**: 選択追加時や選択済みのみ表示時に、`res_id` 昇順・降順へ並び替えない。
+- **読み込み記事の注意**: 読み込んだ記事は `res_id` が画面表示順と一致しない場合がある。画面で上から選んだ順・現在の画面表示順を正とする。
 - **リセット**: トークが変更されたら `commentPositions = {}` でリセット
 
 ## SEO対策

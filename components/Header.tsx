@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Logo } from '@/components/ui/Logo';
-import HelpModal from '@/components/HelpModal';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, useIsAdmin } from '@/lib/auth-context';
+
+const HelpModal = dynamic(() => import('@/components/HelpModal'), {
+  ssr: false,
+});
 
 export default function Header() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const { user, loading, logout } = useAuth();
+  const isAdmin = useIsAdmin();
 
   // 開発者モードの状態を監視
   useEffect(() => {
@@ -54,7 +59,7 @@ export default function Header() {
                   まとめるん
                 </span>
               </a>
-              {isDevMode && (
+              {isAdmin && isDevMode && (
                 <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-purple-500 text-white rounded-full">
                   DEV
                 </span>
@@ -115,7 +120,9 @@ export default function Header() {
       </nav>
 
       {/* 使い方モーダル */}
-      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      {showHelpModal && (
+        <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      )}
     </>
   );
 }

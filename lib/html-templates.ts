@@ -7,27 +7,8 @@ export interface GeneratedHTML {
 }
 
 export interface SourceInfo {
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp';
+  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog';
   originalUrl: string;
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-  const workerCount = Math.min(limit, items.length);
-
-  await Promise.all(Array.from({ length: workerCount }, async () => {
-    while (nextIndex < items.length) {
-      const currentIndex = nextIndex++;
-      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
-    }
-  }));
-
-  return results;
 }
 
 export async function generateMatomeHTML(
@@ -100,13 +81,8 @@ function getSourceUrl(talk: Talk, sourceInfo?: SourceInfo | null): string {
     }
     return url;
   }
-  if (sourceInfo?.source === 'talkjp' && sourceInfo.originalUrl) {
-    const url = sourceInfo.originalUrl.trim();
-    const match = url.match(/https?:\/\/talk\.jp\/boards\/([a-z0-9_]+)\/(\d+)/i);
-    if (match) {
-      return `https://talk.jp/boards/${match[1]}/${match[2]}`;
-    }
-    return url;
+  if (sourceInfo?.source === 'matomeBlog' && sourceInfo.originalUrl) {
+    return sourceInfo.originalUrl.trim();
   }
   // Shikutokuの場合
   return `https://shikutoku.me/talks/${talk.id}`;
@@ -139,10 +115,19 @@ function getCommentStyle(options: MatomeOptions): string {
 
 // サムネイル画像タグを生成
 function generateThumbnailHTML(thumbnailUrl: string): string {
-  // -s.pngを追加してサムネイルURL（小サイズ）を生成
-  const thumbnailSmallUrl = thumbnailUrl.replace(/(\.[a-zA-Z]+)$/, '-s$1');
+  return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailUrl}" width="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
+}
 
-  return `<div align="center"><div align="center"><a href="${thumbnailUrl}" title="no title" target="_blank"><img src="${thumbnailSmallUrl}" width="400" height="400" border="0" alt="no title" hspace="5" class="pict" /></a></div><br /></div>\n\n`;
+function shouldUseKotoriaCompactHtml(blogType?: BlogType): boolean {
+  return blogType === 'kotoria';
+}
+
+function matomeResponseTailHtml(blogType?: BlogType): string {
+  return shouldUseKotoriaCompactHtml(blogType) ? '</div>\n<br />\n<br />' : '<br />\n<br /></div>';
+}
+
+function normalizeBodyLineBreaksForKotoria(body: string): string {
+  return body.replace(/\r\n?/g, '\n');
 }
 
 // シンプルなHTML
@@ -210,21 +195,18 @@ async function generateSimpleHTML(
     const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
     const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
-    const formattedBody = await formatCommentBodyForMatome(comment.body, skipOgp);
+    const formattedBody = await formatCommentBodyForMatome(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType));
+    const responseTail = matomeResponseTailHtml(blogType);
 
     // 整形されたHTMLを生成
     if (hasAnchor) {
       return `<div class="res_div"><div style="${indentStyle}" class="${headerClass}">
 ${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
-<div style="${commentStyle}${indentStyle}" class="${bodyClass}">
-${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
-<br /></div>`;
+<div style="${commentStyle}${indentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}${responseTail}`;
     } else {
       return `<div class="res_div"><div class="${headerClass}">
 ${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
-<div style="${commentStyle}" class="${bodyClass}">
-${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}<br />
-<br /></div>`;
+<div style="${commentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}${responseTail}`;
     }
   };
 
@@ -348,20 +330,17 @@ async function generateRichHTML(
     const hasAnchor = />>?\d+/.test(comment.body);
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
-    const formattedBody = await formatRichCommentBody(comment.body, skipOgp);
+    const formattedBody = await formatRichCommentBody(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType));
+    const responseTail = matomeResponseTailHtml(blogType);
 
     if (hasAnchor) {
       return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">
 ${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
-<div style="${commentStyle}${indentStyle}" class="t_b t_i">
-${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
-<br /></div>`;
+<div style="${commentStyle}${indentStyle}" class="t_b t_i">${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div>${responseTail}`;
     } else {
       return `<div class="res_div"><div class="t_h">
 ${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
-<div style="${commentStyle}" class="t_b">
-${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div><br />
-<br /></div>`;
+<div style="${commentStyle}" class="t_b">${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div>${responseTail}`;
     }
   };
 
@@ -479,17 +458,17 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (
       !skipOgp &&
       !/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl) &&
-      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me|talk\.jp)\//.test(originalUrl)
+      !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)
     ) {
       ogpTargets.set(placeholder, originalUrl);
     }
   }
 
-  // OGPを少数並列で取得。外部URLが多い記事でローカルサーバーを詰まらせない。
+  // OGPを並列取得
   const ogpResults = new Map<string, Awaited<ReturnType<typeof fetchOGP>>>();
   if (ogpTargets.size > 0) {
     const entries = Array.from(ogpTargets.entries());
-    const results = await mapWithConcurrency(entries, 3, ([, originalUrl]) => fetchOGP(originalUrl));
+    const results = await Promise.all(entries.map(([, originalUrl]) => fetchOGP(originalUrl)));
     entries.forEach(([placeholder], i) => {
       ogpResults.set(placeholder, results[i]);
     });
@@ -503,7 +482,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;">${url}</a>`;
     }
-    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc|shikutoku\.me|talk\.jp)\//.test(originalUrl)) {
+    else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;">${url}</a>`;
     }
     else if (skipOgp) {
@@ -552,14 +531,13 @@ function remove5chIconUrls(body: string): string {
   return body
     .split('\n')
     .filter(line => !line.match(/^https?:\/\/img\.5ch\.(?:net|io)\/ico\//))
-    .join('\n')
-    .trim();
+    .join('\n');
 }
 
 // まとめくす風の本文フォーマット
-async function formatCommentBodyForMatome(body: string, skipOgp?: boolean): Promise<string> {
+async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compactLineBreaks?: boolean): Promise<string> {
   // 5chアイコンURLを除去
-  const cleanedBody = remove5chIconUrls(body);
+  const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
 
   // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
@@ -590,9 +568,9 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean): Prom
   return formatted;
 }
 
-async function formatRichCommentBody(body: string, skipOgp?: boolean): Promise<string> {
+async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLineBreaks?: boolean): Promise<string> {
   // 5chアイコンURLを除去
-  const cleanedBody = remove5chIconUrls(body);
+  const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
 
   // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;

@@ -51,17 +51,19 @@ export default function SettingsModal({
   onSaveSettings,
 }: SettingsModalProps) {
   const isAdmin = useIsAdmin();
+  const [claudeApiKey, setClaudeApiKey] = useState('');
+  const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
   const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
   const [ollamaEndpoint, setOllamaEndpoint] = useState('http://127.0.0.1:11434');
   const [ollamaModel, setOllamaModel] = useState('gemma4:e4b');
   const [imageModerationEnabled, setImageModerationEnabled] = useState(true);
   const [imageModerationModel, setImageModerationModel] = useState('gemma3:4b');
-  const [claudeApiKey, setClaudeApiKey] = useState('');
-  const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
+  const [aiInputMode, setAiInputMode] = useState<'standard' | 'token-saving'>('standard');
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
+  const [thumbnailEnabled, setThumbnailEnabled] = useState(true);
   const [thumbnailProvider, setThumbnailProvider] = useState<ThumbnailProvider>('gemini');
   const [openaiImageModel, setOpenaiImageModel] = useState<OpenAIImageModel>('gpt-image-1');
   const [openaiImageQuality, setOpenaiImageQuality] = useState<OpenAIImageQuality>('medium');
@@ -82,6 +84,14 @@ export default function SettingsModal({
   const [testTitle, setTestTitle] = useState('');
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
+
+  const selectBlogType = (blogType: BlogType) => {
+    setBlogForm((current) => ({
+      ...current,
+      blogType,
+      blogId: blogType === 'kotoria' && !current.blogId.trim() ? 'https://kotoria.me' : current.blogId,
+    }));
+  };
 
   // localStorage書き込み + サーバー同期のヘルパー
   const persistSettings = useCallback((updates: Record<string, string | null>) => {
@@ -119,6 +129,7 @@ export default function SettingsModal({
       setOllamaModel(localStorage.getItem('matomeln_ollama_model') || 'gemma4:e4b');
       setImageModerationEnabled(localStorage.getItem('matomeln_image_moderation_enabled') !== 'false');
       setImageModerationModel(localStorage.getItem('matomeln_image_moderation_model') || 'gemma3:4b');
+      setAiInputMode(localStorage.getItem('matomeln_ai_input_mode') === 'token-saving' ? 'token-saving' : 'standard');
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
         setGeminiApiKey(savedGeminiApiKey);
@@ -126,6 +137,10 @@ export default function SettingsModal({
       const savedOpenaiApiKey = localStorage.getItem('matomeln_openai_api_key');
       if (savedOpenaiApiKey) {
         setOpenaiApiKey(savedOpenaiApiKey);
+      }
+      const savedThumbnailEnabled = localStorage.getItem('matomeln_thumbnail_enabled');
+      if (savedThumbnailEnabled === 'false') {
+        setThumbnailEnabled(false);
       }
       const savedProvider = localStorage.getItem('matomeln_thumbnail_provider') as ThumbnailProvider | null;
       if (savedProvider === 'gemini' || savedProvider === 'openai') {
@@ -175,30 +190,6 @@ export default function SettingsModal({
       persistSettings({ matomeln_claude_api_key: null });
       toast.success('Claude APIキーを削除しました');
     }
-  };
-
-  // AIまとめプロバイダーを保存
-  const saveAISummaryProvider = (provider: 'claude' | 'ollama') => {
-    setAiSummaryProvider(provider);
-    persistSettings({ matomeln_ai_summary_provider: provider });
-    toast.success(`AIまとめを${provider === 'ollama' ? 'ローカルOllama' : 'Claude'}に変更しました`);
-  };
-
-  // Ollama接続設定を保存
-  const saveOllamaSettings = () => {
-    const endpoint = ollamaEndpoint.trim() || 'http://127.0.0.1:11434';
-    const model = ollamaModel.trim() || 'gemma4:e4b';
-    const moderationModel = imageModerationModel.trim() || 'gemma3:4b';
-    setOllamaEndpoint(endpoint);
-    setOllamaModel(model);
-    setImageModerationModel(moderationModel);
-    persistSettings({
-      matomeln_ollama_endpoint: endpoint,
-      matomeln_ollama_model: model,
-      matomeln_image_moderation_enabled: imageModerationEnabled ? 'true' : 'false',
-      matomeln_image_moderation_model: moderationModel,
-    });
-    toast.success('Ollama設定を保存しました');
   };
 
   // Gemini APIキーを保存
@@ -427,7 +418,11 @@ export default function SettingsModal({
   // ブログを保存
   const saveBlog = () => {
     if (!blogForm.name.trim() || !blogForm.blogId.trim() || !blogForm.apiKey.trim()) {
-      toast.error('すべての項目を入力してください');
+      toast.error(
+        blogForm.blogType === 'kotoria'
+          ? '表示名、Kotoria URL、APIキーを入力してください'
+          : 'すべての項目を入力してください'
+      );
       return;
     }
 
@@ -539,7 +534,7 @@ export default function SettingsModal({
                 </button>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                ライブドアブログのAPI設定を登録できます
+                ライブドアブログ、ガールズまとめ、Kotoriaの投稿先を登録できます
               </p>
             </div>
 
@@ -645,96 +640,6 @@ export default function SettingsModal({
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      AIまとめプロバイダー
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveAISummaryProvider('claude')}
-                        className={`text-sm px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors ${
-                          aiSummaryProvider === 'claude'
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        Claude
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => saveAISummaryProvider('ollama')}
-                        className={`text-sm px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors ${
-                          aiSummaryProvider === 'ollama'
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        ローカルOllama
-                      </button>
-                    </div>
-                  </div>
-
-                  {aiSummaryProvider === 'ollama' && (
-                    <div className="space-y-2 border border-emerald-200 bg-emerald-50 rounded-lg p-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Ollama URL
-                        </label>
-                        <input
-                          type="text"
-                          value={ollamaEndpoint}
-                          onChange={(e) => setOllamaEndpoint(e.target.value)}
-                          placeholder="http://127.0.0.1:11434"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          モデル
-                        </label>
-                        <input
-                          type="text"
-                          value={ollamaModel}
-                          onChange={(e) => setOllamaModel(e.target.value)}
-                          placeholder="gemma4:e4b"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        />
-                      </div>
-                      <div className="border-t border-emerald-200 pt-3 space-y-2">
-                        <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={imageModerationEnabled}
-                            onChange={(e) => setImageModerationEnabled(e.target.checked)}
-                            className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-400"
-                          />
-                          画像付きレスのグロ・エロ判定を有効にする
-                        </label>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            画像判定モデル
-                          </label>
-                          <input
-                            type="text"
-                            value={imageModerationModel}
-                            onChange={(e) => setImageModerationModel(e.target.value)}
-                            placeholder="gemma3:4b"
-                            disabled={!imageModerationEnabled}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-gray-100 disabled:text-gray-400"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={saveOllamaSettings}
-                        className="w-full text-sm bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
-                      >
-                        Ollama設定を保存
-                      </button>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       APIキー
                     </label>
                     <div className="flex gap-2">
@@ -775,6 +680,94 @@ export default function SettingsModal({
                   <p className="text-xs text-purple-600">
                     レスを自動選択・色付けするAIまとめ機能に使用。ローカルOllama選択時はClaude APIキー不要です。
                   </p>
+
+                  <div className="rounded-lg border border-purple-200 bg-white p-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">AIまとめプロバイダー</label>
+                      <div className="flex gap-2">
+                        {(['claude', 'ollama'] as const).map((provider) => (
+                          <button
+                            key={provider}
+                            type="button"
+                            onClick={() => {
+                              setAiSummaryProvider(provider);
+                              persistSettings({ matomeln_ai_summary_provider: provider });
+                            }}
+                            className={`flex-1 px-3 py-2 text-xs rounded-lg font-bold cursor-pointer transition-colors ${
+                              aiSummaryProvider === provider
+                                ? 'bg-purple-500 text-white'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            {provider === 'claude' ? 'Claude' : 'Ollama'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {aiSummaryProvider === 'ollama' && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={ollamaEndpoint}
+                          onChange={(e) => setOllamaEndpoint(e.target.value)}
+                          onBlur={() => persistSettings({ matomeln_ollama_endpoint: ollamaEndpoint.trim() || 'http://127.0.0.1:11434' })}
+                          placeholder="http://127.0.0.1:11434"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                        />
+                        <input
+                          type="text"
+                          value={ollamaModel}
+                          onChange={(e) => setOllamaModel(e.target.value)}
+                          onBlur={() => persistSettings({ matomeln_ollama_model: ollamaModel.trim() || 'gemma4:e4b' })}
+                          placeholder="gemma4:e4b"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                        />
+                        <label className="flex items-center gap-2 text-xs text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={imageModerationEnabled}
+                            onChange={(e) => {
+                              setImageModerationEnabled(e.target.checked);
+                              persistSettings({ matomeln_image_moderation_enabled: e.target.checked ? 'true' : 'false' });
+                            }}
+                            className="w-4 h-4"
+                          />
+                          画像付きレスのグロ・エロ判定を有効にする
+                        </label>
+                        <input
+                          type="text"
+                          value={imageModerationModel}
+                          onChange={(e) => setImageModerationModel(e.target.value)}
+                          onBlur={() => persistSettings({ matomeln_image_moderation_model: imageModerationModel.trim() || 'gemma3:4b' })}
+                          placeholder="gemma3:4b"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-purple-200 bg-white p-3">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={aiInputMode === 'token-saving'}
+                        onChange={(e) => {
+                          const nextMode = e.target.checked ? 'token-saving' : 'standard';
+                          setAiInputMode(nextMode);
+                          persistSettings({ matomeln_ai_input_mode: nextMode });
+                          toast.success(e.target.checked ? 'Token削減モードを有効にしました' : '通常入力モードに戻しました');
+                        }}
+                        className="mt-0.5 w-4 h-4"
+                      />
+                      <span>
+                        <span className="block text-sm font-bold text-gray-800">Token削減モード</span>
+                        <span className="block text-xs text-gray-600 mt-1">
+                          AIに渡すレス一覧から短文ノイズや荒らし候補を省き、重要レスは元番号のまま保持します。投稿・HTML生成の流れは変わりません。
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
@@ -784,6 +777,18 @@ export default function SettingsModal({
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">AIサムネイル</h3>
+                  <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={thumbnailEnabled}
+                      onChange={(e) => {
+                        setThumbnailEnabled(e.target.checked);
+                        persistSettings({ matomeln_thumbnail_enabled: String(e.target.checked) });
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs text-gray-600">有効</span>
+                  </label>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                     thumbnailProvider === 'openai'
                       ? 'bg-green-200 text-green-700'
@@ -1247,10 +1252,10 @@ export default function SettingsModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ブログタイプ
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setBlogForm({ ...blogForm, blogType: 'livedoor' })}
+                    onClick={() => selectBlogType('livedoor')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
                       blogForm.blogType === 'livedoor'
                         ? 'bg-orange-500 text-white'
@@ -1261,7 +1266,7 @@ export default function SettingsModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setBlogForm({ ...blogForm, blogType: 'girls-matome' })}
+                    onClick={() => selectBlogType('girls-matome')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
                       blogForm.blogType === 'girls-matome'
                         ? 'bg-pink-500 text-white'
@@ -1269,6 +1274,17 @@ export default function SettingsModal({
                     }`}
                   >
                     ガールズまとめ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectBlogType('kotoria')}
+                    className={`px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
+                      blogForm.blogType === 'kotoria'
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Kotoria
                   </button>
                 </div>
               </div>
@@ -1280,25 +1296,27 @@ export default function SettingsModal({
                   type="text"
                   value={blogForm.name}
                   onChange={(e) => setBlogForm({ ...blogForm, name: e.target.value })}
-                  placeholder={blogForm.blogType === 'girls-matome' ? 'ガールズまとめ速報' : 'マイブログ'}
+                  placeholder={blogForm.blogType === 'kotoria' ? 'Kotoriaのブログ' : blogForm.blogType === 'girls-matome' ? 'ガールズまとめ速報' : 'マイブログ'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {blogForm.blogType === 'girls-matome' ? 'API URL' : 'ブログID'}
+                  {blogForm.blogType === 'livedoor' ? 'ブログID' : blogForm.blogType === 'kotoria' ? 'Kotoria URL' : 'API URL'}
                 </label>
                 <input
                   type="text"
                   value={blogForm.blogId}
                   onChange={(e) => setBlogForm({ ...blogForm, blogId: e.target.value })}
-                  placeholder={blogForm.blogType === 'girls-matome' ? 'https://girls-matome.example.com' : 'myblog'}
+                  placeholder={blogForm.blogType === 'kotoria' ? 'https://kotoria.me' : blogForm.blogType === 'girls-matome' ? 'https://girls-matome.example.com' : 'myblog'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {blogForm.blogType === 'girls-matome'
-                    ? 'ガールズまとめ速報のAPIエンドポイントURL'
-                    : 'https://●●●.blog.jp の ●●● 部分'}
+                  {blogForm.blogType === 'kotoria'
+                    ? '通常は https://kotoria.me のままでOKです。投稿先ブログはAPIキーから自動判定されるため、ブログIDは不要です。'
+                    : blogForm.blogType === 'girls-matome'
+                      ? 'ガールズまとめ速報のAPIエンドポイントURL'
+                      : 'https://●●●.blog.jp の ●●● 部分'}
                 </p>
               </div>
               <div>

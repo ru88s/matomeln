@@ -1,9 +1,23 @@
 import { Talk, Comment } from './types';
 import { logger } from './logger';
 import { detectSourceType, fetch5chThread, parse5chUrl, fetchOpen2chThread, parseOpen2chUrl, fetch2chscThread, parse2chscUrl, fetchGirlsChannelThread, parseGirlsChannelUrl, fetchTalkJpThread, parseTalkJpUrl } from './5ch-api';
+import { fetchLivedoorMatomeArticle, parseLivedoorMatomeUrl } from './livedoor-matome-api';
 
 // プロキシAPIを使用してCORS問題を回避
 const API_BASE = '/api/proxy';
+
+function normalizeCommentBody(body: string): string {
+  return String(body || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+}
+
+function normalizeComments(comments: Comment[]): Comment[] {
+  return comments.map(comment => ({
+    ...comment,
+    body: normalizeCommentBody(comment.body),
+  }));
+}
 
 export async function fetchTalk(talkId: string): Promise<Talk | null> {
   try {
@@ -51,7 +65,7 @@ export async function fetchComments(talkId: string, page: number = 1): Promise<C
 
     // APIレスポンスの構造: { data: { comments: [...], pagination: {...}, totalCount: N } }
     if (data.data && data.data.comments) {
-      return data.data.comments;
+      return normalizeComments(data.data.comments);
     }
     return [];
   } catch (error) {
@@ -102,11 +116,11 @@ export function extractTalkIdFromUrl(url: string): string | null {
   return null;
 }
 
-// URLまたはIDからデータを取得（シクトク/5ch/open2ch/2ch.sc/girlschannel/talk.jp対応）
+// URLまたはIDからデータを取得（シクトク/5ch/open2ch/2ch.sc/girlschannel/talk.jp/まとめ記事対応）
 export interface ThreadData {
   talk: Talk;
   comments: Comment[];
-  source: 'shikutoku' | '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp';
+  source: '5ch' | 'open2ch' | '2chsc' | 'girlschannel' | 'talkjp' | 'matomeBlog';
 }
 
 export async function fetchThreadData(input: string): Promise<ThreadData> {
@@ -176,29 +190,26 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     };
   }
 
+  if (sourceType === 'matomeBlog') {
+    // livedoor系まとめ記事を取得
+    const result = await fetchLivedoorMatomeArticle(input);
+    if (!result) {
+      throw new Error('まとめ記事の取得に失敗しました');
+    }
+    return {
+      talk: result.talk,
+      comments: result.comments,
+      source: 'matomeBlog',
+    };
+  }
+
   // unknownの場合は対応URLを案内
   if (sourceType === 'unknown') {
-    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / talk.jp / Shikutoku のURLを入力してください。');
+    throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / talk.jp / livedoor系まとめ記事 のURLを入力してください。');
   }
 
-  // シクトクの場合
-  const talkId = extractTalkIdFromUrl(input);
-  if (!talkId) {
-    throw new Error('有効なShikutoku URLを入力してください');
-  }
-
-  const talk = await fetchTalk(talkId);
-  if (!talk) {
-    throw new Error('トークが見つかりません');
-  }
-
-  const comments = await fetchAllComments(talkId);
-  return {
-    talk,
-    comments,
-    source: 'shikutoku',
-  };
+  throw new Error('対応していないURLです。5ch / open2ch / 2ch.sc / ガールズちゃんねる / talk.jp / livedoor系まとめ記事 のURLを入力してください。');
 }
 
 // Re-export for convenience
-export { detectSourceType, parse5chUrl, parseOpen2chUrl, parse2chscUrl, parseGirlsChannelUrl, parseTalkJpUrl } from './5ch-api';
+export { detectSourceType, parse5chUrl, parseOpen2chUrl, parse2chscUrl, parseGirlsChannelUrl, parseTalkJpUrl, parseLivedoorMatomeUrl };
