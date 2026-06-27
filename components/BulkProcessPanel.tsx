@@ -193,14 +193,17 @@ export default function BulkProcessPanel({
     const savedTalk = localStorage.getItem('autoRunTalkSelected');
     const savedGC = localStorage.getItem('autoRunGCSelected');
     const savedInterval = localStorage.getItem('autoRunInterval');
+    const savedActive = localStorage.getItem('autoRunActive');
 
-    setAutoRunActive(false);
-    localStorage.setItem('autoRunActive', 'false');
     if (saved5ch !== null) setAutoRun5chEnabled(saved5ch === 'true');
     if (savedTalk !== null) setAutoRunTalkEnabled(savedTalk === 'true');
     if (savedGC !== null) setAutoRunGCEnabled(savedGC === 'true');
     if (savedInterval && Number(savedInterval) !== autoRunInterval) {
       setAutoRunInterval(Number(savedInterval));
+    }
+    if (savedActive === 'true') {
+      shouldStopRef.current = false;
+      setAutoRunActive(true);
     }
 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -813,6 +816,7 @@ export default function BulkProcessPanel({
       return false;
     } finally {
       isAutoRunningRef.current = false;
+      shouldStopRef.current = false;
       setCurrentAutoRunSource(null);
     }
   }, [onBulkProcess]);
