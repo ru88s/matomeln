@@ -100,7 +100,9 @@ export default function RootLayout({
             __html: `
 (function () {
   var storageKey = 'matomeln:last-chunk-reload';
+  var blankStorageKey = 'matomeln:last-blank-reload';
   var reloadWindowMs = 60000;
+  var blankReloadWindowMs = 120000;
 
   function messageFrom(value) {
     if (!value) return '';
@@ -123,6 +125,40 @@ export default function RootLayout({
     window.location.reload();
   }
 
+  function reloadBlankOnce() {
+    try {
+      var lastReload = Number(sessionStorage.getItem(blankStorageKey) || '0');
+      var now = Date.now();
+      if (now - lastReload < blankReloadWindowMs) return;
+      sessionStorage.setItem(blankStorageKey, String(now));
+    } catch (_) {}
+    window.location.reload();
+  }
+
+  function isDocumentBlank() {
+    var main = document.querySelector('main');
+    var bodyText = (document.body && document.body.innerText || '').trim();
+    if (!document.body) return false;
+    if (!main && bodyText.length < 80) return true;
+    if (main && (main.innerText || '').trim().length === 0 && bodyText.length < 120) return true;
+    return false;
+  }
+
+  function startBlankWatchdog() {
+    var stableBlankCount = 0;
+    window.setInterval(function () {
+      if (document.visibilityState === 'hidden') return;
+      if (isDocumentBlank()) {
+        stableBlankCount += 1;
+      } else {
+        stableBlankCount = 0;
+      }
+      if (stableBlankCount >= 3) {
+        reloadBlankOnce();
+      }
+    }, 5000);
+  }
+
   window.addEventListener('error', function (event) {
     var target = event && event.target;
     if (target && target.tagName === 'SCRIPT' && target.src && target.src.indexOf('/_next/static/chunks/') !== -1) {
@@ -139,6 +175,14 @@ export default function RootLayout({
       reloadOnce();
     }
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      window.setTimeout(startBlankWatchdog, 10000);
+    });
+  } else {
+    window.setTimeout(startBlankWatchdog, 10000);
+  }
 })();`,
           }}
         />
