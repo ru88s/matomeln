@@ -989,18 +989,24 @@ export default function CommentPicker({
   // コメント配列の整列（メモ化）
   const arrangedComments = useMemo(() => {
     if (showOnlySelected) {
-      return selectedComments
-        .map(sc => {
-          if (sc.name_id && excludedNameIds.has(sc.name_id)) return null;
-          const found = comments.find(c => c.id === sc.id);
-          if (!found) return null;
-          return hideNameId({ ...found, body: editedComments[sc.id] || sc.body });
+      const selectedById = new Map(selectedComments.map(comment => [comment.id, comment]));
+      return fullDisplayComments
+        .filter(comment => {
+          const selected = selectedById.get(comment.id);
+          return Boolean(selected) && !(selected?.name_id && excludedNameIds.has(selected.name_id));
         })
-        .filter((c): c is NonNullable<typeof c> => c !== null);
+        .map(comment => {
+          const selected = selectedById.get(comment.id);
+          return hideNameId({
+            ...comment,
+            ...selected,
+            body: editedComments[comment.id] || selected?.body || comment.body,
+          });
+        });
     } else {
       return fullDisplayComments;
     }
-  }, [comments, selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
+  }, [selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
@@ -1052,7 +1058,12 @@ export default function CommentPicker({
           };
           const isSelected = selectedComments.some(sc => sc.id === comment.id);
           const anchorId = extractAnchor(displayComment.body);
-          const isReply = anchorId !== null && visibleComments.some(c => Number(c.res_id) === anchorId);
+          const anchorTargetIsShown = anchorId !== null && (
+            showOnlySelected
+              ? arrangedComments.some(c => c.id !== comment.id && Number(c.res_id) === anchorId)
+              : visibleComments.some(c => Number(c.res_id) === anchorId)
+          );
+          const isReply = anchorId !== null && anchorTargetIsShown;
 
           // 本文バッジの表示判定
           // 並び替え順序の最初のコメントが本文
@@ -1062,7 +1073,7 @@ export default function CommentPicker({
             <div
               key={comment.id}
               className={`${
-                isReply && !showOnlySelected ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''
+                isReply ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''
               } ${
                 dragOverCommentId === comment.id ? 'border-t-2 border-orange-400 pt-2' : ''
               } ${
