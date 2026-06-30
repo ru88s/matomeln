@@ -130,6 +130,22 @@ function interleaveUniqueUrlLists(urlLists: string[][]): string[] {
   return mergedUrls;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label}がタイムアウトしました（${Math.round(timeoutMs / 1000)}秒）`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
+
 interface BulkProcessPanelProps {
   onBulkProcess: (url: string) => Promise<void>;
   isProcessingAI: boolean;
@@ -178,8 +194,11 @@ export default function BulkProcessPanel({
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'all' | '5ch' | 'talk' | 'gc' | null>(null);
   const autoRunTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoRunningRef = useRef(false);
+  const lastAutoRunProgressAtRef = useRef(Date.now());
   const consecutiveErrorsRef = useRef(0); // 連続エラー回数（投稿エラーなど致命的なもののみ）
   const MAX_CONSECUTIVE_ERRORS = 20; // 連続エラー上限（スキップ可能なエラーはカウントしない）
+  const AUTO_RUN_FETCH_TIMEOUT_MS = 90 * 1000;
+  const AUTO_RUN_STUCK_RELOAD_MS = 35 * 60 * 1000;
   const [autoRunPortalTarget, setAutoRunPortalTarget] = useState<HTMLElement | null>(null);
   const hasAutoRunTargets = autoRun5chEnabled || autoRunTalkEnabled || autoRunGCEnabled;
   const autoRunEnabled = autoRunActive;
@@ -261,7 +280,11 @@ export default function BulkProcessPanel({
     const toastId = toast.loading('未まとめURLを取得中...');
 
     try {
-      const result = await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' });
+      const result = await withTimeout(
+        fetchUnsummarizedUrls({ limit: 1000, source: '5ch' }),
+        AUTO_RUN_FETCH_TIMEOUT_MS,
+        '5ch未まとめURL取得'
+      );
       setUrls(result.urls.join('\n'));
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
@@ -278,9 +301,9 @@ export default function BulkProcessPanel({
 
     try {
       const [fiveChResult, talkResult, girlsChannelResult] = await Promise.all([
-        fetchUnsummarizedUrls({ limit: 1000, source: '5ch' }),
-        fetchTalkUrls({ limit: 1000 }),
-        fetchGirlsChannelUrls({ limit: 100 }),
+        withTimeout(fetchUnsummarizedUrls({ limit: 1000, source: '5ch' }), AUTO_RUN_FETCH_TIMEOUT_MS, '5ch未まとめURL取得'),
+        withTimeout(fetchTalkUrls({ limit: 1000 }), AUTO_RUN_FETCH_TIMEOUT_MS, 'Talk未まとめURL取得'),
+        withTimeout(fetchGirlsChannelUrls({ limit: 100 }), AUTO_RUN_FETCH_TIMEOUT_MS, 'ガルちゃん未まとめURL取得'),
       ]);
       const mergedUrls = interleaveUniqueUrlLists([
         fiveChResult.urls,
@@ -302,7 +325,11 @@ export default function BulkProcessPanel({
     const toastId = toast.loading('Talk未まとめURLを取得中...');
 
     try {
-      const result = await fetchTalkUrls({ limit: 1000 });
+      const result = await withTimeout(
+        fetchTalkUrls({ limit: 1000 }),
+        AUTO_RUN_FETCH_TIMEOUT_MS,
+        'Talk未まとめURL取得'
+      );
       setUrls(result.urls.join('\n'));
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
@@ -319,7 +346,11 @@ export default function BulkProcessPanel({
     const toastId = toast.loading('ガルちゃん未まとめURLを取得中...');
 
     try {
-      const result = await fetchGirlsChannelUrls({ limit: 100 });
+      const result = await withTimeout(
+        fetchGirlsChannelUrls({ limit: 100 }),
+        AUTO_RUN_FETCH_TIMEOUT_MS,
+        'ガルちゃん未まとめURL取得'
+      );
       setUrls(result.urls.join('\n'));
       toast.success(`${result.count}件のURLを取得しました`, { id: toastId });
     } catch (error) {
@@ -608,11 +639,15 @@ export default function BulkProcessPanel({
   };
 
   const fetchAutoRunSourceUrls = async (source: AutoRunSource): Promise<string[]> => {
-    const result = source === '5ch'
-      ? await fetchUnsummarizedUrls({ limit: 1000, source: '5ch' })
-      : source === 'talk'
-        ? await fetchTalkUrls({ limit: 1000 })
-        : await fetchGirlsChannelUrls({ limit: 100 });
+    const result = await withTimeout(
+      source === '5ch'
+        ? fetchUnsummarizedUrls({ limit: 1000, source: '5ch' })
+        : source === 'talk'
+          ? fetchTalkUrls({ limit: 1000 })
+          : fetchGirlsChannelUrls({ limit: 100 }),
+      AUTO_RUN_FETCH_TIMEOUT_MS,
+      `${getAutoRunSourceLabel(source)}未まとめURL取得`
+    );
 
     return result.urls;
   };
@@ -622,6 +657,7 @@ export default function BulkProcessPanel({
     // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
     if (isAutoRunningRef.current) return false;
     isAutoRunningRef.current = true;
+    lastAutoRunProgressAtRef.current = Date.now();
 
     const sourceLabel = sources.length === 1
       ? getAutoRunSourceLabel(sources[0])
@@ -632,6 +668,7 @@ export default function BulkProcessPanel({
       // 1. 未まとめURLを取得（選択中のソースをまとめて取得）
       toast.loading(`定期実行[${sourceLabel}]: URL取得中...`, { id: 'auto-run' });
       const results = await Promise.all(sources.map(fetchAutoRunSourceUrls));
+      lastAutoRunProgressAtRef.current = Date.now();
       const urlList = interleaveUniqueUrlLists(results);
 
       if (urlList.length === 0) {
@@ -672,6 +709,7 @@ export default function BulkProcessPanel({
         }
 
         const url = urlList[i];
+        lastAutoRunProgressAtRef.current = Date.now();
         setStatus(prev => ({
           ...prev,
           currentIndex: i,
@@ -687,6 +725,7 @@ export default function BulkProcessPanel({
             const attemptMsg = attempt > 1 ? ` (リトライ ${attempt - 1}回目)` : '';
             toast.loading(`[${sourceLabel}] (${i + 1}/${urlList.length}) 処理中...${attemptMsg}`, { id: 'bulk-progress' });
             await onBulkProcess(url);
+            lastAutoRunProgressAtRef.current = Date.now();
 
             if (shouldStopRef.current) break;
 
@@ -741,6 +780,7 @@ export default function BulkProcessPanel({
 
         if (success) {
           completedCount++;
+          lastAutoRunProgressAtRef.current = Date.now();
           consecutiveFailures = 0; // 成功したらリセット
           consecutiveErrorsRef.current = 0; // 全体のエラーカウントもリセット
           setStatus(prev => ({
@@ -757,6 +797,7 @@ export default function BulkProcessPanel({
           // リトライ後も失敗した場合（スキップして次へ進む）
           failedCount++;
           consecutiveFailures++;
+          lastAutoRunProgressAtRef.current = Date.now();
           const safeError = sanitizeErrorForState(lastError);
           setStatus(prev => ({
             ...prev,
@@ -802,6 +843,11 @@ export default function BulkProcessPanel({
       const errorMsg = stringifyError(error);
       console.error('Auto run cycle error:', errorMsg);
       toast.error(`定期実行[${sourceLabel}]エラー: ${errorMsg}`, { id: 'auto-run' });
+      setStatus(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentUrl: null,
+      }));
 
       // スキップ可能なエラーはカウントしない
       if (!isSkippableError(errorMsg)) {
@@ -817,6 +863,7 @@ export default function BulkProcessPanel({
     } finally {
       isAutoRunningRef.current = false;
       shouldStopRef.current = false;
+      lastAutoRunProgressAtRef.current = Date.now();
       setCurrentAutoRunSource(null);
     }
   }, [onBulkProcess]);
@@ -911,6 +958,28 @@ export default function BulkProcessPanel({
       }
     };
   }, [autoRunActive, autoRun5chEnabled, autoRunTalkEnabled, autoRunGCEnabled, autoRunInterval]);
+
+  useEffect(() => {
+    if (!autoRunActive) return;
+
+    const interval = setInterval(() => {
+      if (!isAutoRunningRef.current && !status.isProcessing) return;
+
+      const elapsed = Date.now() - lastAutoRunProgressAtRef.current;
+      if (elapsed < AUTO_RUN_STUCK_RELOAD_MS) return;
+
+      console.error(`Auto run appears stuck for ${Math.round(elapsed / 1000)} seconds. Reloading page to recover.`);
+      try {
+        localStorage.setItem('autoRunActive', 'true');
+        sessionStorage.setItem('matomeln:last-auto-run-stuck-reload', String(Date.now()));
+      } catch {
+        // ignore storage errors
+      }
+      window.location.reload();
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [autoRunActive, status.isProcessing]);
 
   // 次回実行までの残り時間を表示用にフォーマット
   const formatTimeRemaining = (targetTime: Date): string => {
