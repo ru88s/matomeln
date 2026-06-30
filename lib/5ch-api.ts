@@ -1126,7 +1126,7 @@ async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Pro
 
   // 文字化けチェック（フォールバックでも検出された場合はエラー）
   if (isMojibake(content)) {
-    console.error('[fetch5chFrom2chsc] フォールバックでも文字化けを検出');
+    console.warn('[fetch5chFrom2chsc] フォールバックでも文字化けを検出');
     throw new Error('文字化けが検出されました。このスレッドは正常に取得できません。');
   }
 

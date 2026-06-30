@@ -110,6 +110,78 @@ function sanitizeErrorForState(error: string): string {
   return error;
 }
 
+function isExpectedSkippableErrorMessage(errorMsg: string): boolean {
+  const skippablePatterns = [
+    'AIの応答を解析できませんでした',
+    'AI processing failed',
+    'Failed to parse AI response',
+    'overloaded',
+    'rate_limit',
+    'timeout',
+    'タイムアウト',
+    'スレッドが見つかりませんでした',
+    '見つかりませんでした',
+    '削除されて',
+    '存在しない',
+    '5chスレッドの取得に失敗しました',
+    'スレッドタイトルの取得に失敗しました',
+    'スレッドデータの解析に失敗しました',
+    'DATファイルが見つかりませんでした',
+    'アクセスが制限されている',
+    '取得に失敗',
+    'の取得に失敗しました',
+    '404',
+    'Not Found',
+    'Failed to fetch',
+    '403',
+    'Forbidden',
+    '500',
+    '502',
+    '503',
+    'Internal server error',
+    'Server error',
+    'network error',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'トピックの取得に失敗',
+    'Invalid GirlsChannel',
+    'girlschannel',
+    'Login required',
+    'login required',
+    'ログインが必要',
+    'UNAUTHORIZED',
+    '401',
+    'タイトルが空のため投稿できません',
+    '本文が空のため投稿できません',
+    '過去ログ',
+    '投稿制限中',
+    '制限中の可能性',
+    '文字化け',
+    'エラー: Error',
+    'エラーの詳細を取得できませんでした',
+    'エラーが発生しました',
+    '一括処理に失敗しました',
+    'API呼び出しに失敗',
+    'fetch failed',
+    'Load failed',
+    'NetworkError',
+    'TypeError',
+    'SyntaxError',
+    'Unexpected token',
+    'is not valid JSON',
+    '<!DOCTYPE',
+    'JSON.parse',
+    'JSON Parse error',
+    'CAPTCHA',
+    'アクセスをブロック',
+    'ブロックされている',
+    '応答を解析できませんでした',
+    'アダルトコンテンツ',
+    'スキップ',
+  ];
+  return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+}
+
 type AutoRunSource = '5ch' | 'talk' | 'gc';
 
 function interleaveUniqueUrlLists(urlLists: string[][]): string[] {
@@ -363,88 +435,7 @@ export default function BulkProcessPanel({
 
   // スキップ可能なエラーかどうか判定（リトライ→スキップ対象）
   const isSkippableError = (errorMsg: string): boolean => {
-    const skippablePatterns = [
-      // AIエラー
-      'AIの応答を解析できませんでした',
-      'AI processing failed',
-      'Failed to parse AI response',
-      'overloaded',
-      'rate_limit',
-      'timeout',
-      'タイムアウト',
-      // 5ch取得エラー（スレッドが存在しない・削除済み）
-      'スレッドが見つかりませんでした',
-      '見つかりませんでした',
-      '削除されて',
-      '存在しない',
-      '5chスレッドの取得に失敗しました',
-      'スレッドタイトルの取得に失敗しました',
-      'スレッドデータの解析に失敗しました',
-      'DATファイルが見つかりませんでした',
-      'アクセスが制限されている',
-      '取得に失敗',
-      'の取得に失敗しました',
-      // HTTPエラー（404など）
-      '404',
-      'Not Found',
-      'Failed to fetch',
-      '403',
-      'Forbidden',
-      '500',
-      '502',
-      '503',
-      'Internal server error',
-      'Server error',
-      'network error',
-      'ECONNREFUSED',
-      'ETIMEDOUT',
-      // ガールズちゃんねるエラー
-      'トピックの取得に失敗',
-      'Invalid GirlsChannel',
-      'girlschannel',
-      // Shikutokuログイン必須トーク（loginEnabled=true）
-      'Login required',
-      'login required',
-      'ログインが必要',
-      'UNAUTHORIZED',
-      '401',
-      // コンテンツ検証エラー
-      'タイトルが空のため投稿できません',
-      '本文が空のため投稿できません',
-      // 過去ログ化
-      '過去ログ',
-      // 投稿制限（一時的なエラーの可能性）
-      '投稿制限中',
-      '制限中の可能性',
-      // 文字化け
-      '文字化け',
-      // 汎用エラー（スキップして次へ進む）
-      'エラー: Error',
-      'エラーの詳細を取得できませんでした',
-      'エラーが発生しました',
-      '一括処理に失敗しました',
-      'API呼び出しに失敗',
-      'fetch failed',
-      'Load failed',
-      'NetworkError',
-      'TypeError',
-      'SyntaxError',
-      // JSONパースエラー（HTMLが返ってきた場合など）
-      'Unexpected token',
-      'is not valid JSON',
-      '<!DOCTYPE',
-      'JSON.parse',
-      'JSON Parse error',
-      // CAPTCHAやブロック
-      'CAPTCHA',
-      'アクセスをブロック',
-      'ブロックされている',
-      '応答を解析できませんでした',
-      // コンテンツフィルター
-      'アダルトコンテンツ',
-      'スキップ',
-    ];
-    return skippablePatterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+    return isExpectedSkippableErrorMessage(errorMsg);
   };
 
   // Anthropic APIのクレジット残高不足エラーを判定
@@ -527,9 +518,6 @@ export default function BulkProcessPanel({
           success = true;
           break;
         } catch (error) {
-          console.error(`Bulk process error (attempt ${attempt}):`, error);
-          console.error(`Error type: ${typeof error}, constructor: ${error?.constructor?.name}`);
-          console.error(`Error keys:`, error && typeof error === 'object' ? Object.keys(error) : 'N/A');
           // エラーを確実に文字列に変換
           lastError = stringifyError(error);
           // 追加チェック: [object が含まれていたら置換
@@ -537,7 +525,9 @@ export default function BulkProcessPanel({
             console.error('CRITICAL: stringifyError returned [object], original error:', error);
             lastError = 'エラーの詳細を取得できませんでした';
           }
-          console.error(`Stringified error: ${lastError}`);
+          const logMethod = isSkippableError(lastError) ? console.warn : console.error;
+          logMethod(`Bulk process error (attempt ${attempt}):`, error);
+          logMethod(`Stringified error: ${lastError}`);
 
           // スキップ可能なエラーの場合はリトライ
           if (isSkippableError(lastError) && attempt < maxRetries) {
@@ -732,7 +722,6 @@ export default function BulkProcessPanel({
             success = true;
             break;
           } catch (error) {
-            console.error(`Auto run error (attempt ${attempt}):`, error);
             // エラーを確実に文字列に変換
             lastError = stringifyError(error);
             // 追加チェック: [object が含まれていたら置換
@@ -740,6 +729,9 @@ export default function BulkProcessPanel({
               console.error('CRITICAL: stringifyError returned [object], original error:', error);
               lastError = 'エラーの詳細を取得できませんでした';
             }
+            const logMethod = isSkippableError(lastError) ? console.warn : console.error;
+            logMethod(`Auto run error (attempt ${attempt}):`, error);
+            logMethod(`Stringified error: ${lastError}`);
 
             // スキップ可能なエラーの場合はリトライ
             if (isSkippableError(lastError) && attempt < maxRetries) {

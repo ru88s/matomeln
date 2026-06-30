@@ -174,6 +174,27 @@ function normalizeBlogSettingsForAuth(blogs: BlogSettings[]): BlogSettings[] {
   });
 }
 
+function isExpectedBulkSkipError(errorMsg: string): boolean {
+  const patterns = [
+    '文字化け',
+    'アダルトコンテンツ',
+    'スキップ',
+    'スレッドが見つかりませんでした',
+    'DATファイルが見つかりませんでした',
+    'アクセスが制限されています',
+    '取得に失敗',
+    '404',
+    '403',
+    'Not Found',
+    'Forbidden',
+    '過去ログ',
+    'CAPTCHA',
+    'ブロック',
+    '応答を解析できませんでした',
+  ];
+  return patterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
+}
+
 export default function Home() {
   const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -1188,7 +1209,6 @@ export default function Home() {
       });
 
     } catch (error) {
-      console.error('一括処理エラー:', error);
       // エラーメッセージを確実に文字列として取得
       let errorMsg: string;
       if (error instanceof Error) {
@@ -1214,8 +1234,15 @@ export default function Home() {
       } else {
         errorMsg = '一括処理に失敗しました';
       }
+      if (isExpectedBulkSkipError(errorMsg)) {
+        console.warn('一括処理スキップ:', errorMsg);
+      } else {
+        console.error('一括処理エラー:', error);
+      }
       toast.error(errorMsg, { id: 'bulk-step' });
-      logError(errorMsg, { action: 'bulk_process', threadUrl: url });
+      if (!isExpectedBulkSkipError(errorMsg)) {
+        logError(errorMsg, { action: 'bulk_process', threadUrl: url });
+      }
       // エラーを文字列メッセージ付きのErrorとして再スロー
       throw new Error(errorMsg);
     } finally {
