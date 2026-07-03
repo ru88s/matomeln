@@ -134,6 +134,20 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       return;
     }
 
+    const selectedBlog = blogs.find(blog => blog.id === selectedBlogId);
+    if (selectedBlog) {
+      const skipReason = getOtherBlogPostSkipReason(selectedBlog, {
+        url: sourceInfo?.originalUrl || '',
+        title: generatedHTML.title,
+        talk,
+        comments: selectedComments,
+      });
+      if (skipReason) {
+        toast.error(`${selectedBlog.name}への投稿をスキップ: ${skipReason}`);
+        return;
+      }
+    }
+
     setIsPosting(true);
 
     try {
@@ -216,6 +230,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               url: sourceInfo?.originalUrl || '',
               title: generatedHTML.title,
               talk,
+              comments: selectedComments,
             });
             if (skipReason) {
               console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${skipReason}`);

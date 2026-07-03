@@ -1,4 +1,4 @@
-import { BlogSettings, Talk } from './types';
+import type { BlogSettings, Comment, Talk } from './types';
 
 export const OHIME_BLOG_ID = 'local-ohimechan';
 export const OHIME_BLOG_NAME = 'おにひめちゃん';
@@ -165,11 +165,18 @@ export function isNewsLikeArticle(params: {
   return /ニュース|政治|経済|芸能|スポーツ|事件|事故|速報|報道/.test(tags);
 }
 
+export function hasUrlInFirstComment(comments?: Pick<Comment, 'res_id' | 'body'>[]): boolean {
+  const firstComment = comments?.find((comment) => String(comment.res_id) === '1');
+  if (!firstComment?.body) return false;
+  return /(?:https?:\/\/|www\.)[^\s<>"']+/i.test(firstComment.body);
+}
+
 export function shouldSkipOtherBlogPost(blog: BlogSettings, params: {
   url?: string;
   title?: string;
   tags?: string[];
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
 }): boolean {
   return getOtherBlogPostSkipReason(blog, params) !== null;
 }
@@ -179,8 +186,12 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   title?: string;
   tags?: string[];
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
 }): string | null {
   if (!isOhimeBlog(blog)) return null;
+  if (hasUrlInFirstComment(params.comments)) {
+    return 'レス1にURLがある記事のため';
+  }
   if (isNewsLikeArticle(params)) {
     return 'ニュース系記事のため';
   }

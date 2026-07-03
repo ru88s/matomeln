@@ -1064,6 +1064,16 @@ export default function Home() {
         url
       });
 
+      const primarySkipReason = getOtherBlogPostSkipReason(blogSettings, {
+        url,
+        title: generatedHTML.title,
+        talk,
+        comments: sortedComments,
+      });
+      if (primarySkipReason) {
+        throw new Error(`${blogSettings.name}への投稿をスキップ: ${primarySkipReason}`);
+      }
+
       // ブログタイプに応じたAPI呼び出し（30秒タイムアウト）
       let postResponse: Response;
       if (blogSettings.blogType === 'girls-matome') {
@@ -1132,6 +1142,7 @@ export default function Home() {
                     url,
                     title: generatedHTML.title,
                     talk,
+                    comments: sortedComments,
                   });
                   if (skipReason) {
                     console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${skipReason}`);
