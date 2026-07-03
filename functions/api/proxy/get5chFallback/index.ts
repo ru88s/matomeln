@@ -49,6 +49,22 @@ function normalize5chUrl(url: string): string {
   return url.replace(/\.5ch\.net\//g, '.5ch.io/');
 }
 
+function decodeHtmlText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, ' <br> ')
+    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .trim();
+}
+
 // 試行するURLを生成（5ch.net直接 + 2ch.scフォールバック + CORSプロキシ）
 function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; isHtml?: boolean; useProxy?: string }[] {
   const { server, board, threadKey } = info;
@@ -88,7 +104,36 @@ function parseHtmlToDat(html: string): string {
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   let threadTitle = '';
   if (titleMatch) {
-    threadTitle = titleMatch[1].replace(/\s*\n\s*/g, '').trim();
+    threadTitle = decodeHtmlText(titleMatch[1]).replace(/\s*\n\s*/g, '').trim();
+  }
+
+  const postStartPattern = /<div\b(?=[^>]*\bclass=["'][^"']*\bpost\b[^"']*["'])(?=[^>]*\bdata-id=["'](\d+)["'])[^>]*>/gi;
+  const postStarts: Array<{ resId: string; index: number }> = [];
+  let postStartMatch: RegExpExecArray | null;
+
+  while ((postStartMatch = postStartPattern.exec(html)) !== null) {
+    postStarts.push({ resId: postStartMatch[1], index: postStartMatch.index });
+  }
+
+  for (let i = 0; i < postStarts.length; i++) {
+    const postHtml = html.slice(postStarts[i].index, postStarts[i + 1]?.index ?? html.length);
+    const nameMatch = postHtml.match(/<span[^>]*class=["'][^"']*postusername[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const dateMatch = postHtml.match(/<span[^>]*class=["'][^"']*date[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const uidMatch = postHtml.match(/<span[^>]*class=["'][^"']*uid[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const bodyMatch = postHtml.match(/<div[^>]*class=["'][^"']*post-content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+
+    const name = decodeHtmlText(nameMatch?.[1] || '') || '名無しさん';
+    const date = decodeHtmlText(dateMatch?.[1] || '');
+    const uid = decodeHtmlText(uidMatch?.[1] || '');
+    const body = decodeHtmlText(bodyMatch?.[1] || '');
+    if (!body) continue;
+
+    const dateWithId = [date, uid].filter(Boolean).join(' ');
+    lines.push(`${name}<><>${dateWithId}<>${body}<>${lines.length === 0 ? threadTitle : ''}`);
+  }
+
+  if (lines.length > 0) {
+    return lines.join('\n');
   }
 
   // 各レスを抽出（5chのHTML構造に基づく）

@@ -113,6 +113,87 @@ function decodeDatContent(uint8Array: Uint8Array): { content: string; encoding: 
   };
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, ' <br> ')
+    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .trim();
+}
+
+function extractPostSegments(html: string): Array<{ resId: string; html: string }> {
+  const postStartPattern = /<div\b(?=[^>]*\bclass=["'][^"']*\bpost\b[^"']*["'])(?=[^>]*\bdata-id=["'](\d+)["'])[^>]*>/gi;
+  const starts: Array<{ resId: string; index: number }> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = postStartPattern.exec(html)) !== null) {
+    starts.push({ resId: match[1], index: match.index });
+  }
+
+  return starts.map((start, index) => ({
+    resId: start.resId,
+    html: html.slice(start.index, starts[index + 1]?.index ?? html.length),
+  }));
+}
+
+function parse5chHtmlToDat(html: string): string {
+  const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+  const threadTitle = htmlToText(titleMatch?.[1] || '').replace(/\s+/g, ' ').trim();
+  const lines: string[] = [];
+
+  for (const post of extractPostSegments(html)) {
+    const nameMatch = post.html.match(/<span[^>]*class=["'][^"']*postusername[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const dateMatch = post.html.match(/<span[^>]*class=["'][^"']*date[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const uidMatch = post.html.match(/<span[^>]*class=["'][^"']*uid[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const bodyMatch = post.html.match(/<div[^>]*class=["'][^"']*post-content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+
+    const name = htmlToText(nameMatch?.[1] || '') || '名無しさん';
+    const date = htmlToText(dateMatch?.[1] || '');
+    const uid = htmlToText(uidMatch?.[1] || '');
+    const body = htmlToText(bodyMatch?.[1] || '');
+    if (!body) continue;
+
+    const dateWithId = [date, uid].filter(Boolean).join(' ');
+    lines.push(`${name}<><>${dateWithId}<>${body}<>${lines.length === 0 ? threadTitle : ''}`);
+  }
+
+  return lines.join('\n');
+}
+
+async function fetch5chHtmlFallback(threadInfo: ThreadInfo): Promise<{ content: string; htmlUrl: string; encoding: string; count: number } | null> {
+  const htmlUrl = `https://${threadInfo.server}.5ch.io/test/read.cgi/${threadInfo.board}/${threadInfo.threadKey}/`;
+  const response = await fetch(htmlUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+      'Accept-Encoding': 'gzip',
+    },
+  });
+
+  if (!response.ok) {
+    logger.log(`5ch HTML fallback returned ${response.status}: ${htmlUrl}`);
+    return null;
+  }
+
+  const buffer = await response.arrayBuffer();
+  const decoded = decodeDatContent(new Uint8Array(buffer));
+  const content = parse5chHtmlToDat(decoded.content);
+  const count = content ? content.split('\n').filter(Boolean).length : 0;
+  logger.log(`5ch HTML fallback parsed ${count} comments (${decoded.encoding}, score: ${decoded.score.toFixed(1)}): ${htmlUrl}`);
+
+  if (count === 0) return null;
+  return { content, htmlUrl, encoding: decoded.encoding, count };
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const url = searchParams.get('url');
@@ -172,6 +253,21 @@ export async function GET(request: NextRequest) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
       logger.error(`Error fetching from 2ch.sc:`, error);
     }
+  }
+
+  const htmlFallback = await fetch5chHtmlFallback(threadInfo).catch((error) => {
+    logger.error('Error fetching 5ch HTML fallback:', error);
+    return null;
+  });
+
+  if (htmlFallback) {
+    return NextResponse.json({
+      content: htmlFallback.content,
+      threadInfo,
+      datUrl: htmlFallback.htmlUrl,
+      encoding: htmlFallback.encoding,
+      source: '5ch.io-html',
+    });
   }
 
   // すべてのURLパターンで失敗
