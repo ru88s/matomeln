@@ -549,11 +549,19 @@ function linkifyUrls(text: string): string {
 
 // 5chのアイコンURLなど不要なURLを除去
 function remove5chIconUrls(body: string): string {
-  // 5chアイコンURL（img.5ch.net/ico/ または img.5ch.io/ico/）を含む行を除去
+  // 5chアイコンURL（img.5ch.net/ico/ または img.5ch.io/ico/）だけを除去
   // 例: https://img.5ch.net/ico/syobo2.gif
+  // 例: sssp://img.5ch.net/ico/syobo2.gif
+  const iconUrlPattern = /(?:sssp:\/\/|https?:\/\/)img\.5ch\.(?:net|io)\/ico\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+/gi;
+
   return body
     .split('\n')
-    .filter(line => !line.match(/^https?:\/\/img\.5ch\.(?:net|io)\/ico\//))
+    .map((line) => {
+      const hasIconUrl = /(?:sssp:\/\/|https?:\/\/)img\.5ch\.(?:net|io)\/ico\//i.test(line);
+      const cleaned = line.replace(iconUrlPattern, '').replace(/[ \t]{2,}/g, ' ').trimEnd();
+      return hasIconUrl && !cleaned.trim() ? null : cleaned;
+    })
+    .filter((line): line is string => line !== null)
     .join('\n');
 }
 

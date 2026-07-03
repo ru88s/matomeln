@@ -234,6 +234,20 @@ function parseDateString(dateStr: string): string {
 }
 
 // DAT形式の本文をHTMLから通常テキストに変換
+function remove5chIconUrlsFromText(body: string): string {
+  const iconUrlPattern = /(?:sssp:\/\/|https?:\/\/)img\.5ch\.(?:net|io)\/ico\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+/gi;
+
+  return body
+    .split('\n')
+    .map((line) => {
+      const hasIconUrl = /(?:sssp:\/\/|https?:\/\/)img\.5ch\.(?:net|io)\/ico\//i.test(line);
+      const cleaned = line.replace(iconUrlPattern, '').replace(/[ \t]{2,}/g, ' ').trimEnd();
+      return hasIconUrl && !cleaned.trim() ? null : cleaned;
+    })
+    .filter((line): line is string => line !== null)
+    .join('\n');
+}
+
 function convertBodyFromDat(body: string): string {
   let result = body
     // <br>を改行に
@@ -258,6 +272,8 @@ function convertBodyFromDat(body: string): string {
     .filter(line => !line.trim().startsWith('sssp://'))
     .join('\n')
     .trim();
+
+  result = remove5chIconUrlsFromText(result);
 
   // ニュース記事本文の整形
   result = formatNewsBody(result);
@@ -290,7 +306,7 @@ function extractImagesFromBody(body: string): string[] {
   const imgRegex = /https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"]*)?/gi;
   const matches = body.match(imgRegex);
   if (matches) {
-    images.push(...matches);
+    images.push(...matches.filter((url) => !/^https?:\/\/img\.5ch\.(?:net|io)\/ico\//i.test(url)));
   }
   return images;
 }
