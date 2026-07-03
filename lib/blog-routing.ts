@@ -1,9 +1,9 @@
 import { BlogSettings, Talk } from './types';
 
 export const OHIME_BLOG_ID = 'local-ohimechan';
-export const OHIME_BLOG_NAME = 'おひめちゃん';
-export const OHIME_LIVEDOOR_BLOG_ID = 'ohimechan';
-export const OHIME_PLACEHOLDER_BLOG_IDS = [OHIME_LIVEDOOR_BLOG_ID] as const;
+export const OHIME_BLOG_NAME = 'おにひめちゃん';
+export const OHIME_LIVEDOOR_BLOG_ID = 'onihimechan';
+const OHIME_LEGACY_BLOG_IDS = ['ohimechan'] as const;
 
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
   'garlsvip',
@@ -55,14 +55,23 @@ const NEWS_LIKE_TITLE_PATTERNS = [
 
 export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
   return blogs.map((blog) => {
+    const migratedBlog = isOhimeBlog(blog)
+      ? {
+          ...blog,
+          name: OHIME_BLOG_NAME,
+          blogId: OHIME_LIVEDOOR_BLOG_ID,
+          apiUsername: blog.apiUsername || 'garlsvip',
+        }
+      : blog;
+
     if (
-      blog.blogType !== 'girls-matome' &&
-      !blog.apiUsername &&
-      SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(blog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number])
+      migratedBlog.blogType !== 'girls-matome' &&
+      !migratedBlog.apiUsername &&
+      SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(migratedBlog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number])
     ) {
-      return { ...blog, apiUsername: 'garlsvip' };
+      return { ...migratedBlog, apiUsername: 'garlsvip' };
     }
-    return blog;
+    return migratedBlog;
   });
 }
 
@@ -121,7 +130,9 @@ export function isOhimeBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>):
   return (
     blog.id === OHIME_BLOG_ID ||
     blog.blogId === OHIME_LIVEDOOR_BLOG_ID ||
-    blog.name.includes(OHIME_BLOG_NAME)
+    OHIME_LEGACY_BLOG_IDS.includes(blog.blogId as typeof OHIME_LEGACY_BLOG_IDS[number]) ||
+    blog.name.includes(OHIME_BLOG_NAME) ||
+    blog.name.includes('おひめちゃん')
   );
 }
 
@@ -170,9 +181,6 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
 }): string | null {
   if (!isOhimeBlog(blog)) return null;
-  if (OHIME_PLACEHOLDER_BLOG_IDS.includes(blog.blogId as typeof OHIME_PLACEHOLDER_BLOG_IDS[number])) {
-    return 'ブログID未設定のため';
-  }
   if (isNewsLikeArticle(params)) {
     return 'ニュース系記事のため';
   }

@@ -57,11 +57,11 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 
 ### 認証ユーザー名
 - ライブドアAtomPub投稿では、ブログIDと認証ユーザー名が一致しないことがある。
-- ガールズVIPまとめ、まとめブレイド、なんでも受信遅報、おひめちゃんは、投稿先ブログIDが違っても認証ユーザー名は `garlsvip` を使う。
+- ガールズVIPまとめ、まとめブレイド、なんでも受信遅報、おにひめちゃんは、投稿先ブログIDが違っても認証ユーザー名は `garlsvip` を使う。
 - `postBlog` と `uploadImage` には `blogId` だけでなく `apiUsername` も渡す。未指定時だけ `blogId` を認証ユーザー名として使う。
 - 設定編集時に `apiUsername` を消さない。ライブドアブログ設定には「認証ユーザー名」欄を維持する。
-- 既存ローカル設定で `apiUsername` が欠けている場合、既知ブログID `garlsvip`, `matome_blade`, `mnuhkhkbxmagwje`, `ohimechan` は `garlsvip` に補正する。
-- おひめちゃんへの同時投稿は生活系寄りの記事だけにする。ニュース板・芸能/スポーツ/政治/経済/事件事故などニュース系記事は同時投稿からスキップする。
+- 既存ローカル設定で `apiUsername` が欠けている場合、既知ブログID `garlsvip`, `matome_blade`, `mnuhkhkbxmagwje`, `onihimechan` は `garlsvip` に補正する。
+- おにひめちゃんへの同時投稿は生活系寄りの記事だけにする。ニュース板・芸能/スポーツ/政治/経済/事件事故などニュース系記事は同時投稿からスキップする。
 
 ### エラー表示
 - 同時投稿の失敗を一律に「制限中」と表示しない。
