@@ -81,6 +81,28 @@ function scoreDecodedContent(content: string): number {
   );
 }
 
+function isLikelyMojibake(content: string): boolean {
+  const sample = content.slice(0, 3000);
+  const replacementCount = (sample.match(/\uFFFD/g) || []).length;
+  if (replacementCount > 50 || (sample.length > 0 && replacementCount / sample.length > 0.01)) {
+    return true;
+  }
+
+  const sjisPatternCount = (sample.match(/[繧繝螟髮莉翫縺閾]/g) || []).length;
+  if (sjisPatternCount > 50) {
+    return true;
+  }
+
+  const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  const alphanumeric = (sample.match(/[a-zA-Z0-9\s<>]/g) || []).length;
+  const normalChars = japaneseChars + alphanumeric;
+  return sample.length > 100 && normalChars / sample.length < 0.3;
+}
+
+function isUsableDatContent(content: string): boolean {
+  return content.includes('<>') && !isLikelyMojibake(content);
+}
+
 function decodeDatContent(uint8Array: Uint8Array): { content: string; encoding: string; score: number } {
   const detectedEncoding = Encoding.detect(uint8Array);
   const candidates = new Set<string>(['UTF8', 'SJIS', 'EUCJP']);
@@ -235,6 +257,12 @@ export async function GET(request: NextRequest) {
         const uint8Array = new Uint8Array(buffer);
 
         const decoded = decodeDatContent(uint8Array);
+
+        if (!isUsableDatContent(decoded.content)) {
+          logger.log(`Skipping unusable 2ch.sc DAT: ${datUrl} (${decoded.encoding}, score: ${decoded.score.toFixed(1)})`);
+          lastStatus = 404;
+          continue;
+        }
 
         logger.log(`Successfully fetched from 2ch.sc: ${datUrl} (${decoded.encoding}, score: ${decoded.score.toFixed(1)})`);
 

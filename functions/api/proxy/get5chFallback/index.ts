@@ -337,6 +337,11 @@ async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promi
         console.log(`[get5chFallback] Not DAT format: ${datUrl}`);
         return { content: '', status: 404 };
       }
+
+      if (hasMojibake(content)) {
+        console.log(`[get5chFallback] Mojibake DAT, skipping: ${datUrl}`);
+        return { content: '', status: 404 };
+      }
     }
 
     return { content, status: 200 };
