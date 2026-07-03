@@ -463,7 +463,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                             <span>{blog.name}</span>
                             {isOhimeBlog(blog) && (
                               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
-                                ニュース系以外
+                                生活・雑談のみ
                               </span>
                             )}
                           </div>
