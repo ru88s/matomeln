@@ -25,6 +25,13 @@ const NEWS_LIKE_BOARDS = new Set([
   'liveplus',
 ]);
 
+const LIFE_OR_CHAT_BOARDS = new Set([
+  'livegalileo',
+  'livejupiter',
+  'news4vip',
+  'morningcoffee',
+]);
+
 const NEWS_LIKE_TITLE_PATTERNS = [
   /ニュース/,
   /速報/,
@@ -222,6 +229,17 @@ const LIFE_OR_CHAT_TOPIC_PATTERNS = [
   /ファッション/,
   /メイク/,
   /健康/,
+  /睡眠/,
+  /眠れない/,
+  /寝れない/,
+  /寝不足/,
+  /昼夜逆転/,
+  /夜更かし/,
+  /早起き/,
+  /直し方/,
+  /治し方/,
+  /どうすれば/,
+  /どうしたら/,
   /病院/,
   /介護/,
 ];
@@ -377,11 +395,15 @@ export function isPoliticalTopic(params: {
 }
 
 export function isLifeOrChatTopic(params: {
+  url?: string;
   title?: string;
   tags?: string[];
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
   comments?: Pick<Comment, 'res_id' | 'body'>[];
 }): boolean {
+  const board = params.url ? extractBoardFromUrl(params.url) : null;
+  if (board && LIFE_OR_CHAT_BOARDS.has(board)) return true;
+
   const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
   const text = [
     params.title || '',
