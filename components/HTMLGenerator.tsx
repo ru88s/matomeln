@@ -5,6 +5,7 @@ import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { getOtherBlogPostSkipReason, isOhimeBlog } from '@/lib/blog-routing';
+import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -217,8 +218,12 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         return;
       }
 
+      const blogPostResults: BlogPostResult[] = [{
+        name: selectedBlogName || selectedBlog?.name || apiSettings.blogUrl || '投稿先ブログ',
+        status: 'posted',
+      }];
+
       // 他のブログにも投稿（DEVモード & チェックが入っている場合）
-      let otherBlogResults: { name: string; success: boolean }[] = [];
       if (isDevMode && postToOtherBlogs && selectedOtherBlogIds.length > 0) {
         const otherBlogs = blogs.filter(b => selectedOtherBlogIds.includes(b.id));
 
@@ -234,6 +239,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             });
             if (skipReason) {
               console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${skipReason}`);
+              blogPostResults.push({ name: blog.name, status: 'skipped', reason: skipReason });
               continue;
             }
 
@@ -290,29 +296,21 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             }
 
             if (otherResponse.ok) {
-              otherBlogResults.push({ name: blog.name, success: true });
+              blogPostResults.push({ name: blog.name, status: 'posted' });
             } else {
-              otherBlogResults.push({ name: blog.name, success: false });
+              const errorData = await otherResponse.json().catch(() => null) as { details?: string; error?: string } | null;
+              const detail = errorData?.details || errorData?.error || `HTTP ${otherResponse.status}`;
+              blogPostResults.push({ name: blog.name, status: 'failed', reason: detail });
             }
-          } catch {
-            otherBlogResults.push({ name: blog.name, success: false });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : '不明なエラー';
+            blogPostResults.push({ name: blog.name, status: 'failed', reason: message });
           }
         }
       }
 
       // 結果を表示
-      const successCount = otherBlogResults.filter(r => r.success).length;
-      const failCount = otherBlogResults.filter(r => !r.success).length;
-
-      if (otherBlogResults.length > 0) {
-        if (failCount === 0) {
-          toast.success(`ブログに投稿しました！（他${successCount}件も成功）`);
-        } else {
-          toast.success(`ブログに投稿しました！（他${successCount}件成功、${failCount}件失敗）`);
-        }
-      } else {
-        toast.success('ブログに投稿しました！');
-      }
+      toast.success(buildBlogPostResultToast(blogPostResults), { duration: 9000 });
 
       // スレメモくんにまとめ済み登録
       if (sourceInfo?.originalUrl) {

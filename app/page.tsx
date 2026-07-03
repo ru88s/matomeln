@@ -20,6 +20,7 @@ import {
   getOtherBlogPostSkipReason,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
+import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
 
 const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
@@ -1075,6 +1076,7 @@ export default function Home() {
       }
 
       // ブログタイプに応じたAPI呼び出し（30秒タイムアウト）
+      const blogPostResults: BlogPostResult[] = [];
       let postResponse: Response;
       if (blogSettings.blogType === 'girls-matome') {
         // ガールズまとめ速報へ投稿
@@ -1118,6 +1120,7 @@ export default function Home() {
         const errorMsg = errorData.details || errorData.error || 'ブログ投稿に失敗しました';
         throw new Error(errorMsg);
       }
+      blogPostResults.push({ name: blogSettings.name, status: 'posted' });
 
       // =====================
       // 4.5. 他のブログにも同時投稿（設定がある場合）
@@ -1146,6 +1149,7 @@ export default function Home() {
                   });
                   if (skipReason) {
                     console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${skipReason}`);
+                    blogPostResults.push({ name: blog.name, status: 'skipped', reason: skipReason });
                     continue;
                   }
 
@@ -1187,17 +1191,18 @@ export default function Home() {
 
                   if (otherResponse.ok) {
                     console.log(`✅ ${blog.name}にも投稿完了`);
+                    blogPostResults.push({ name: blog.name, status: 'posted' });
                   } else {
                     const errorData = await otherResponse.json().catch(() => null) as { details?: string; error?: string } | null;
                     const detail = errorData?.details || errorData?.error || `HTTP ${otherResponse.status}`;
                     console.warn(`⚠️ ${blog.name}への投稿失敗:`, detail);
-                    toast(`${blog.name}への投稿をスキップ: ${detail}`, { icon: '⚠️' });
+                    blogPostResults.push({ name: blog.name, status: 'failed', reason: detail });
                   }
                 } catch (otherError) {
                   // エラーでも通知してスキップ
                   console.warn(`⚠️ ${blog.name}への投稿エラー:`, otherError);
                   const message = otherError instanceof Error ? otherError.message : '不明なエラー';
-                  toast(`${blog.name}への投稿をスキップ: ${message}`, { icon: '⚠️' });
+                  blogPostResults.push({ name: blog.name, status: 'failed', reason: message });
                 }
               }
             }
@@ -1220,7 +1225,7 @@ export default function Home() {
         // 登録失敗でもエラーにはしない
       }
 
-      toast.success('ブログ投稿完了！', { id: 'bulk-step' });
+      toast.success(buildBlogPostResultToast(blogPostResults), { id: 'bulk-step', duration: 9000 });
 
       // ログ記録
       logActivity('post_blog', {
