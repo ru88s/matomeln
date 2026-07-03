@@ -25,6 +25,16 @@ function generateExcerpt(html: string, maxLength: number = 160): string {
   return text.length <= maxLength ? text : `${text.substring(0, maxLength)}...`;
 }
 
+async function readJsonResponse(response: Response): Promise<{ success?: boolean; data?: { url?: string }; error?: string }> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as { success?: boolean; data?: { url?: string }; error?: string };
+  } catch {
+    return { error: text };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl } = await request.json() as PostKotoriaRequest;
@@ -54,7 +64,7 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const data = await response.json() as { success?: boolean; data?: { url?: string }; error?: string };
+    const data = await readJsonResponse(response);
 
     if (response.ok && data.success) {
       return NextResponse.json({

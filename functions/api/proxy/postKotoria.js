@@ -5,6 +5,16 @@ function generateExcerpt(body, maxLength = 160) {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 }
 
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
 export async function onRequest(context) {
   const origin = context.request.headers.get('Origin') || '';
   const allowedOrigins = ['https://matomeln.com', 'https://www.matomeln.com', 'http://localhost:3000', 'http://localhost:3001'];
@@ -64,7 +74,7 @@ export async function onRequest(context) {
       }),
     });
 
-    const responseData = await response.json();
+    const responseData = await readJsonResponse(response);
 
     if (!response.ok) {
       return new Response(JSON.stringify({

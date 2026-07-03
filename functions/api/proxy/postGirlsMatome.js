@@ -29,6 +29,16 @@ function generateSlug(title) {
   return slug;
 }
 
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
 export async function onRequest(context) {
   // CORS headers（許可するオリジンを制限）
   const origin = context.request.headers.get('Origin') || '';
@@ -180,7 +190,7 @@ export async function onRequest(context) {
       }),
     });
 
-    const responseData = await response.json();
+    const responseData = await readJsonResponse(response);
 
     if (!response.ok) {
       const errorMessage = responseData.error || 'ガールズまとめ速報への投稿に失敗しました';

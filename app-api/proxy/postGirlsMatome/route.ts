@@ -45,6 +45,16 @@ function generateExcerpt(html: string, maxLength: number = 200): string {
   return text.substring(0, maxLength) + '...';
 }
 
+async function readJsonResponse(response: Response): Promise<{ success?: boolean; data?: unknown; error?: string }> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as { success?: boolean; data?: unknown; error?: string };
+  } catch {
+    return { error: text };
+  }
+}
+
 interface PostGirlsMatomeRequest {
   apiUrl: string;
   apiKey: string;
@@ -102,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     logger.log('Response status:', response.status);
 
-    const data = await response.json() as { success?: boolean; data?: unknown; error?: string };
+    const data = await readJsonResponse(response);
 
     if (response.ok && data.success) {
       logger.log('投稿成功:', data);
