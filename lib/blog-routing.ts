@@ -1,0 +1,163 @@
+import { BlogSettings, Talk } from './types';
+
+export const OHIME_BLOG_ID = 'local-ohimechan';
+export const OHIME_BLOG_NAME = 'おひめちゃん';
+export const OHIME_LIVEDOOR_BLOG_ID = 'ohimechan';
+
+const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
+  'garlsvip',
+  'matome_blade',
+  'mnuhkhkbxmagwje',
+  OHIME_LIVEDOOR_BLOG_ID,
+] as const;
+
+const NEWS_LIKE_BOARDS = new Set([
+  'news',
+  'newsplus',
+  'mnewsplus',
+  'bizplus',
+  'seijinewsplus',
+  'femnewsplus',
+  'scienceplus',
+  'dqnplus',
+  'wildplus',
+  'liveplus',
+]);
+
+const NEWS_LIKE_TITLE_PATTERNS = [
+  /ニュース/,
+  /速報/,
+  /報道/,
+  /発表/,
+  /政府/,
+  /首相/,
+  /大臣/,
+  /国会/,
+  /選挙/,
+  /事件/,
+  /事故/,
+  /逮捕/,
+  /起訴/,
+  /裁判/,
+  /判決/,
+  /政治/,
+  /経済/,
+  /株価/,
+  /円安/,
+  /円高/,
+  /芸能/,
+  /スポーツ/,
+  /MLB/i,
+  /サッカー/,
+  /野球/,
+];
+
+export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
+  return blogs.map((blog) => {
+    if (
+      blog.blogType !== 'girls-matome' &&
+      !blog.apiUsername &&
+      SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(blog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number])
+    ) {
+      return { ...blog, apiUsername: 'garlsvip' };
+    }
+    return blog;
+  });
+}
+
+export function ensureOhimeBlog(blogs: BlogSettings[]): BlogSettings[] {
+  const normalizedBlogs = normalizeBlogSettingsForSharedAuth(blogs);
+  const hasOhime = normalizedBlogs.some((blog) => isOhimeBlog(blog));
+  if (hasOhime) return normalizedBlogs;
+
+  const credentialSource = normalizedBlogs.find((blog) =>
+    blog.blogType !== 'girls-matome' &&
+    SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(blog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number]) &&
+    blog.apiKey
+  );
+
+  if (!credentialSource?.apiKey) return normalizedBlogs;
+
+  return [
+    ...normalizedBlogs,
+    {
+      id: OHIME_BLOG_ID,
+      name: OHIME_BLOG_NAME,
+      blogId: OHIME_LIVEDOOR_BLOG_ID,
+      apiUsername: credentialSource.apiUsername || 'garlsvip',
+      apiKey: credentialSource.apiKey,
+      blogType: 'livedoor',
+      disabled: false,
+    },
+  ];
+}
+
+export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): string | null {
+  if (!settingsText) return settingsText;
+
+  try {
+    const settings = JSON.parse(settingsText) as {
+      postToOtherBlogs?: boolean;
+      selectedOtherBlogIds?: string[];
+    };
+
+    if (!settings.postToOtherBlogs) return settingsText;
+    const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
+      ? settings.selectedOtherBlogIds
+      : [];
+    if (selectedIds.includes(OHIME_BLOG_ID)) return settingsText;
+
+    return JSON.stringify({
+      ...settings,
+      selectedOtherBlogIds: [...selectedIds, OHIME_BLOG_ID],
+    });
+  } catch {
+    return settingsText;
+  }
+}
+
+export function isOhimeBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): boolean {
+  return (
+    blog.id === OHIME_BLOG_ID ||
+    blog.blogId === OHIME_LIVEDOOR_BLOG_ID ||
+    blog.name.includes(OHIME_BLOG_NAME)
+  );
+}
+
+function extractBoardFromUrl(url: string): string | null {
+  const fiveChMatch = url.match(/5ch\.(?:net|io)\/test\/read\.cgi\/([a-z0-9_]+)\//i);
+  if (fiveChMatch) return fiveChMatch[1].toLowerCase();
+
+  const talkMatch = url.match(/talk\.jp\/boards\/([a-z0-9_]+)\//i);
+  if (talkMatch) return talkMatch[1].toLowerCase();
+
+  const open2chMatch = url.match(/open2ch\.net\/test\/read\.cgi\/([a-z0-9_]+)\//i);
+  if (open2chMatch) return open2chMatch[1].toLowerCase();
+
+  return null;
+}
+
+export function isNewsLikeArticle(params: {
+  url?: string;
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+}): boolean {
+  const board = params.url ? extractBoardFromUrl(params.url) : null;
+  if (board && NEWS_LIKE_BOARDS.has(board)) return true;
+
+  const title = `${params.title || ''} ${params.talk?.title || ''}`;
+  if (NEWS_LIKE_TITLE_PATTERNS.some((pattern) => pattern.test(title))) return true;
+
+  const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
+  return /ニュース|政治|経済|芸能|スポーツ|事件|事故|速報|報道/.test(tags);
+}
+
+export function shouldSkipOtherBlogPost(blog: BlogSettings, params: {
+  url?: string;
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+}): boolean {
+  return isOhimeBlog(blog) && isNewsLikeArticle(params);
+}

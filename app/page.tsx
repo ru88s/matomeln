@@ -14,6 +14,12 @@ import { useSettings } from '@/hooks/useSettings';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
+import {
+  ensureOhimeBlog,
+  ensureOhimeSelectedForOtherBlogs,
+  normalizeBlogSettingsForSharedAuth,
+  shouldSkipOtherBlogPost,
+} from '@/lib/blog-routing';
 import toast from 'react-hot-toast';
 
 const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
@@ -162,16 +168,7 @@ function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWith
 }
 
 function normalizeBlogSettingsForAuth(blogs: BlogSettings[]): BlogSettings[] {
-  return blogs.map((blog) => {
-    if (
-      blog.blogType !== 'girls-matome' &&
-      !blog.apiUsername &&
-      ['garlsvip', 'matome_blade', 'mnuhkhkbxmagwje'].includes(blog.blogId)
-    ) {
-      return { ...blog, apiUsername: 'garlsvip' };
-    }
-    return blog;
-  });
+  return ensureOhimeBlog(normalizeBlogSettingsForSharedAuth(blogs));
 }
 
 function isExpectedBulkSkipError(errorMsg: string): boolean {
@@ -276,6 +273,10 @@ export default function Home() {
       try {
         blogsList = normalizeBlogSettingsForAuth(JSON.parse(savedBlogs) as BlogSettings[]);
         localStorage.setItem('blogSettingsList', JSON.stringify(blogsList));
+        const otherBlogsSettings = ensureOhimeSelectedForOtherBlogs(localStorage.getItem('matomeln_other_blogs_settings'));
+        if (otherBlogsSettings) {
+          localStorage.setItem('matomeln_other_blogs_settings', otherBlogsSettings);
+        }
       } catch {
         console.warn('blogSettingsList の読み込みに失敗。デフォルト値を使用します。');
       }
@@ -1126,6 +1127,15 @@ export default function Home() {
               for (const blog of otherBlogs) {
                 try {
                   let otherResponse: Response;
+
+                  if (shouldSkipOtherBlogPost(blog, {
+                    url,
+                    title: generatedHTML.title,
+                    talk,
+                  })) {
+                    console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ニュース系記事のため`);
+                    continue;
+                  }
 
                   if (blog.blogType === 'girls-matome') {
                     // ガールズまとめ速報へ投稿

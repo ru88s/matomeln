@@ -1,6 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useMemo } from 'react';
+import {
+  ensureOhimeBlog,
+  ensureOhimeSelectedForOtherBlogs,
+  normalizeBlogSettingsForSharedAuth,
+} from '@/lib/blog-routing';
+import type { BlogSettings } from '@/lib/types';
 
 // サーバーに同期する設定キー一覧
 const SYNCED_KEYS = [
@@ -46,17 +52,8 @@ function sanitizeCustomNameSettings(value: string): string {
 
 function normalizeBlogSettingsList(value: string): string {
   try {
-    const blogs = JSON.parse(value) as Array<Record<string, unknown>>;
-    const normalizedBlogs = blogs.map((blog) => {
-      if (
-        blog.blogType !== 'girls-matome' &&
-        !blog.apiUsername &&
-        ['garlsvip', 'matome_blade', 'mnuhkhkbxmagwje'].includes(String(blog.blogId || ''))
-      ) {
-        return { ...blog, apiUsername: 'garlsvip' };
-      }
-      return blog;
-    });
+    const blogs = JSON.parse(value) as BlogSettings[];
+    const normalizedBlogs = ensureOhimeBlog(normalizeBlogSettingsForSharedAuth(blogs));
     return JSON.stringify(normalizedBlogs);
   } catch {
     return value;
@@ -70,6 +67,9 @@ function normalizeSettingsForStorage(settings: SettingsMap): SettingsMap {
   }
   if (typeof normalized.blogSettingsList === 'string') {
     normalized.blogSettingsList = normalizeBlogSettingsList(normalized.blogSettingsList);
+  }
+  if (typeof normalized.matomeln_other_blogs_settings === 'string') {
+    normalized.matomeln_other_blogs_settings = ensureOhimeSelectedForOtherBlogs(normalized.matomeln_other_blogs_settings) || normalized.matomeln_other_blogs_settings;
   }
   return normalized;
 }

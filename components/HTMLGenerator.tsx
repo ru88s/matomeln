@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
+import { shouldSkipOtherBlogPost } from '@/lib/blog-routing';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -210,6 +211,15 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
         for (const blog of otherBlogs) {
           try {
             let otherResponse: Response;
+
+            if (shouldSkipOtherBlogPost(blog, {
+              url: sourceInfo?.originalUrl || '',
+              title: generatedHTML.title,
+              talk,
+            })) {
+              console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ニュース系記事のため`);
+              continue;
+            }
 
             if (blog.blogType === 'kotoria') {
               // Kotoriaへ投稿
