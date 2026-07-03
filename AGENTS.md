@@ -61,7 +61,7 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 - `postBlog` と `uploadImage` には `blogId` だけでなく `apiUsername` も渡す。未指定時だけ `blogId` を認証ユーザー名として使う。
 - 設定編集時に `apiUsername` を消さない。ライブドアブログ設定には「認証ユーザー名」欄を維持する。
 - 既存ローカル設定で `apiUsername` が欠けている場合、既知ブログID `garlsvip`, `matome_blade`, `mnuhkhkbxmagwje`, `onihimechan` は `garlsvip` に補正する。
-- おにひめちゃんへの同時投稿は生活系寄りの記事だけにする。ニュース板・芸能/スポーツ/政治/経済/事件事故などニュース系記事は同時投稿からスキップする。
+- おにひめちゃんへの同時投稿は生活系寄りの記事だけにする。ニュース板・芸能人系・スポーツ系・政治/経済/事件事故などニュース系記事は同時投稿からスキップする。レス1にURLがある記事もおにひめちゃんには投稿しない。
 
 ### エラー表示
 - 同時投稿の失敗を一律に「制限中」と表示しない。

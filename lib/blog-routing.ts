@@ -53,6 +53,61 @@ const NEWS_LIKE_TITLE_PATTERNS = [
   /野球/,
 ];
 
+const SPORTS_OR_CELEBRITY_PATTERNS = [
+  /芸能/,
+  /芸能人/,
+  /俳優/,
+  /女優/,
+  /タレント/,
+  /アイドル/,
+  /歌手/,
+  /声優/,
+  /モデル/,
+  /グラドル/,
+  /アナウンサー/,
+  /インフルエンサー/,
+  /YouTuber/i,
+  /ユーチューバー/,
+  /お笑い/,
+  /芸人/,
+  /司会/,
+  /熱愛/,
+  /芸能界/,
+  /スポーツ/,
+  /プロ野球/,
+  /野球/,
+  /サッカー/,
+  /バスケ/,
+  /バスケット/,
+  /ラグビー/,
+  /バレー/,
+  /テニス/,
+  /卓球/,
+  /ゴルフ/,
+  /大相撲/,
+  /力士/,
+  /格闘技/,
+  /ボクシング/,
+  /Jリーグ/i,
+  /Bリーグ/i,
+  /MLB/i,
+  /NBA/i,
+  /NFL/i,
+  /W杯/,
+  /ワールドカップ/,
+  /五輪/,
+  /オリンピック/,
+  /日本代表/,
+  /侍ジャパン/,
+  /ドジャース/,
+  /ヤンキース/,
+  /大谷/,
+  /佐々木朗希/,
+  /ダルビッシュ/,
+  /久保建英/,
+  /三笘薫/,
+];
+
 export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
   return blogs.map((blog) => {
     const migratedBlog = isOhimeBlog(blog)
@@ -165,10 +220,31 @@ export function isNewsLikeArticle(params: {
   return /ニュース|政治|経済|芸能|スポーツ|事件|事故|速報|報道/.test(tags);
 }
 
+function getFirstCommentBody(comments?: Pick<Comment, 'res_id' | 'body'>[]): string {
+  return comments?.find((comment) => String(comment.res_id) === '1')?.body || '';
+}
+
+export function isSportsOrCelebrityTopic(params: {
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
+}): boolean {
+  const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
+  const text = [
+    params.title || '',
+    params.talk?.title || '',
+    tags,
+    getFirstCommentBody(params.comments),
+  ].join(' ');
+
+  return SPORTS_OR_CELEBRITY_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 export function hasUrlInFirstComment(comments?: Pick<Comment, 'res_id' | 'body'>[]): boolean {
-  const firstComment = comments?.find((comment) => String(comment.res_id) === '1');
-  if (!firstComment?.body) return false;
-  return /(?:https?:\/\/|www\.)[^\s<>"']+/i.test(firstComment.body);
+  const firstCommentBody = getFirstCommentBody(comments);
+  if (!firstCommentBody) return false;
+  return /(?:https?:\/\/|www\.)[^\s<>"']+/i.test(firstCommentBody);
 }
 
 export function shouldSkipOtherBlogPost(blog: BlogSettings, params: {
@@ -191,6 +267,9 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   if (!isOhimeBlog(blog)) return null;
   if (hasUrlInFirstComment(params.comments)) {
     return 'レス1にURLがある記事のため';
+  }
+  if (isSportsOrCelebrityTopic(params)) {
+    return 'スポーツ・芸能人系記事のため';
   }
   if (isNewsLikeArticle(params)) {
     return 'ニュース系記事のため';
