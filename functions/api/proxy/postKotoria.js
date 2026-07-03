@@ -86,9 +86,13 @@ export async function onRequest(context) {
     });
   } catch (error) {
     console.error('postKotoria error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const details = message === 'fetch failed'
+      ? `Kotoria APIへの接続に失敗しました: ${message}`
+      : message;
     return new Response(JSON.stringify({
-      error: 'Kotoria投稿中にエラーが発生しました',
-      details: error instanceof Error ? error.message : String(error),
+      error: details,
+      details,
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },

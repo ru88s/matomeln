@@ -73,13 +73,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('Error posting to Kotoria:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const details = errorMessage === 'fetch failed'
+      ? `Kotoria APIへの接続に失敗しました: ${errorMessage}`
+      : errorMessage;
 
     return NextResponse.json(
       {
-        error: errorMessage.includes('認証エラー')
-          ? errorMessage
+        error: details.includes('認証エラー')
+          ? details
           : 'Kotoriaへの投稿に失敗しました',
-        details: errorMessage,
+        details,
       },
       { status: 500 }
     );

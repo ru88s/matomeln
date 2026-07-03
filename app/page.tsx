@@ -1078,47 +1078,52 @@ export default function Home() {
       // ブログタイプに応じたAPI呼び出し（30秒タイムアウト）
       const blogPostResults: BlogPostResult[] = [];
       let postResponse: Response;
-      if (blogSettings.blogType === 'girls-matome') {
-        // ガールズまとめ速報へ投稿
-        postResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            apiUrl: blogSettings.blogId,
-            apiKey: blogSettings.apiKey,
-            title: generatedHTML.title,
-            body: fullBody,
-            sourceUrl: url,
-            tags: talk.tag_names?.join(',') || '',
-            thumbnailUrl: generatedThumbnailUrl || '',
-            thumbnailBase64: generatedThumbnailBase64 || '',
-          }),
-        }, 30000);
-      } else {
-        // ライブドアブログへ投稿（デフォルト）
-        postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            blogId: blogSettings.blogId,
-            apiUsername: blogSettings.apiUsername,
-            apiKey: blogSettings.apiKey,
-            title: generatedHTML.title,
-            body: fullBody,
-            draft: false,
-          }),
-        }, 30000);
+      try {
+        if (blogSettings.blogType === 'girls-matome') {
+          // ガールズまとめ速報へ投稿
+          postResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              apiUrl: blogSettings.blogId,
+              apiKey: blogSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              sourceUrl: url,
+              tags: talk.tag_names?.join(',') || '',
+              thumbnailUrl: generatedThumbnailUrl || '',
+              thumbnailBase64: generatedThumbnailBase64 || '',
+            }),
+          }, 30000);
+        } else {
+          // ライブドアブログへ投稿（デフォルト）
+          postResponse = await fetchWithTimeout('/api/proxy/postBlog', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              blogId: blogSettings.blogId,
+              apiUsername: blogSettings.apiUsername,
+              apiKey: blogSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              draft: false,
+            }),
+          }, 30000);
+        }
+      } catch (postError) {
+        const message = postError instanceof Error ? postError.message : '不明な通信エラー';
+        throw new Error(`${blogSettings.name}への投稿通信に失敗しました: ${message}`);
       }
 
       if (!postResponse.ok) {
-        const errorData = await postResponse.json() as { details?: string; error?: string };
+        const errorData = await postResponse.json().catch(() => null) as { details?: string; error?: string } | null;
         // 詳細なエラーメッセージを表示
-        const errorMsg = errorData.details || errorData.error || 'ブログ投稿に失敗しました';
-        throw new Error(errorMsg);
+        const errorMsg = errorData?.details || errorData?.error || `HTTP ${postResponse.status}`;
+        throw new Error(`${blogSettings.name}への投稿に失敗しました: ${errorMsg}`);
       }
       blogPostResults.push({ name: blogSettings.name, status: 'posted' });
 

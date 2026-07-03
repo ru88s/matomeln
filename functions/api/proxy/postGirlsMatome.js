@@ -218,10 +218,14 @@ export async function onRequest(context) {
     );
   } catch (error) {
     console.error('postGirlsMatome error:', error);
+    const message = error && error.message ? error.message : String(error);
+    const details = message === 'fetch failed'
+      ? `ガールズまとめ速報APIへの接続に失敗しました: ${message}`
+      : message;
     return new Response(
       JSON.stringify({
-        error: error.message || 'ガールズまとめ速報への投稿に失敗しました',
-        details: error.message
+        error: details,
+        details
       }),
       {
         status: 500,

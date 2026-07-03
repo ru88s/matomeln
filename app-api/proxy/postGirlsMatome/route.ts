@@ -126,13 +126,16 @@ export async function POST(request: NextRequest) {
     logger.error('Error posting to girls-matome:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const details = errorMessage === 'fetch failed'
+      ? `ガールズまとめ速報APIへの接続に失敗しました: ${errorMessage}`
+      : errorMessage;
 
     return NextResponse.json(
       {
-        error: errorMessage.includes('認証エラー')
-          ? errorMessage
+        error: details.includes('認証エラー')
+          ? details
           : 'ガールズまとめ速報への投稿に失敗しました',
-        details: errorMessage
+        details
       },
       { status: 500 }
     );

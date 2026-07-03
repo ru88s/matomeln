@@ -84,6 +84,10 @@ function buildAtomXml(title: string, body: string): string {
   );
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 interface PostBlogRequest {
   blogId: string;
   apiUsername?: string;
@@ -118,15 +122,28 @@ export async function POST(request: NextRequest) {
     logger.log('XML Payload (first 500 chars):', xmlPayload.substring(0, 500));
 
     // ライブドアブログAPIへPOST
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'WSSE profile="UsernameToken"',
-        'X-WSSE': wsseHeader,
-        'Content-Type': 'application/xml',
-      },
-      body: xmlPayload,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'WSSE profile="UsernameToken"',
+          'X-WSSE': wsseHeader,
+          'Content-Type': 'application/xml',
+        },
+        body: xmlPayload,
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new Error('ライブドアブログAPIがタイムアウトしました（20秒）');
+      }
+      throw new Error(`ライブドアブログAPIへの接続に失敗しました: ${getErrorMessage(fetchError)}`);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     logger.log('Response status:', response.status);
     logger.log('Response headers:', Object.fromEntries(response.headers.entries()));

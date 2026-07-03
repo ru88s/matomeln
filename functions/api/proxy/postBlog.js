@@ -183,7 +183,8 @@ export async function onRequest(context) {
       if (fetchError.name === 'AbortError') {
         throw new Error('ライブドアブログAPIがタイムアウトしました（20秒）');
       }
-      throw fetchError;
+      const detail = fetchError && fetchError.message ? fetchError.message : String(fetchError);
+      throw new Error(`ライブドアブログAPIへの接続に失敗しました: ${detail}`);
     } finally {
       clearTimeout(timeoutId);
     }

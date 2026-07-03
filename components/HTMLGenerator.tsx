@@ -158,63 +158,71 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // ブログタイプに応じたAPI呼び出し
       let response: Response;
 
-      if (selectedBlogType === 'kotoria') {
-        // Kotoriaへ投稿
-        response = await fetch('/api/proxy/postKotoria', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            apiUrl: apiSettings.blogUrl,
-            apiKey: apiSettings.apiKey,
-            title: generatedHTML.title,
-            body: fullBody,
-            sourceUrl: sourceInfo?.originalUrl || '',
-            tags: talk?.tag_names?.join(',') || '',
-            thumbnailUrl: thumbnailUrl || '',
-          }),
-        });
-      } else if (selectedBlogType === 'girls-matome') {
-        // ガールズまとめ速報へ投稿
-        response = await fetch('/api/proxy/postGirlsMatome', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            apiUrl: apiSettings.blogUrl,
-            apiKey: apiSettings.apiKey,
-            title: generatedHTML.title,
-            body: fullBody,
-            sourceUrl: sourceInfo?.originalUrl || '',
-            tags: talk?.tag_names?.join(',') || '',
-            thumbnailUrl: thumbnailUrl || '',
-          }),
-        });
-      } else {
-        // ライブドアブログへ投稿（デフォルト）
-        response = await fetch('/api/proxy/postBlog', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            blogId: apiSettings.blogUrl,
-            apiUsername: apiSettings.apiUsername,
-            apiKey: apiSettings.apiKey,
-            title: generatedHTML.title,
-            body: fullBody,
-            draft: false,
-          }),
-        });
+      try {
+        if (selectedBlogType === 'kotoria') {
+          // Kotoriaへ投稿
+          response = await fetch('/api/proxy/postKotoria', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              apiUrl: apiSettings.blogUrl,
+              apiKey: apiSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              sourceUrl: sourceInfo?.originalUrl || '',
+              tags: talk?.tag_names?.join(',') || '',
+              thumbnailUrl: thumbnailUrl || '',
+            }),
+          });
+        } else if (selectedBlogType === 'girls-matome') {
+          // ガールズまとめ速報へ投稿
+          response = await fetch('/api/proxy/postGirlsMatome', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              apiUrl: apiSettings.blogUrl,
+              apiKey: apiSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              sourceUrl: sourceInfo?.originalUrl || '',
+              tags: talk?.tag_names?.join(',') || '',
+              thumbnailUrl: thumbnailUrl || '',
+            }),
+          });
+        } else {
+          // ライブドアブログへ投稿（デフォルト）
+          response = await fetch('/api/proxy/postBlog', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              blogId: apiSettings.blogUrl,
+              apiUsername: apiSettings.apiUsername,
+              apiKey: apiSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              draft: false,
+            }),
+          });
+        }
+      } catch (postError) {
+        const blogName = selectedBlogName || selectedBlog?.name || apiSettings.blogUrl || '投稿先ブログ';
+        const message = postError instanceof Error ? postError.message : '不明な通信エラー';
+        toast.error(`${blogName}への投稿通信に失敗しました: ${message}`);
+        return;
       }
 
-      const data = await response.json() as { error?: string; success?: boolean; url?: string; message?: string };
+      const data = await response.json().catch(() => null) as { error?: string; details?: string; success?: boolean; url?: string; message?: string } | null;
 
       if (!response.ok) {
-        const errorMessage = data.error || 'ブログ投稿に失敗しました';
-        toast.error(errorMessage);
+        const blogName = selectedBlogName || selectedBlog?.name || apiSettings.blogUrl || '投稿先ブログ';
+        const errorMessage = data?.details || data?.error || `HTTP ${response.status}`;
+        toast.error(`${blogName}への投稿に失敗しました: ${errorMessage}`);
         return;
       }
 
