@@ -17,8 +17,8 @@ import { useIsAdmin } from '@/lib/auth-context';
 import {
   ensureOhimeBlog,
   ensureOhimeSelectedForOtherBlogs,
+  getOtherBlogPostSkipReason,
   normalizeBlogSettingsForSharedAuth,
-  shouldSkipOtherBlogPost,
 } from '@/lib/blog-routing';
 import toast from 'react-hot-toast';
 
@@ -1128,12 +1128,13 @@ export default function Home() {
                 try {
                   let otherResponse: Response;
 
-                  if (shouldSkipOtherBlogPost(blog, {
+                  const skipReason = getOtherBlogPostSkipReason(blog, {
                     url,
                     title: generatedHTML.title,
                     talk,
-                  })) {
-                    console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ニュース系記事のため`);
+                  });
+                  if (skipReason) {
+                    console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${skipReason}`);
                     continue;
                   }
 

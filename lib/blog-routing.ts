@@ -3,6 +3,7 @@ import { BlogSettings, Talk } from './types';
 export const OHIME_BLOG_ID = 'local-ohimechan';
 export const OHIME_BLOG_NAME = 'おひめちゃん';
 export const OHIME_LIVEDOOR_BLOG_ID = 'ohimechan';
+export const OHIME_PLACEHOLDER_BLOG_IDS = [OHIME_LIVEDOOR_BLOG_ID] as const;
 
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
   'garlsvip',
@@ -159,5 +160,21 @@ export function shouldSkipOtherBlogPost(blog: BlogSettings, params: {
   tags?: string[];
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
 }): boolean {
-  return isOhimeBlog(blog) && isNewsLikeArticle(params);
+  return getOtherBlogPostSkipReason(blog, params) !== null;
+}
+
+export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
+  url?: string;
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+}): string | null {
+  if (!isOhimeBlog(blog)) return null;
+  if (OHIME_PLACEHOLDER_BLOG_IDS.includes(blog.blogId as typeof OHIME_PLACEHOLDER_BLOG_IDS[number])) {
+    return 'ブログID未設定のため';
+  }
+  if (isNewsLikeArticle(params)) {
+    return 'ニュース系記事のため';
+  }
+  return null;
 }
