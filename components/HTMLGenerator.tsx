@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
-import { getOtherBlogPostSkipReason } from '@/lib/blog-routing';
+import { getOtherBlogPostSkipReason, isOhimeBlog } from '@/lib/blog-routing';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -439,7 +439,12 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                         .map(blog => (
                           <div key={blog.id} className="flex items-center gap-2 text-sm text-gray-700">
                             <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                            {blog.name}
+                            <span>{blog.name}</span>
+                            {isOhimeBlog(blog) && (
+                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
+                                ニュース系以外
+                              </span>
+                            )}
                           </div>
                         ))}
                     </>
