@@ -79,7 +79,7 @@ export async function onRequest(context) {
     if (!response.ok) {
       return new Response(JSON.stringify({
         error: responseData.error || 'Kotoriaへの投稿に失敗しました',
-        details: responseData,
+        details: responseData.error || 'Kotoriaへの投稿に失敗しました',
       }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },

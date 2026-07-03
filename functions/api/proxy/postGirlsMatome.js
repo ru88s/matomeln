@@ -198,7 +198,7 @@ export async function onRequest(context) {
       return new Response(
         JSON.stringify({
           error: errorMessage,
-          details: responseData
+          details: errorMessage
         }),
         {
           status: response.status,
