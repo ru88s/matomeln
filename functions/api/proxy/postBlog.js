@@ -127,7 +127,7 @@ export async function onRequest(context) {
   try {
     const requestData = await context.request.json();
 
-    const { blogId, apiKey, title, body, draft } = requestData;
+    const { blogId, apiUsername, apiKey, title, body, draft } = requestData;
 
     if (!blogId || !apiKey || !title || !body) {
       return new Response(
@@ -154,7 +154,7 @@ export async function onRequest(context) {
     const endpoint = `https://livedoor.blogcms.jp/atom/blog/${blogId}/article`;
 
     // WSSE認証ヘッダーを生成
-    const wsseHeader = await generateWSSEHeader(blogId, apiKey);
+    const wsseHeader = await generateWSSEHeader(apiUsername || blogId, apiKey);
 
     // AtomPub用XMLペイロードを生成
     const xmlPayload = buildAtomXml(title, body);

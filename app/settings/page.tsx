@@ -16,6 +16,8 @@ export default function SettingsPage() {
   // 他のブログにも投稿設定
   const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
   const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  const [blogTestResults, setBlogTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
+  const [testingBlogId, setTestingBlogId] = useState<string | null>(null);
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
 
@@ -83,6 +85,36 @@ export default function SettingsPage() {
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
     }));
+  };
+
+  const testBlogConnection = async (blog: BlogSettings) => {
+    setTestingBlogId(blog.id);
+    setBlogTestResults(prev => ({ ...prev, [blog.id]: { ok: false, message: '確認中...' } }));
+
+    try {
+      const response = await fetch('/api/proxy/testBlog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blogId: blog.blogId,
+          apiUsername: blog.apiUsername,
+          apiKey: blog.apiKey,
+          blogType: blog.blogType || 'livedoor',
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; message?: string };
+      setBlogTestResults(prev => ({
+        ...prev,
+        [blog.id]: {
+          ok: result.ok === true,
+          message: result.message || (result.ok ? '正常' : '接続NG'),
+        },
+      }));
+    } catch {
+      setBlogTestResults(prev => ({ ...prev, [blog.id]: { ok: false, message: '接続NG' } }));
+    } finally {
+      setTestingBlogId(null);
+    }
   };
 
   // カスタムフッターHTMLを保存
@@ -227,6 +259,27 @@ export default function SettingsPage() {
                       {isOhimeBlog(blog) && (
                         <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
                           ニュース系以外
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          testBlogConnection(blog);
+                        }}
+                        disabled={testingBlogId === blog.id}
+                        className="ml-auto rounded border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-50 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {testingBlogId === blog.id ? '確認中' : '接続テスト'}
+                      </button>
+                      {blogTestResults[blog.id] && (
+                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
+                          blogTestResults[blog.id].ok
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {blogTestResults[blog.id].message}
                         </span>
                       )}
                     </label>
