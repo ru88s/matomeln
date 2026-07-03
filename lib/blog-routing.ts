@@ -108,6 +108,124 @@ const SPORTS_OR_CELEBRITY_PATTERNS = [
   /三笘薫/,
 ];
 
+const POLITICAL_TOPIC_PATTERNS = [
+  /政治/,
+  /政界/,
+  /政府/,
+  /与党/,
+  /野党/,
+  /国会/,
+  /内閣/,
+  /首相/,
+  /総理/,
+  /大臣/,
+  /官房長官/,
+  /政党/,
+  /自民党/,
+  /立憲/,
+  /維新/,
+  /公明党/,
+  /共産党/,
+  /国民民主/,
+  /れいわ/,
+  /参政党/,
+  /社民党/,
+  /選挙/,
+  /投票/,
+  /候補者/,
+  /議員/,
+  /衆院/,
+  /参院/,
+  /知事/,
+  /市長/,
+  /都議/,
+  /県議/,
+  /条例/,
+  /法案/,
+  /増税/,
+  /減税/,
+  /外交/,
+  /安全保障/,
+  /防衛/,
+  /憲法/,
+  /改憲/,
+  /保守/,
+  /リベラル/,
+  /左派/,
+  /右派/,
+];
+
+const LIFE_OR_CHAT_TOPIC_PATTERNS = [
+  /生活/,
+  /日常/,
+  /暮らし/,
+  /雑談/,
+  /相談/,
+  /悩み/,
+  /愚痴/,
+  /あるある/,
+  /体験談/,
+  /人間関係/,
+  /友達/,
+  /知人/,
+  /近所/,
+  /ご近所/,
+  /職場/,
+  /仕事/,
+  /バイト/,
+  /パート/,
+  /家族/,
+  /親/,
+  /母親/,
+  /父親/,
+  /兄弟/,
+  /姉妹/,
+  /夫/,
+  /妻/,
+  /旦那/,
+  /嫁/,
+  /義母/,
+  /義父/,
+  /義実家/,
+  /姑/,
+  /舅/,
+  /子供/,
+  /子ども/,
+  /育児/,
+  /子育て/,
+  /ママ友/,
+  /学校/,
+  /保育園/,
+  /幼稚園/,
+  /恋愛/,
+  /彼氏/,
+  /彼女/,
+  /結婚/,
+  /離婚/,
+  /婚活/,
+  /家事/,
+  /料理/,
+  /掃除/,
+  /洗濯/,
+  /片付け/,
+  /節約/,
+  /買い物/,
+  /スーパー/,
+  /ご飯/,
+  /食事/,
+  /部屋/,
+  /家/,
+  /賃貸/,
+  /引っ越し/,
+  /美容/,
+  /服/,
+  /ファッション/,
+  /メイク/,
+  /健康/,
+  /病院/,
+  /介護/,
+];
+
 export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
   return blogs.map((blog) => {
     const migratedBlog = isOhimeBlog(blog)
@@ -241,6 +359,40 @@ export function isSportsOrCelebrityTopic(params: {
   return SPORTS_OR_CELEBRITY_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+export function isPoliticalTopic(params: {
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
+}): boolean {
+  const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
+  const text = [
+    params.title || '',
+    params.talk?.title || '',
+    tags,
+    getFirstCommentBody(params.comments),
+  ].join(' ');
+
+  return POLITICAL_TOPIC_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+export function isLifeOrChatTopic(params: {
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
+}): boolean {
+  const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
+  const text = [
+    params.title || '',
+    params.talk?.title || '',
+    tags,
+    getFirstCommentBody(params.comments),
+  ].join(' ');
+
+  return LIFE_OR_CHAT_TOPIC_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 export function hasUrlInFirstComment(comments?: Pick<Comment, 'res_id' | 'body'>[]): boolean {
   const firstCommentBody = getFirstCommentBody(comments);
   if (!firstCommentBody) return false;
@@ -271,8 +423,14 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   if (isSportsOrCelebrityTopic(params)) {
     return 'スポーツ・芸能人系記事のため';
   }
+  if (isPoliticalTopic(params)) {
+    return '政治系記事のため';
+  }
   if (isNewsLikeArticle(params)) {
     return 'ニュース系記事のため';
+  }
+  if (!isLifeOrChatTopic(params)) {
+    return '生活系・雑談系以外の記事のため';
   }
   return null;
 }
