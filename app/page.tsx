@@ -21,7 +21,6 @@ import {
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import {
-  getDefaultAIThumbnailBase64,
   getDefaultAIThumbnailUrl,
   uploadDefaultAIThumbnail,
 } from '@/lib/default-thumbnail';
@@ -866,7 +865,7 @@ export default function Home() {
           toast.loading('デフォルトサムネイルを設定中...', { id: 'bulk-step' });
           if (blogSettings.blogType === 'girls-matome') {
             generatedThumbnailUrl = getDefaultAIThumbnailUrl();
-            generatedThumbnailBase64 = await getDefaultAIThumbnailBase64();
+            setThumbnailUrl(generatedThumbnailUrl);
           } else {
             generatedThumbnailUrl = await uploadDefaultAIThumbnail(blogSettings);
             setThumbnailUrl(generatedThumbnailUrl);
