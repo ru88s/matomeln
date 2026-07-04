@@ -248,9 +248,9 @@ Keep the character's IDENTITY from reference:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Character's reaction should match the article's emotional tone:
 
-【POSITIVE NEWS】 → Big smile, sparkling eyes, tiny round mitten hand waving, jumping, hearts floating
-【SHOCKING NEWS】 → Wide eyes, tiny mitten hands beside cheeks, jaw dropped, sweat drops
-【FUNNY/SILLY】 → Laughing with tears, one small mitten hand near stomach, playful body tilt
+【POSITIVE NEWS】 → Big smile, sparkling eyes, small natural anime hand waving, jumping, hearts floating
+【SHOCKING NEWS】 → Wide eyes, small hands beside cheeks, jaw dropped, sweat drops
+【FUNNY/SILLY】 → Laughing with tears, one small hand near stomach, playful body tilt
 【CONTROVERSIAL】 → Smug face, arms crossed, raised eyebrow, knowing look
 【SAD/TRAGIC】 → Tears in cute style, downcast eyes, holding tissue
 【ANGRY/OUTRAGE】 → Puffed cheeks, steam, clenched fists, but still cute
@@ -270,10 +270,10 @@ Character's reaction should match the article's emotional tone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✋ HANDS & LIMBS QUALITY (VERY IMPORTANT)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Use simple chibi mitten hands or rounded glove-like hands
+- Use small, simple, natural anime-style hands
 - Exactly two arms and at most two visible hands
 - Keep hands small, simple, and away from the focal point
-- Prefer waving mittens, tiny fists, or hands partly hidden behind props
+- Prefer simple open hands, tiny fists, or hands partly hidden behind props
 - If fingers are visible, each hand must have normal simple anatomy
 - Avoid close-up hands, detailed fingers, peace signs, crossed fingers, pointing fingers, and complex hand gestures
 - Avoid duplicated hands, extra arms, extra fingers, malformed fingers, fused fingers, or floating hands
@@ -438,7 +438,7 @@ The above reference image(s) show the character "${character?.name || 'キャラ
 
 The reference is ONLY for character identity. Everything else should be fresh and unique!
 Keep the final look cute, lively, and anime-like. Avoid stiff realistic 3D toy/figurine rendering.
-Use simple rounded chibi mitten hands. Keep at most two visible hands, avoid detailed fingers, and hide hands if the pose becomes anatomically complex.
+Use small, simple, natural anime-style hands. Keep at most two visible hands, avoid detailed fingers, and hide hands if the pose becomes anatomically complex.
 
 Now create a thumbnail following these rules:
 
@@ -701,7 +701,7 @@ The reference image(s) show the character "${character?.name || 'キャラクタ
 
 The reference is ONLY for character identity. Everything else should be fresh and unique!
 Keep the final look cute, lively, and anime-like. Avoid stiff realistic 3D toy/figurine rendering.
-Use simple rounded chibi mitten hands. Keep at most two visible hands, avoid detailed fingers, and hide hands if the pose becomes anatomically complex.
+Use small, simple, natural anime-style hands. Keep at most two visible hands, avoid detailed fingers, and hide hands if the pose becomes anatomically complex.
 
 Now create a thumbnail following these rules:
 
