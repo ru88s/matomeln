@@ -882,14 +882,28 @@ export default function Home() {
           console.log('カテゴリサムネイル使用');
           toast.success('カテゴリサムネイル使用', { id: 'bulk-step' });
         } else {
-          const { findReusableThumbnail, markThumbnailReused } = await import('@/lib/thumbnail-library');
-          const reusableThumbnail = findReusableThumbnail(talk.title);
-          if (reusableThumbnail) {
-            generatedThumbnailUrl = reusableThumbnail.record.imageUrl;
+          const {
+            findSharedReusableThumbnail,
+            findReusableThumbnail,
+            markSharedThumbnailReused,
+            markThumbnailReused,
+          } = await import('@/lib/thumbnail-library');
+          const sharedThumbnail = await findSharedReusableThumbnail(talk.title);
+          if (sharedThumbnail) {
+            generatedThumbnailUrl = sharedThumbnail.record.imageUrl;
             skipThumbnailGeneration = true;
-            markThumbnailReused(reusableThumbnail.record.id);
-            console.log('ライブラリサムネイル再利用:', reusableThumbnail.reason);
-            toast.success(`既存サムネ再利用（${reusableThumbnail.reason}）`, { id: 'bulk-step' });
+            await markSharedThumbnailReused(sharedThumbnail.record.id);
+            console.log('共有ライブラリサムネイル再利用:', sharedThumbnail.reason);
+            toast.success(`共有サムネ再利用（${sharedThumbnail.reason}）`, { id: 'bulk-step' });
+          } else {
+            const reusableThumbnail = findReusableThumbnail(talk.title);
+            if (reusableThumbnail) {
+              generatedThumbnailUrl = reusableThumbnail.record.imageUrl;
+              skipThumbnailGeneration = true;
+              markThumbnailReused(reusableThumbnail.record.id);
+              console.log('ローカルライブラリサムネイル再利用:', reusableThumbnail.reason);
+              toast.success(`既存サムネ再利用（${reusableThumbnail.reason}）`, { id: 'bulk-step' });
+            }
           }
         }
         } // end if isThumbnailEnabled
@@ -974,8 +988,12 @@ export default function Home() {
                   setThumbnailUrl(generatedThumbnailUrl);
                   toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
                   try {
-                    const { saveGeneratedThumbnailToLibrary } = await import('@/lib/thumbnail-library');
+                    const {
+                      saveGeneratedThumbnailToLibrary,
+                      saveGeneratedThumbnailToSharedLibrary,
+                    } = await import('@/lib/thumbnail-library');
                     saveGeneratedThumbnailToLibrary(titleForThumbnail, generatedThumbnailUrl);
+                    await saveGeneratedThumbnailToSharedLibrary(titleForThumbnail, generatedThumbnailUrl);
                   } catch (e) {
                     console.warn('サムネイルライブラリ保存失敗:', e);
                   }

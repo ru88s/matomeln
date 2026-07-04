@@ -19,7 +19,7 @@ export interface ThumbnailLibraryRecord {
   title: string;
   category: ThumbnailReuseCategory;
   keywords: string[];
-  style: 'deformed-mascot';
+  style: 'deformed-mascot' | 'anime-chibi';
   usageCount: number;
   createdAt: string;
   lastUsedAt: string;
@@ -144,6 +144,98 @@ export function findReusableThumbnail(title: string): ThumbnailReuseMatch | null
   return candidates[0] || null;
 }
 
+type SharedThumbnailRecord = {
+  id?: unknown;
+  imageUrl?: unknown;
+  image_url?: unknown;
+  title?: unknown;
+  category?: unknown;
+  keywords?: unknown;
+  style?: unknown;
+  usageCount?: unknown;
+  usage_count?: unknown;
+  createdAt?: unknown;
+  created_at?: unknown;
+  lastUsedAt?: unknown;
+  last_used_at?: unknown;
+};
+
+type SharedThumbnailMatch = {
+  record?: SharedThumbnailRecord;
+  score?: unknown;
+  reason?: unknown;
+};
+
+function normalizeSharedRecord(record: SharedThumbnailRecord): ThumbnailLibraryRecord | null {
+  const imageUrl = typeof record.imageUrl === 'string'
+    ? record.imageUrl
+    : typeof record.image_url === 'string'
+      ? record.image_url
+      : '';
+  if (!imageUrl) return null;
+
+  return {
+    id: typeof record.id === 'string' ? record.id : imageUrl,
+    imageUrl,
+    title: typeof record.title === 'string' ? record.title : '',
+    category: typeof record.category === 'string'
+      ? record.category as ThumbnailReuseCategory
+      : 'generic',
+    keywords: Array.isArray(record.keywords)
+      ? record.keywords.filter((keyword): keyword is string => typeof keyword === 'string')
+      : [],
+    style: record.style === 'deformed-mascot' ? 'deformed-mascot' : 'anime-chibi',
+    usageCount: typeof record.usageCount === 'number'
+      ? record.usageCount
+      : typeof record.usage_count === 'number'
+        ? record.usage_count
+        : 0,
+    createdAt: typeof record.createdAt === 'string'
+      ? record.createdAt
+      : typeof record.created_at === 'string'
+        ? record.created_at
+        : new Date().toISOString(),
+    lastUsedAt: typeof record.lastUsedAt === 'string'
+      ? record.lastUsedAt
+      : typeof record.last_used_at === 'string'
+        ? record.last_used_at
+        : new Date().toISOString(),
+  };
+}
+
+export async function findSharedReusableThumbnail(title: string): Promise<ThumbnailReuseMatch | null> {
+  try {
+    const response = await fetch(`/api/proxy/thumbnailLibrary?title=${encodeURIComponent(title)}`);
+    if (!response.ok) return null;
+    const data = await response.json() as { match?: SharedThumbnailMatch | null };
+    if (!data.match?.record) return null;
+
+    const record = normalizeSharedRecord(data.match.record);
+    if (!record) return null;
+
+    return {
+      record,
+      score: typeof data.match.score === 'number' ? data.match.score : 0,
+      reason: typeof data.match.reason === 'string' ? data.match.reason : 'shared',
+    };
+  } catch (error) {
+    console.warn('共有サムネイルライブラリ検索エラー:', error);
+    return null;
+  }
+}
+
+export async function markSharedThumbnailReused(recordId: string): Promise<void> {
+  try {
+    await fetch('/api/proxy/thumbnailLibrary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'use', id: recordId }),
+    });
+  } catch (error) {
+    console.warn('共有サムネイル使用回数更新エラー:', error);
+  }
+}
+
 export function markThumbnailReused(recordId: string): void {
   const now = new Date().toISOString();
   const records = loadLibrary().map((record) =>
@@ -166,12 +258,32 @@ export function saveGeneratedThumbnailToLibrary(title: string, imageUrl: string)
     title,
     category: classifyThumbnailCategory(title),
     keywords: extractThumbnailKeywords(title),
-    style: 'deformed-mascot',
+    style: 'anime-chibi',
     usageCount: 0,
     createdAt: now,
     lastUsedAt: now,
   });
   saveLibrary(records);
+}
+
+export async function saveGeneratedThumbnailToSharedLibrary(title: string, imageUrl: string): Promise<void> {
+  if (!imageUrl) return;
+
+  try {
+    await fetch('/api/proxy/thumbnailLibrary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        imageUrl,
+        category: classifyThumbnailCategory(title),
+        keywords: extractThumbnailKeywords(title),
+        style: 'anime-chibi',
+      }),
+    });
+  } catch (error) {
+    console.warn('共有サムネイルライブラリ保存エラー:', error);
+  }
 }
 
 export function getThumbnailLibraryStats(): { total: number } {
