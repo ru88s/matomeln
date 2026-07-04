@@ -144,6 +144,10 @@ function shouldUseKotoriaCompactHtml(blogType?: BlogType): boolean {
   return blogType === 'kotoria';
 }
 
+function shouldEmbedImgur(blogType?: BlogType): boolean {
+  return blogType !== 'girls-matome';
+}
+
 function matomeResponseTailHtml(blogType?: BlogType): string {
   return shouldUseKotoriaCompactHtml(blogType) ? '</div>\n<br />\n<br />' : '<br />\n<br /></div>';
 }
@@ -217,7 +221,7 @@ async function generateSimpleHTML(
     const boldStyle = options.commentStyle.bold ? 'font-weight:bold;' : '';
     const commentStyle = `${boldStyle}font-size:${individualFontSize};line-height:${lineHeight};color:${individualColor};margin-top:10px;`;
 
-    const formattedBody = await formatCommentBodyForMatome(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType));
+    const formattedBody = await formatCommentBodyForMatome(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType), shouldEmbedImgur(blogType));
     const responseTail = matomeResponseTailHtml(blogType);
 
     // 整形されたHTMLを生成
@@ -351,7 +355,7 @@ async function generateRichHTML(
     const hasAnchor = />>?\d+/.test(comment.body);
     const indentStyle = hasAnchor ? 'margin-left:10px;' : '';
 
-    const formattedBody = await formatRichCommentBody(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType));
+    const formattedBody = await formatRichCommentBody(comment.body, skipOgp, shouldUseKotoriaCompactHtml(blogType), shouldEmbedImgur(blogType));
     const responseTail = matomeResponseTailHtml(blogType);
 
     if (hasAnchor) {
@@ -432,9 +436,51 @@ async function fetchTwitterOEmbed(url: string): Promise<string | null> {
   }
 }
 
+function getImgurEmbedDataId(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl);
+    const hostname = parsed.hostname.toLowerCase();
+    const isImgurHost = hostname === 'imgur.com' || hostname === 'www.imgur.com' || hostname === 'm.imgur.com' || hostname === 'i.imgur.com';
+    if (!isImgurHost) return null;
+
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    if (segments.length === 0) return null;
+
+    const cleanId = (value: string): string => value
+      .replace(/\.(?:jpe?g|png|gif|webp|gifv|mp4)$/i, '')
+      .replace(/[^a-zA-Z0-9]/g, '');
+
+    if (hostname === 'i.imgur.com') {
+      const id = cleanId(segments[0]);
+      return id || null;
+    }
+
+    const firstSegment = segments[0].toLowerCase();
+    if ((firstSegment === 'a' || firstSegment === 'gallery') && segments[1]) {
+      const id = cleanId(segments[1]);
+      return id ? `${firstSegment}/${id}` : null;
+    }
+
+    if (firstSegment === 'r' && segments[2]) {
+      const id = cleanId(segments[2]);
+      return id || null;
+    }
+
+    const id = cleanId(segments[0]);
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
+function generateImgurEmbedHTML(dataId: string): string {
+  const safeDataId = escapeHtml(dataId);
+  return `<div class="imgur-embed-wrapper" style="margin:8px 0 10px;"><blockquote class="imgur-embed-pub" lang="en" data-id="${safeDataId}"></blockquote><script async src="//s.imgur.com/min/embed.js" charset="utf-8"></script></div>`;
+}
+
 // URLをリンクカードに変換する関数（OGP情報付き）
 // skipOgp=trueの場合はOGP取得をスキップしてシンプルなリンクに変換
-async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<string> {
+async function linkifyUrlsToCards(text: string, skipOgp?: boolean, embedImgur = true): Promise<string> {
   // URLパターンにマッチする正規表現（日本語括弧や句読点で終了）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
   const urls: string[] = [];
@@ -477,6 +523,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     const originalUrl = unescapeHtml(url);
     if (
       !skipOgp &&
+      !getImgurEmbedDataId(originalUrl) &&
       !/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl) &&
       !/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)
     ) {
@@ -500,7 +547,15 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean): Promise<stri
     let cardHTML = '';
     const linkHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#0066cc;text-decoration:underline;word-break:break-all;">${url}</a>`;
 
-    if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
+    const imgurDataId = getImgurEmbedDataId(originalUrl);
+
+    if (imgurDataId && embedImgur) {
+      cardHTML = `${linkHTML}<br />\n${generateImgurEmbedHTML(imgurDataId)}`;
+    }
+    else if (imgurDataId) {
+      cardHTML = linkHTML;
+    }
+    else if (/^https?:\/\/(twitter\.com|x\.com)\//.test(originalUrl)) {
       cardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#1d9bf0;text-decoration:underline;word-break:break-all;">${url}</a>`;
     }
     else if (/^https?:\/\/([a-z0-9]+\.)?(5ch\.net|open2ch\.net|2ch\.sc)\//.test(originalUrl)) {
@@ -566,7 +621,7 @@ function remove5chIconUrls(body: string): string {
 }
 
 // まとめくす風の本文フォーマット
-async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compactLineBreaks?: boolean): Promise<string> {
+async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compactLineBreaks?: boolean, embedImgur = true): Promise<string> {
   // 5chアイコンURLを除去
   const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
 
@@ -594,12 +649,12 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compa
   }
 
   // URLをリンクカードに変換（エスケープ済みURLに対してマッチ）
-  formatted = await linkifyUrlsToCards(formatted, skipOgp);
+  formatted = await linkifyUrlsToCards(formatted, skipOgp, embedImgur);
 
   return formatted;
 }
 
-async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLineBreaks?: boolean): Promise<string> {
+async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLineBreaks?: boolean, embedImgur = true): Promise<string> {
   // 5chアイコンURLを除去
   const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
 
@@ -623,7 +678,7 @@ async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLin
       for (const [placeholder, url] of urlPlaceholders) {
         escapedLine = escapedLine.replace(placeholder, escapeHtml(url));
       }
-      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
+      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp, embedImgur);
       formatted.push(`<div class="quote_line">${escapedLine}</div>`);
     } else {
       let escapedLine = escapeHtml(line);
@@ -634,7 +689,7 @@ async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLin
       for (const [placeholder, url] of urlPlaceholders) {
         escapedLine = escapedLine.replace(placeholder, escapeHtml(url));
       }
-      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp);
+      escapedLine = await linkifyUrlsToCards(escapedLine, skipOgp, embedImgur);
       formatted.push(escapedLine);
     }
   }

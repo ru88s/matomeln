@@ -120,6 +120,7 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 - `.res_div` の末尾余白はCSS補正に頼らず、発行HTML内のレスブロック外 `<br /><br />` を正とする。
 - `.t_b` 内の改行は本文として保持し、レス区切り用の余白と混ぜない。
 - `remove5chIconUrls`, URLカード化、Kotoria向け整形などの補助処理で、レス本文全体に `.trim()` をかけない。不要な行を除去する場合も、除去対象の行だけを消し、前後の改行は残す。
+- imgur URLの埋め込み化は、すたくらくん側の後処理ではなく `generateMatomeHTML` のURLカード化で行う。元レス本文はURLのまま保持し、投稿HTMLではURLリンクの下に公式imgur embedを出す。`girls-matome` にはscriptタグを入れず、プレーンリンクに留める。
 - CRLF正規化は許可するが、`\n{3,}` を潰したり、末尾の `\n` を削ったりしない。複数空行も投稿者の意図として扱う。
 - `.t_b` の開始タグ直後に整形用改行を置かない。`<div class="t_b">通常コメント...` のように、本文を開始タグ直後から出す。
 - `<div class="t_b">\n通常コメント...` を発行すると、Kotoria側で通常コメント上部に空白が出る原因になる。
