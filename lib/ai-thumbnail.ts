@@ -185,7 +185,7 @@ function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, 
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails with a cute original super-deformed 3D mascot style: small rounded body, big expressive head, soft vinyl-toy texture, bright readable silhouette, and a friendly collectible-figure feeling. Do NOT imitate any specific commercial toy brand or existing character.
+  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails in a cute Japanese anime chibi mascot style for a Garubi-like matome blog: soft 2.5D anime shading, round expressive face, big sparkling eyes, clean cel-shaded linework, warm pastel highlights, and a lively heroine-mascot feeling. Avoid hard plastic toy realism, stiff 3D figurine texture, photorealism, and overly glossy rendering. Do NOT imitate any specific commercial toy brand, existing anime character, or real person likeness.
 
 🎯 YOUR MISSION: Create a thumbnail that TELLS THE STORY of the article through visuals!
 
@@ -233,7 +233,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
 Keep the character's IDENTITY from reference:
-- Same original mascot art style, face shape, eye color
+- Same cute anime/illustration mascot style, face shape, eye color
 - Same hair color, hair style, hair length
 - Same accessories (glasses, ribbons, cat ears, hair clips)
 
@@ -256,6 +256,16 @@ Character's reaction should match the article's emotional tone:
 【ANGRY/OUTRAGE】 → Puffed cheeks, steam, clenched fists, but still cute
 【CONFUSED】 → Head tilt, question marks, sweat drop, finger on chin
 【EXCITED】 → Sparkling eyes, raised fists, energetic pose, stars around
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 ART STYLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Cute anime chibi mascot, not realistic 3D
+- Soft 2.5D anime shading: slight depth, but primarily illustrated
+- Rounded face, big eyes, tiny body, expressive hands
+- Clean cel-shaded edges with soft gradients on cheeks and hair
+- Bright, friendly, slightly playful Garubi-like blog thumbnail mood
+- High readability at small thumbnail size
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🖼️ COMPOSITION
@@ -285,7 +295,7 @@ Character's reaction should match the article's emotional tone:
 - NO watermarks or signatures
 - Tell the story through VISUALS ONLY!
 
-CREATE A THUMBNAIL WHERE THE ORIGINAL DEFORMED 3D MASCOT AND BACKGROUND TELL THE STORY.`;
+CREATE A THUMBNAIL WHERE THE CUTE ANIME CHIBI MASCOT AND BACKGROUND TELL THE STORY.`;
 }
 
 /**
@@ -402,7 +412,7 @@ export async function generateThumbnail(
 The above reference image(s) show the character "${character?.name || 'キャラクター'}" that must appear in the thumbnail.
 
 🔒 KEEP THE SAME (identity only):
-- Art style (anime/illustration)
+- Cute anime/illustration mascot style, with soft 2.5D anime shading
 - Face shape, eye shape, eye color
 - Hair color, hair style, hair length
 - All accessories (glasses, ribbons, cat ears, hair clips)
@@ -415,6 +425,7 @@ The above reference image(s) show the character "${character?.name || 'キャラ
 - ACTION: Show the character DOING something related to the article
 
 The reference is ONLY for character identity. Everything else should be fresh and unique!
+Keep the final look cute, lively, and anime-like. Avoid stiff realistic 3D toy/figurine rendering.
 
 Now create a thumbnail following these rules:
 
@@ -663,7 +674,7 @@ export async function generateThumbnailWithOpenAI(
 The reference image(s) show the character "${character?.name || 'キャラクター'}" that must appear in the thumbnail.
 
 🔒 KEEP THE SAME (identity only):
-- Art style (anime/illustration)
+- Cute anime/illustration mascot style, with soft 2.5D anime shading
 - Face shape, eye shape, eye color
 - Hair color, hair style, hair length
 - All accessories (glasses, ribbons, cat ears, hair clips)
@@ -676,6 +687,7 @@ The reference image(s) show the character "${character?.name || 'キャラクタ
 - ACTION: Show the character DOING something related to the article
 
 The reference is ONLY for character identity. Everything else should be fresh and unique!
+Keep the final look cute, lively, and anime-like. Avoid stiff realistic 3D toy/figurine rendering.
 
 Now create a thumbnail following these rules:
 
