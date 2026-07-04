@@ -9,6 +9,7 @@ import { ThumbnailCharacter } from './types';
 const API_TIMEOUT_MS = 60000;
 /** リトライ回数 */
 const MAX_RETRIES = 2;
+const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
 
 /**
  * タイムアウト付きfetch
@@ -184,7 +185,7 @@ function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, 
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  return `You are the WORLD'S BEST viral thumbnail artist who creates STORY-DRIVEN thumbnails. Your images tell a story at a glance with perfect scene composition, matching backgrounds, and expressive characters.
+  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails with a cute original super-deformed 3D mascot style: small rounded body, big expressive head, soft vinyl-toy texture, bright readable silhouette, and a friendly collectible-figure feeling. Do NOT imitate any specific commercial toy brand or existing character.
 
 🎯 YOUR MISSION: Create a thumbnail that TELLS THE STORY of the article through visuals!
 
@@ -197,9 +198,9 @@ READ the article title carefully and CREATE A MATCHING SCENE:
 
 【ANALYZE THE TITLE FOR CONTEXT】
 Extract: WHO, WHAT, WHERE, WHEN from the title
-- Celebrity/Entertainment → Stage, TV studio, red carpet, concert venue, interview set
-- Sports → Stadium, field, gym, podium, locker room
-- Politics/News → Government building, press conference, office
+- Celebrity/Entertainment → generic stage, TV studio lights, cameras, red carpet, interview set. Do NOT depict a real celebrity likeness.
+- Sports → generic stadium, field, gym, podium, locker room. Do NOT depict a real athlete likeness.
+- Politics/News → generic government building, press conference room, documents, voting box. Do NOT depict a real politician likeness.
 - Food/Restaurant → Kitchen, dining table, cafe, restaurant interior
 - Travel/Places → Landmark, street scene, nature, famous locations
 - Technology → Modern office, computer setup, futuristic setting
@@ -221,7 +222,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 - Depth and perspective: Foreground, midground, background layers
 
 【EXAMPLE SCENE MATCHING】
-"芸能人がレストランで..." → Character in fancy restaurant interior, tables, chandeliers
+"芸能人がレストランで..." → Generic entertainment-news mascot in fancy restaurant interior, tables, chandeliers, no real-person likeness
 "サッカー選手が優勝..." → Stadium background with crowd, confetti, trophy
 "新商品が発売..." → Store/product display background, shopping atmosphere
 "結婚を発表..." → Romantic setting, flowers, soft lighting, hearts
@@ -232,7 +233,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
 Keep the character's IDENTITY from reference:
-- Same art style, face shape, eye color
+- Same original mascot art style, face shape, eye color
 - Same hair color, hair style, hair length
 - Same accessories (glasses, ribbons, cat ears, hair clips)
 
@@ -247,24 +248,25 @@ Keep the character's IDENTITY from reference:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Character's reaction should match the article's emotional tone:
 
-【POSITIVE NEWS】 → 😄 Big smile, sparkling eyes, peace sign, jumping, hearts floating
-【SHOCKING NEWS】 → 😱 Wide eyes, hands on cheeks, jaw dropped, sweat drops
-【FUNNY/SILLY】 → 🤣 Laughing with tears, holding stomach, pointing and laughing
-【CONTROVERSIAL】 → 😏 Smug face, arms crossed, raised eyebrow, knowing look
-【SAD/TRAGIC】 → 🥺 Tears (cute style), downcast eyes, holding tissue
-【ANGRY/OUTRAGE】 → 😤 Puffed cheeks, steam, clenched fists, but still cute!
-【CONFUSED】 → 🤔 Head tilt, question marks, sweat drop, finger on chin
-【EXCITED】 → ✨ Sparkling eyes, raised fists, energetic pose, stars around
+【POSITIVE NEWS】 → Big smile, sparkling eyes, peace sign, jumping, hearts floating
+【SHOCKING NEWS】 → Wide eyes, hands on cheeks, jaw dropped, sweat drops
+【FUNNY/SILLY】 → Laughing with tears, holding stomach, pointing and laughing
+【CONTROVERSIAL】 → Smug face, arms crossed, raised eyebrow, knowing look
+【SAD/TRAGIC】 → Tears in cute style, downcast eyes, holding tissue
+【ANGRY/OUTRAGE】 → Puffed cheeks, steam, clenched fists, but still cute
+【CONFUSED】 → Head tilt, question marks, sweat drop, finger on chin
+【EXCITED】 → Sparkling eyes, raised fists, energetic pose, stars around
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🖼️ COMPOSITION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Character: 50-70% of frame (leave room for background!)
+- Character: 45-65% of frame (leave room for background!)
 - Position: Slightly off-center for dynamic composition
 - Background: VISIBLE and DETAILED (not just solid color!)
 - Depth: Slight blur on far background, sharp character
 - Camera angle: Match the mood (low angle = powerful, high angle = cute)
 - Square 1:1 aspect ratio
+- Designed for livedoor blog thumbnails: clear subject at small size, strong contrast, no clutter
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✨ VISUAL ENHANCEMENTS
@@ -283,7 +285,7 @@ Character's reaction should match the article's emotional tone:
 - NO watermarks or signatures
 - Tell the story through VISUALS ONLY!
 
-CREATE A THUMBNAIL WHERE THE BACKGROUND AND SCENE TELL THE STORY! 🎨✨`;
+CREATE A THUMBNAIL WHERE THE ORIGINAL DEFORMED 3D MASCOT AND BACKGROUND TELL THE STORY.`;
 }
 
 /**
@@ -465,9 +467,9 @@ ${prompt}`
   // リトライ付きでAPI呼び出し
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // gemini-2.5-flash-imageモデルを使用（すたくらくんと同じ、Nano Banana対応）
+      // Nano Banana 2 Lite（Gemini 3.1 Flash Lite Image）を使用
       const response: Response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

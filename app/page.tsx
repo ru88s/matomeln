@@ -881,6 +881,16 @@ export default function Home() {
           skipThumbnailGeneration = true;
           console.log('カテゴリサムネイル使用');
           toast.success('カテゴリサムネイル使用', { id: 'bulk-step' });
+        } else {
+          const { findReusableThumbnail, markThumbnailReused } = await import('@/lib/thumbnail-library');
+          const reusableThumbnail = findReusableThumbnail(talk.title);
+          if (reusableThumbnail) {
+            generatedThumbnailUrl = reusableThumbnail.record.imageUrl;
+            skipThumbnailGeneration = true;
+            markThumbnailReused(reusableThumbnail.record.id);
+            console.log('ライブラリサムネイル再利用:', reusableThumbnail.reason);
+            toast.success(`既存サムネ再利用（${reusableThumbnail.reason}）`, { id: 'bulk-step' });
+          }
         }
         } // end if isThumbnailEnabled
       } catch (e) {
@@ -963,6 +973,12 @@ export default function Home() {
                   generatedThumbnailUrl = uploadData.url;
                   setThumbnailUrl(generatedThumbnailUrl);
                   toast.success('サムネイルアップロード完了', { id: 'bulk-step' });
+                  try {
+                    const { saveGeneratedThumbnailToLibrary } = await import('@/lib/thumbnail-library');
+                    saveGeneratedThumbnailToLibrary(titleForThumbnail, generatedThumbnailUrl);
+                  } catch (e) {
+                    console.warn('サムネイルライブラリ保存失敗:', e);
+                  }
 
                   // 生成したサムネイルURLをタグキャッシュに保存（Livedoorの場合のみ）
                   // タグヒット＆サムネなし、またはタグヒット＆旧サムネ置換の場合

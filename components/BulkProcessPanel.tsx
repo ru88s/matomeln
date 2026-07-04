@@ -1189,7 +1189,7 @@ export default function BulkProcessPanel({
             ? 'bg-green-100 text-green-700'
             : 'bg-blue-100 text-blue-700'
         }`}>
-          サムネ: {thumbnailProvider === 'openai' ? (openaiImageModel === 'gpt-image-1-mini' ? 'OpenAI Mini' : 'OpenAI') : 'Gemini'}
+          サムネ: {thumbnailProvider === 'openai' ? (openaiImageModel === 'gpt-image-1-mini' ? 'OpenAI Mini' : 'OpenAI') : 'Nano Banana Lite'}
         </span>
       </h3>
 

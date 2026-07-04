@@ -924,8 +924,8 @@ export default function SettingsModal({
                         <span className="font-bold text-gray-500">1枚あたり</span>
                       </div>
                       <div className={`flex justify-between ${thumbnailProvider === 'gemini' ? 'text-blue-500 font-bold' : ''}`}>
-                        <span>Gemini 2.5 Flash Image</span>
-                        <span className="font-mono">$0.039（約5.9円）</span>
+                        <span>Nano Banana 2 Lite</span>
+                        <span className="font-mono">$0.034（約5.5円）</span>
                       </div>
                       {thumbnailProvider === 'openai' ? (
                         <>
