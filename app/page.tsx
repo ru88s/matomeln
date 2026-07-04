@@ -20,6 +20,11 @@ import {
   getOtherBlogPostSkipReason,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
+import {
+  getDefaultAIThumbnailBase64,
+  getDefaultAIThumbnailUrl,
+  uploadDefaultAIThumbnail,
+} from '@/lib/default-thumbnail';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
 
@@ -851,6 +856,27 @@ export default function Home() {
       // ===== タグサムネイルキャッシュ検索 =====
       let cachedTagResult: TagSearchResult | null = null;
       let skipThumbnailGeneration = !isThumbnailEnabled;  // OFFなら最初からスキップ
+      const applyDefaultThumbnailFallback = async (reason: string) => {
+        if (!isThumbnailEnabled || generatedThumbnailUrl || generatedThumbnailBase64 || !blogSettings) {
+          return;
+        }
+
+        try {
+          console.warn('デフォルトサムネイルを使用:', reason);
+          toast.loading('デフォルトサムネイルを設定中...', { id: 'bulk-step' });
+          if (blogSettings.blogType === 'girls-matome') {
+            generatedThumbnailUrl = getDefaultAIThumbnailUrl();
+            generatedThumbnailBase64 = await getDefaultAIThumbnailBase64();
+          } else {
+            generatedThumbnailUrl = await uploadDefaultAIThumbnail(blogSettings);
+            setThumbnailUrl(generatedThumbnailUrl);
+          }
+          toast.success('デフォルトサムネイルを設定しました', { id: 'bulk-step' });
+        } catch (fallbackError) {
+          console.warn('デフォルトサムネイル設定失敗:', fallbackError);
+          toast.error('デフォルトサムネイルの設定にも失敗しました', { id: 'bulk-step' });
+        }
+      };
 
       if (!isThumbnailEnabled) {
         console.log('AIサムネイル生成はOFFです。スキップします。');
@@ -1023,19 +1049,28 @@ export default function Home() {
                       console.warn('タグ自動登録失敗:', e);
                     }
                   }
+                } else {
+                  console.warn('サムネイルアップロード後のURL取得に失敗');
+                  await applyDefaultThumbnailFallback('サムネイルアップロード後のURL取得に失敗');
                 }
               } else {
                 console.warn('サムネイルアップロード失敗');
+                await applyDefaultThumbnailFallback('AIサムネイルのアップロードに失敗');
               }
             }
           } else {
             console.warn('サムネイル生成失敗:', thumbnailResult.error);
-            toast.error(`サムネイル生成失敗: ${thumbnailResult.error}`, { id: 'bulk-step' });
+            await applyDefaultThumbnailFallback(thumbnailResult.error || 'AIサムネイル生成に失敗');
           }
         } catch (thumbnailError) {
           console.warn('サムネイル生成エラー:', thumbnailError);
+          await applyDefaultThumbnailFallback(
+            thumbnailError instanceof Error ? thumbnailError.message : 'AIサムネイル生成中にエラーが発生'
+          );
           // サムネイル生成失敗でも続行
         }
+      } else if (!skipThumbnailGeneration && isThumbnailEnabled && blogSettings && !thumbnailApiKey) {
+        await applyDefaultThumbnailFallback('サムネイル生成用APIキーが未設定');
       }
 
       // =====================

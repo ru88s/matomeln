@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { detectSourceType } from '@/lib/shikutoku-api';
 import { Talk, ThumbnailCharacter } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, selectCharacterForArticle } from '@/lib/ai-thumbnail';
+import { uploadDefaultAIThumbnail } from '@/lib/default-thumbnail';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -214,7 +215,20 @@ export default function TalkLoader({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'AIサムネイル生成に失敗しました';
-      toast.error(message, { id: toastId });
+      console.warn('AIサムネイル生成失敗。デフォルトサムネイルへフォールバックします:', error);
+      try {
+        toast.loading('AI生成に失敗したためデフォルトサムネイルを設定中...', { id: toastId });
+        const fallbackUrl = await uploadDefaultAIThumbnail({
+          blogId: apiSettings.blogUrl,
+          apiUsername: apiSettings.apiUsername,
+          apiKey: apiSettings.apiKey,
+        });
+        onThumbnailUrlChange?.(fallbackUrl);
+        toast.success('デフォルトサムネイルを設定しました', { id: toastId });
+      } catch (fallbackError) {
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'デフォルトサムネイルの設定に失敗しました';
+        toast.error(`${message} / ${fallbackMessage}`, { id: toastId });
+      }
     } finally {
       setIsGeneratingAI(false);
     }
