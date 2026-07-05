@@ -187,9 +187,12 @@ function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, 
 
   return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails in a cute Japanese anime chibi mascot style for a Garubi-like matome blog: soft 2.5D anime shading, round expressive face, big sparkling eyes, clean cel-shaded linework, warm pastel highlights, and a lively heroine-mascot feeling. Avoid hard plastic toy realism, stiff 3D figurine texture, photorealism, and overly glossy rendering. Do NOT imitate any specific commercial toy brand, existing anime character, or real person likeness.
 
-🎯 YOUR MISSION: Create a thumbnail that TELLS THE STORY of the article through visuals!
+🎯 YOUR MISSION: Create a reusable thumbnail that TELLS THE STORY of the article through visuals only!
 
-Article Title: "${cleanTitle}"
+Visual context only (DO NOT render this text in the image): "${cleanTitle}"
+
+Use the context above only to infer the scene, mood, character reaction, setting, props, and colors.
+Never copy, translate, summarize, abbreviate, or stylize the article title as visible text in the image.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌍 SCENE & BACKGROUND (MOST IMPORTANT!)
@@ -200,13 +203,13 @@ READ the article title carefully and CREATE A MATCHING SCENE:
 Extract: WHO, WHAT, WHERE, WHEN from the title
 - Celebrity/Entertainment → generic stage, TV studio lights, cameras, red carpet, interview set. Do NOT depict a real celebrity likeness.
 - Sports → generic stadium, field, gym, podium, locker room. Do NOT depict a real athlete likeness.
-- Politics/News → generic government building, press conference room, documents, voting box. Do NOT depict a real politician likeness.
+- Politics/News → generic government building, press conference room, blank documents, voting box without labels. Do NOT depict a real politician likeness.
 - Food/Restaurant → Kitchen, dining table, cafe, restaurant interior
 - Travel/Places → Landmark, street scene, nature, famous locations
-- Technology → Modern office, computer setup, futuristic setting
+- Technology → Modern office, computer setup, futuristic setting with blank screens or abstract UI shapes only
 - School/Education → Classroom, campus, graduation ceremony
 - Romance/Dating → Park, cafe date, sunset beach, cherry blossoms
-- Money/Business → Office, stock market screens, luxury items
+- Money/Business → Office, abstract chart screens without readable numbers or letters, luxury items
 - Crime/Incident → Dark alley (stylized), police tape, courtroom
 - Health/Medical → Hospital, pharmacy, gym (for fitness)
 - Fashion → Runway, boutique, mirror, closet
@@ -226,7 +229,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 "サッカー選手が優勝..." → Stadium background with crowd, confetti, trophy
 "新商品が発売..." → Store/product display background, shopping atmosphere
 "結婚を発表..." → Romantic setting, flowers, soft lighting, hearts
-"炎上した発言..." → News studio or social media visual metaphor (fire effects stylized)
+"炎上した発言..." → News studio or social media visual metaphor with stylized fire effects and no UI text
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎨 CHARACTER IDENTITY (keep same)
@@ -254,7 +257,7 @@ Character's reaction should match the article's emotional tone:
 【CONTROVERSIAL】 → Smug face, arms crossed, raised eyebrow, knowing look
 【SAD/TRAGIC】 → Tears in cute style, downcast eyes, holding tissue
 【ANGRY/OUTRAGE】 → Puffed cheeks, steam, clenched fists, but still cute
-【CONFUSED】 → Head tilt, question marks, sweat drop, finger on chin
+【CONFUSED】 → Head tilt, confusion swirl, sweat drop, finger on chin
 【EXCITED】 → Sparkling eyes, raised fists, energetic pose, stars around
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -295,7 +298,7 @@ Character's reaction should match the article's emotional tone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Lighting that matches the scene (stage lights, sunset, neon, etc.)
 - Atmospheric effects: Sparkles, confetti, petals, snow, rain drops
-- Emotion indicators: Hearts, stars, sweat drops, anger marks, question marks
+- Emotion indicators: Hearts, stars, sweat drops, anger marks, confusion swirls
 - Color grading: Warm for happy, cool for sad, vibrant for exciting
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -303,7 +306,10 @@ Character's reaction should match the article's emotional tone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - ZERO Japanese text (ひらがな、カタカナ、漢字)
 - ZERO English text
+- ZERO article title text, headlines, captions, subtitles, labels, logos, UI text, numbers, or readable symbols
 - NO speech bubbles with words
+- NO readable text on signs, books, newspapers, documents, phones, computers, TV screens, scoreboards, product packages, clothes, badges, or background posters
+- If a prop normally has text, render it as blank, blurred, abstract shapes, icons, color blocks, or decorative lines that are not readable
 - NO watermarks or signatures
 - Tell the story through VISUALS ONLY!
 
