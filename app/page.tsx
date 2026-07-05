@@ -1034,15 +1034,22 @@ export default function Home() {
                       console.warn('サムネイルキャッシュ保存失敗:', e);
                     }
                   } else if (!cachedTagResult?.tag) {
-                    // タグ不一致 → タイトルからキーワード抽出して新しいタグを自動登録
+                    // タグ不一致 → LLMで固有名詞候補を抽出し、厳格チェックを通った場合だけ自動登録
                     try {
-                      const { extractKeywordFromTitle, registerNewTag } = await import('@/lib/tag-thumbnail-cache');
-                      const keyword = extractKeywordFromTitle(talk.title);
-                      if (keyword.length >= 2) {
-                        const newTag = await registerNewTag(keyword, keyword, generatedThumbnailUrl);
+                      const {
+                        registerNewTag,
+                        suggestTagRegistrationCandidate,
+                      } = await import('@/lib/tag-thumbnail-cache');
+                      const candidate = geminiApiKey
+                        ? await suggestTagRegistrationCandidate(geminiApiKey, talk.title, loadedComments)
+                        : null;
+                      if (candidate) {
+                        const newTag = await registerNewTag(candidate.tag, candidate.tag, generatedThumbnailUrl);
                         if (newTag) {
-                          console.log('新しいタグを自動登録:', keyword);
+                          console.log('新しいタグを自動登録:', candidate.tag, candidate.category, candidate.confidence, candidate.reason);
                         }
+                      } else {
+                        console.log('タグ自動登録候補なし:', talk.title);
                       }
                     } catch (e) {
                       console.warn('タグ自動登録失敗:', e);
