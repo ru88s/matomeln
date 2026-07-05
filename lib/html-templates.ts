@@ -1,4 +1,5 @@
 import { Talk, Comment, CommentWithStyle, MatomeOptions, BlogType } from './types';
+import { sanitizeThreadTitle } from './thread-title';
 
 export interface GeneratedHTML {
   title: string;
@@ -36,7 +37,9 @@ export async function generateMatomeHTML(
   }
 
   // DEVモードの場合はタイトルの頭に§を追加（ストック記事とわかるように）
-  if (isDevMode) {
+  result.title = sanitizeThreadTitle(result.title);
+
+  if (isDevMode && result.title) {
     result.title = `§ ${result.title}`;
   }
 
@@ -173,7 +176,7 @@ async function generateSimpleHTML(
   const { includeTimestamp, includeName, includeImages } = options;
 
   // タイトル部分
-  const titleHTML = escapeHtml(talk.title);
+  const titleHTML = escapeHtml(sanitizeThreadTitle(talk.title));
 
   // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {
@@ -312,7 +315,7 @@ async function generateRichHTML(
 }
 </style>`;
 
-  const titleHTML = escapeHtml(talk.title);
+  const titleHTML = escapeHtml(sanitizeThreadTitle(talk.title));
 
   // コメントをHTML化する関数
   const formatComment = async (comment: CommentWithStyle) => {

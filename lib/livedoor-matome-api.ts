@@ -1,4 +1,5 @@
 import { Talk, Comment } from './types';
+import { sanitizeThreadTitle } from './thread-title';
 
 export interface LivedoorMatomeArticleInfo {
   articleId: string;
@@ -50,10 +51,10 @@ function extractTitle(html: string): string {
     || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
 
   const rawTitle = h1Match ? stripTags(h1Match[1]) : 'まとめ記事';
-  return rawTitle
+  return sanitizeThreadTitle(rawTitle
     .replace(/\s*:\s*(ガールズVIPまとめ|まとめブレイド)\s*$/i, '')
     .replace(/\s+/g, ' ')
-    .trim();
+  ) || 'まとめ記事';
 }
 
 function extractPublishedAt(html: string): string {

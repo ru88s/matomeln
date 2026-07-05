@@ -1,4 +1,5 @@
 import { Talk, Comment } from './types';
+import { sanitizeThreadTitle } from './thread-title';
 
 // 5ch URLから情報を抽出
 export interface FiveChThreadInfo {
@@ -74,7 +75,7 @@ function decodeHtmlEntities(text: string): string {
 function cleanThreadTitle(title: string): string {
   // まずHTMLエンティティをデコード
   const decoded = decodeHtmlEntities(title);
-  return decoded
+  return sanitizeThreadTitle(decoded
     // [数字のみ] - ワッチョイ等のID
     .replace(/\s*\[\d+\]\s*$/, '')
     // [無断転載禁止] 等のテキスト
@@ -84,8 +85,7 @@ function cleanThreadTitle(title: string): string {
     .replace(/\s*\[[^\]]*[★☆][^\]]*\]\s*/g, '')
     // ©2ch.net, ©bbspink.com 等の著作権表記
     .replace(/\s*©[a-z0-9.]+\s*/gi, '')
-    // 末尾の余分な空白
-    .trim();
+  );
 }
 
 // 文字化け検出関数
@@ -527,7 +527,7 @@ export function parseGirlsChannelHtml(
   const titleMatch = htmlContent.match(/<h1[^>]*>\s*(?:<!--[^>]*-->)?\s*([^<]+)/);
   const rawTitle = titleMatch ? titleMatch[1].trim() : 'ガールズちゃんねるトピック';
   // HTMLエンティティをデコード（&quot; → " など）
-  const threadTitle = decodeHtmlEntities(rawTitle);
+  const threadTitle = cleanThreadTitle(rawTitle);
 
   // コメントを抽出
   // <li class="comment-item" id="comment1"> ... </li>
