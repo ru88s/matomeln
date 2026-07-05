@@ -66,7 +66,12 @@ export async function searchTagByTitle(title: string): Promise<TagSearchResult |
   try {
     const response = await fetch(`/api/proxy/tagSearch?title=${encodeURIComponent(title)}`);
     if (!response.ok) return null;
-    return await response.json() as TagSearchResult;
+    const result = await response.json() as TagSearchResult;
+    if (result.tag && !isTagSearchResultAcceptable(result, title)) {
+      console.warn('タグ検索結果を不採用:', result.tag.tag, title);
+      return { ...result, tag: null };
+    }
+    return result;
   } catch (error) {
     console.warn('タグ検索エラー:', error);
     return null;
@@ -160,6 +165,23 @@ function isTagPresentInSource(tag: string, title: string, firstCommentBody: stri
   if (!normalizedTag) return false;
   const normalizedSource = normalizeForTagMatch(`${title}\n${firstCommentBody}`);
   return normalizedSource.includes(normalizedTag);
+}
+
+function isTagSearchResultAcceptable(result: TagSearchResult, title: string): boolean {
+  if (!result.tag) return false;
+
+  const tag = cleanTagCandidate(result.tag.tag);
+  if (!tag || tag.length < 2) return false;
+  if (isGenericTag(tag)) return false;
+
+  if (isTagPresentInSource(tag, title, '')) return true;
+
+  const targetTokens = result.tag.target
+    .split(/[,、\s]+/)
+    .map(cleanTagCandidate)
+    .filter((token) => token.length >= 2 && !isGenericTag(token));
+
+  return targetTokens.some((token) => isTagPresentInSource(token, title, ''));
 }
 
 function isBlockedForAutoRegistration(category: string, title: string, firstCommentBody: string): boolean {
