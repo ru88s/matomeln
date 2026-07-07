@@ -1,3 +1,9 @@
+import {
+  assessThumbnailSemanticFit,
+  refineSemanticThumbnailKeywords,
+  shouldUseThumbnailCandidate,
+} from './thumbnail-semantic-guard';
+
 export type ThumbnailReuseCategory =
   | 'life'
   | 'work'
@@ -111,7 +117,7 @@ export function extractThumbnailKeywords(title: string): string[] {
     .filter((word) => word.length >= 2 && !STOP_WORDS.has(word))
     .filter((word) => !/^\d+$/.test(word));
 
-  return [...new Set(keywords)].slice(0, MAX_KEYWORDS);
+  return refineSemanticThumbnailKeywords(title, [...new Set(keywords)]).slice(0, MAX_KEYWORDS);
 }
 
 export function findReusableThumbnail(title: string): ThumbnailReuseMatch | null {
@@ -138,7 +144,20 @@ export function findReusableThumbnail(title: string): ThumbnailReuseMatch | null
           : `${record.category}`,
       };
     })
-    .filter((match) => match.score >= 6)
+    .filter((match) => {
+      if (match.score < 6) return false;
+      const assessment = assessThumbnailSemanticFit(title, {
+        label: match.record.title,
+        title: match.record.title,
+        keywords: match.record.keywords,
+        reason: match.reason,
+      });
+      if (assessment.status !== 'accept') {
+        console.warn('ローカルサムネ再利用を不採用:', assessment.reason, match.record.title);
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => b.score - a.score);
 
   return candidates[0] || null;
@@ -212,6 +231,14 @@ export async function findSharedReusableThumbnail(title: string): Promise<Thumbn
 
     const record = normalizeSharedRecord(data.match.record);
     if (!record) return null;
+
+    const isSemanticallySafe = await shouldUseThumbnailCandidate(title, {
+      label: record.title,
+      title: record.title,
+      keywords: record.keywords,
+      reason: typeof data.match.reason === 'string' ? data.match.reason : 'shared',
+    });
+    if (!isSemanticallySafe) return null;
 
     return {
       record,

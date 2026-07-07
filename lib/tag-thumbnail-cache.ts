@@ -4,6 +4,11 @@
  */
 
 import type { Comment } from './types';
+import {
+  assessThumbnailSemanticFit,
+  isDangerouslyGenericThumbnailLabel,
+  shouldUseThumbnailCandidate,
+} from './thumbnail-semantic-guard';
 
 export interface TagSearchResult {
   tag: {
@@ -67,7 +72,7 @@ export async function searchTagByTitle(title: string): Promise<TagSearchResult |
     const response = await fetch(`/api/proxy/tagSearch?title=${encodeURIComponent(title)}`);
     if (!response.ok) return null;
     const result = await response.json() as TagSearchResult;
-    if (result.tag && !isTagSearchResultAcceptable(result, title)) {
+    if (result.tag && !(await isTagSearchResultAcceptable(result, title))) {
       console.warn('タグ検索結果を不採用:', result.tag.tag, title);
       return { ...result, tag: null };
     }
@@ -167,12 +172,19 @@ function isTagPresentInSource(tag: string, title: string, firstCommentBody: stri
   return normalizedSource.includes(normalizedTag);
 }
 
-function isTagSearchResultAcceptable(result: TagSearchResult, title: string): boolean {
+async function isTagSearchResultAcceptable(result: TagSearchResult, title: string): Promise<boolean> {
   if (!result.tag) return false;
 
   const tag = cleanTagCandidate(result.tag.tag);
   if (!tag || tag.length < 2) return false;
   if (isGenericTag(tag)) return false;
+  if (isDangerouslyGenericThumbnailLabel(tag)) return false;
+
+  const isSemanticallySafe = await shouldUseThumbnailCandidate(title, {
+    label: tag,
+    target: result.tag.target,
+  });
+  if (!isSemanticallySafe) return false;
 
   if (isTagPresentInSource(tag, title, '')) return true;
 
@@ -205,9 +217,13 @@ export function validateTagRegistrationCandidate(
   if (!tag || tag.length < 2 || tag.length > 24) return null;
   if (!TAG_ALLOWED_PATTERN.test(tag)) return null;
   if (isGenericTag(tag)) return null;
+  if (isDangerouslyGenericThumbnailLabel(tag)) return null;
   if (confidence < 0.82) return null;
   if (!isTagPresentInSource(tag, title, firstCommentBody)) return null;
   if (isBlockedForAutoRegistration(category, title, firstCommentBody)) return null;
+  if (assessThumbnailSemanticFit(`${title}\n${firstCommentBody}`, { label: tag, target: tag }).status !== 'accept') {
+    return null;
+  }
 
   return {
     tag,
