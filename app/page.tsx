@@ -968,11 +968,17 @@ export default function Home() {
         if (titleForThumbnail !== talk.title) {
           console.log('汎用サムネイル生成:', titleForThumbnail);
         }
+        const thumbnailPromptContext = {
+          originalTitle: talk.title,
+          firstCommentBody: loadedComments[0]?.body || '',
+          selectedComments: newSelectedComments,
+          reuseTag: cachedTagResult?.tag?.tag || '',
+        };
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: 'bulk-step' });
         try {
           const thumbnailResult = useOpenAI
-            ? await generateThumbnailWithOpenAI(openaiApiKey, titleForThumbnail, thumbnailCharacter, false, openaiModel, openaiQuality)
-            : await generateThumbnail(geminiApiKey!, titleForThumbnail, thumbnailCharacter);
+            ? await generateThumbnailWithOpenAI(openaiApiKey, titleForThumbnail, thumbnailCharacter, false, openaiModel, openaiQuality, thumbnailPromptContext)
+            : await generateThumbnail(geminiApiKey!, titleForThumbnail, thumbnailCharacter, false, thumbnailPromptContext);
 
           if (thumbnailResult.referenceImageFailures && thumbnailResult.referenceImageFailures > 0) {
             console.warn(`参考画像${thumbnailResult.referenceImageFailures}枚の読み込みに失敗`);

@@ -4,6 +4,11 @@
  */
 
 import { ThumbnailCharacter } from './types';
+import {
+  createThumbnailPromptPlan,
+  formatThumbnailPromptPlan,
+  type ThumbnailPromptContext,
+} from './thumbnail-prompt-planner';
 
 /** API呼び出しのタイムアウト（60秒） */
 const API_TIMEOUT_MS = 60000;
@@ -172,7 +177,12 @@ function sanitizeSensitiveContent(text: string): string {
 /**
  * 記事タイトルからプロンプトを生成（クリック率最大化・シーンマッチング・面白可愛いサムネイル）
  */
-function generatePromptFromTitle(title: string, character?: ThumbnailCharacter, sanitize = false): string {
+function generatePromptFromTitle(
+  title: string,
+  character?: ThumbnailCharacter,
+  sanitize = false,
+  promptPlanBlock = ''
+): string {
   // タイトルから装飾を除去
   let cleanTitle = title.replace(/【.*?】|§\s*/g, '').trim();
 
@@ -193,6 +203,8 @@ Visual context only (DO NOT render this text in the image): "${cleanTitle}"
 
 Use the context above only to infer the scene, mood, character reaction, setting, props, and colors.
 Never copy, translate, summarize, abbreviate, or stylize the article title as visible text in the image.
+
+${promptPlanBlock ? `${promptPlanBlock}\n` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌍 SCENE & BACKGROUND (MOST IMPORTANT!)
@@ -380,7 +392,8 @@ export async function generateThumbnail(
   apiKey: string,
   title: string,
   character?: ThumbnailCharacter,
-  sanitize = false
+  sanitize = false,
+  promptContext: ThumbnailPromptContext = {}
 ): Promise<ThumbnailGenerationResult> {
   // リクエストパーツを構築（参考画像を先に、テキストを後に）
   type TextPart = { text: string };
@@ -420,7 +433,8 @@ export async function generateThumbnail(
   }
 
   // プロンプトを生成して追加
-  const prompt = generatePromptFromTitle(title, character, sanitize);
+  const promptPlan = sanitize ? null : await createThumbnailPromptPlan(title, promptContext);
+  const prompt = generatePromptFromTitle(title, character, sanitize, formatThumbnailPromptPlan(promptPlan));
 
   if (hasReferenceImages) {
     // 参考画像がある場合は強力なキャラクター指定を追加
@@ -546,7 +560,7 @@ ${prompt}`
           // サニタイズしていない場合は再試行
           if (!sanitize) {
             console.log('センシティブコンテンツとして検出。サニタイズして再試行...');
-            return generateThumbnail(apiKey, title, character, true);
+            return generateThumbnail(apiKey, title, character, true, promptContext);
           }
           return {
             success: false,
@@ -581,7 +595,7 @@ ${prompt}`
         if (finishReason === 'SAFETY' || finishReason === 'IMAGE_SAFETY') {
           if (!sanitize) {
             console.log('安全フィルターでブロック。サニタイズして再試行...');
-            return generateThumbnail(apiKey, title, character, true);
+            return generateThumbnail(apiKey, title, character, true, promptContext);
           }
           return {
             success: false,
@@ -648,10 +662,12 @@ export async function generateThumbnailWithOpenAI(
   character?: ThumbnailCharacter,
   sanitize = false,
   model: 'gpt-image-1' | 'gpt-image-1-mini' = 'gpt-image-1',
-  quality: 'low' | 'medium' | 'high' = 'medium'
+  quality: 'low' | 'medium' | 'high' = 'medium',
+  promptContext: ThumbnailPromptContext = {}
 ): Promise<ThumbnailGenerationResult> {
   // プロンプトを生成
-  const basePrompt = generatePromptFromTitle(title, character, sanitize);
+  const promptPlan = sanitize ? null : await createThumbnailPromptPlan(title, promptContext);
+  const basePrompt = generatePromptFromTitle(title, character, sanitize, formatThumbnailPromptPlan(promptPlan));
 
   // マルチモーダル入力のcontentを構築
   const content: Array<{ type: string; text?: string; image_url?: string }> = [];
@@ -804,7 +820,7 @@ ${basePrompt}`;
         if (errorMessage.includes('safety') || errorMessage.includes('content_policy') || errorMessage.includes('blocked')) {
           if (!sanitize) {
             console.log('[OpenAI] コンテンツポリシー違反。サニタイズして再試行...');
-            return generateThumbnailWithOpenAI(apiKey, title, character, true, model, quality);
+            return generateThumbnailWithOpenAI(apiKey, title, character, true, model, quality, promptContext);
           }
           return {
             success: false,

@@ -166,8 +166,12 @@ export default function TalkLoader({
         toast.loading(`AIサムネイルを生成中（${providerLabel}）...`, { id: toastId });
       }
       const result = useOpenAI
-        ? await generateThumbnailWithOpenAI(openaiApiKey, currentTalk.title, character, false, openaiModel, openaiQuality)
-        : await generateThumbnail(geminiApiKey, currentTalk.title, character);
+        ? await generateThumbnailWithOpenAI(openaiApiKey, currentTalk.title, character, false, openaiModel, openaiQuality, {
+            firstCommentBody: currentTalk.body || '',
+          })
+        : await generateThumbnail(geminiApiKey, currentTalk.title, character, false, {
+            firstCommentBody: currentTalk.body || '',
+          });
 
       if (!result.success || !result.imageBase64) {
         throw new Error(result.error || '画像生成に失敗しました');
