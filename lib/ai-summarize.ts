@@ -36,63 +36,131 @@ export interface LocalOllamaOptions {
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'gemma4:e4b';
 
+const ADULT_LEGAL_CONTEXT_PATTERNS = [
+  /風俗営業(?:法|等)?/gi,
+  /風営法/gi,
+  /風適法/gi,
+  /風俗営業等の規制及び業務の適正化等に関する法律/gi,
+  /(?:新|旧)?風営法/gi,
+  /(?:新|旧)?風適法/gi,
+];
+
+const ADULT_NEUTRAL_CONTEXT_PATTERNS = [
+  /パチンコ/gi,
+  /ぱちんこ/gi,
+  /pachinko/gi,
+  /ヘルスケア/gi,
+];
+
+const ADULT_STRONG_KEYWORDS = [
+  'セックス', 'せっくす', 'sex',
+  'オナニー', 'おなにー', 'オナ二ー',
+  '手コキ', '手こき', 'てこき',
+  'フェラ', 'ふぇら',
+  'パイズリ', 'ぱいずり',
+  '中出し', 'なかだし',
+  '潮吹き', 'しおふき',
+  '乱交', 'らんこう',
+  '3P', '３P', '3p',
+  'AV女優', 'av女優',
+  'ソープ', 'デリヘル',
+  'エロ動画', 'エロ画像', 'エロ漫画',
+  'まんこ', 'マンコ',
+  '勃起', 'ぼっき',
+  '射精', 'しゃせい',
+  '精子', 'ザーメン',
+  '挿入', 'そうにゅう',
+  'ハメ撮り', 'はめどり',
+  '童貞卒業', '処女喪失',
+  'やりまん', 'ヤリマン',
+  '全裸', 'ぜんら',
+];
+
+const ADULT_AMBIGUOUS_KEYWORDS = [
+  '風俗', 'ヘルス',
+  '巨乳', '爆乳',
+  'おっぱい', 'オッパイ',
+  'ちんこ', 'チンコ', 'ちんぽ', 'チンポ',
+];
+
+const ADULT_TITLE_KEYWORDS = [
+  ...ADULT_STRONG_KEYWORDS,
+  '風俗嬢', '風俗店', '風俗店員', '風俗勤務', '風俗通い',
+  ...ADULT_AMBIGUOUS_KEYWORDS.filter((keyword) => keyword !== '風俗' && keyword !== 'ヘルス'),
+];
+
+function maskAdultLegalContext(text: string): string {
+  let masked = text;
+  for (const pattern of ADULT_LEGAL_CONTEXT_PATTERNS) {
+    masked = masked.replace(pattern, '法律用語');
+  }
+  for (const pattern of ADULT_NEUTRAL_CONTEXT_PATTERNS) {
+    masked = masked.replace(pattern, '中立語');
+  }
+  return masked;
+}
+
+function countKeywordMatches(text: string, keywords: string[]): { count: number; foundKeywords: string[] } {
+  let count = 0;
+  const foundKeywords: string[] = [];
+
+  for (const keyword of keywords) {
+    const regex = new RegExp(escapeRegExp(keyword), 'gi');
+    const matches = text.match(regex);
+    if (!matches) continue;
+
+    count += matches.length;
+    if (!foundKeywords.includes(keyword)) {
+      foundKeywords.push(keyword);
+    }
+  }
+
+  return { count, foundKeywords };
+}
+
 // アダルト/エロ系コンテンツを検出
 export function isAdultContent(title: string, comments: Comment[]): { isAdult: boolean; reason: string } {
-  // タイトルとコメント本文を結合
-  const allText = [title, ...comments.slice(0, 50).map(c => c.body)].join(' ').toLowerCase();
-
-  // 明らかなアダルトキーワード（直接的な性的表現のみ、一般会話でヒットしやすい語は除外）
-  const explicitKeywords = [
-    'セックス', 'せっくす', 'sex',
-    'オナニー', 'おなにー', 'オナ二ー',
-    '手コキ', '手こき', 'てこき',
-    'フェラ', 'ふぇら',
-    'パイズリ', 'ぱいずり',
-    '中出し', 'なかだし',
-    '潮吹き', 'しおふき',
-    '乱交', 'らんこう',
-    '3P', '３P', '3p',
-    'AV女優', 'av女優',
-    '風俗', 'ソープ', 'デリヘル', 'ヘルス',
-    'エロ動画', 'エロ画像', 'エロ漫画',
-    '巨乳', '爆乳',
-    'おっぱい', 'オッパイ',
-    'ちんこ', 'チンコ', 'ちんぽ', 'チンポ',
-    'まんこ', 'マンコ',
-    '勃起', 'ぼっき',
-    '射精', 'しゃせい',
-    '精子', 'ザーメン',
-    '挿入', 'そうにゅう',
-    'ハメ撮り', 'はめどり',
-    '童貞卒業', '処女喪失',
-    'やりまん', 'ヤリマン',
-    '全裸', 'ぜんら',
-  ];
+  const titleText = maskAdultLegalContext(title).normalize('NFKC');
 
   // スレッドタイトルに直接的なキーワードがある場合
-  const titleLower = title.toLowerCase();
-  for (const keyword of explicitKeywords) {
-    if (titleLower.includes(keyword.toLowerCase())) {
+  for (const keyword of ADULT_TITLE_KEYWORDS) {
+    if (titleText.toLowerCase().includes(keyword.toLowerCase())) {
       return { isAdult: true, reason: `タイトルにアダルトキーワード「${keyword}」を検出` };
     }
   }
 
-  // コメント内のキーワード出現回数をカウント
-  let keywordCount = 0;
+  const targetComments = comments.slice(0, 80);
+  let strongCount = 0;
+  let ambiguousCount = 0;
+  let adultSignalCommentCount = 0;
   const foundKeywords: string[] = [];
-  for (const keyword of explicitKeywords) {
-    const regex = new RegExp(keyword, 'gi');
-    const matches = allText.match(regex);
-    if (matches) {
-      keywordCount += matches.length;
-      if (!foundKeywords.includes(keyword)) {
-        foundKeywords.push(keyword);
+
+  for (const comment of targetComments) {
+    const body = maskAdultLegalContext(comment.body || '').normalize('NFKC');
+    const strong = countKeywordMatches(body, ADULT_STRONG_KEYWORDS);
+    const ambiguous = countKeywordMatches(body, ADULT_AMBIGUOUS_KEYWORDS);
+    const commentCount = strong.count + ambiguous.count;
+
+    if (commentCount > 0) {
+      adultSignalCommentCount++;
+      strongCount += strong.count;
+      ambiguousCount += ambiguous.count;
+      for (const keyword of [...strong.foundKeywords, ...ambiguous.foundKeywords]) {
+        if (!foundKeywords.includes(keyword)) foundKeywords.push(keyword);
       }
     }
   }
 
-  // 複数のアダルトキーワードが頻出する場合（10回以上、または5種類以上）
-  if (keywordCount >= 10 || foundKeywords.length >= 5) {
+  const keywordCount = strongCount + ambiguousCount;
+  const onlyAmbiguousVulgar = strongCount === 0 && ambiguousCount > 0;
+
+  // 風俗営業法などの法律ニュースや、少数の下品レスだけでスレ全体を捨てない。
+  if (
+    strongCount >= 10 ||
+    foundKeywords.length >= 6 ||
+    (strongCount >= 5 && adultSignalCommentCount >= 4) ||
+    (!onlyAmbiguousVulgar && keywordCount >= 15 && adultSignalCommentCount >= 6)
+  ) {
     return {
       isAdult: true,
       reason: `アダルトキーワードを${keywordCount}回検出（${foundKeywords.slice(0, 3).join('、')}など）`
