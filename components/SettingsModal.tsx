@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider, OpenAIImageModel, OpenAIImageQuality } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { useIsAdmin } from '@/lib/auth-context';
-import { isOhimeBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, isOhimeBlog } from '@/lib/blog-routing';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -1245,7 +1245,7 @@ export default function SettingsModal({
                           <span className="text-sm text-gray-700">{blog.name}</span>
                           {isOhimeBlog(blog) && (
                             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
-                              生活・雑談のみ
+                              {LIFE_BLOG_ROUTING_BADGE}
                             </span>
                           )}
                           <button

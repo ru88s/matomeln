@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
-import { getOtherBlogPostSkipReason, isOhimeBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isOhimeBlog } from '@/lib/blog-routing';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
 
@@ -463,7 +463,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                             <span>{blog.name}</span>
                             {isOhimeBlog(blog) && (
                               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
-                                生活・雑談のみ
+                                {LIFE_BLOG_ROUTING_BADGE}
                               </span>
                             )}
                           </div>

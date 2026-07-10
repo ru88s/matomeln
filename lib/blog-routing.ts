@@ -3,6 +3,7 @@ import type { BlogSettings, Comment, Talk } from './types';
 export const OHIME_BLOG_ID = 'local-ohimechan';
 export const OHIME_BLOG_NAME = 'おにひめちゃん';
 export const OHIME_LIVEDOOR_BLOG_ID = 'onihimechan';
+export const LIFE_BLOG_ROUTING_BADGE = 'ガルちゃんはニュース・政治以外OK';
 const OHIME_LEGACY_BLOG_IDS = ['ohimechan'] as const;
 
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
@@ -58,6 +59,53 @@ const NEWS_LIKE_TITLE_PATTERNS = [
   /MLB/i,
   /サッカー/,
   /野球/,
+];
+
+const GIRLS_CHANNEL_NEWS_TITLE_PATTERNS = [
+  /ニュース/,
+  /速報/,
+  /報道/,
+  /新聞/,
+  /通信/,
+  /発表/,
+  /事件/,
+  /事故/,
+  /逮捕/,
+  /容疑/,
+  /起訴/,
+  /裁判/,
+  /判決/,
+  /被告/,
+  /警察/,
+  /死亡/,
+  /死去/,
+  /殺人/,
+  /暴行/,
+  /強盗/,
+  /詐欺/,
+  /火災/,
+  /災害/,
+  /地震/,
+  /台風/,
+  /政府/,
+  /首相/,
+  /大臣/,
+  /国会/,
+  /選挙/,
+  /政治/,
+  /政党/,
+  /経済/,
+  /株価/,
+  /円安/,
+  /円高/,
+  /外交/,
+  /防衛/,
+  /増税/,
+  /減税/,
+  /Yahoo!ニュース/i,
+  /NHK/,
+  /共同通信/,
+  /時事通信/,
 ];
 
 const SPORTS_OR_CELEBRITY_PATTERNS = [
@@ -360,6 +408,10 @@ function extractBoardFromUrl(url: string): string | null {
   return null;
 }
 
+function isGirlsChannelUrl(url?: string): boolean {
+  return /girlschannel\.net\/topics\/\d+/i.test(url || '');
+}
+
 export function isNewsLikeArticle(params: {
   url?: string;
   title?: string;
@@ -374,6 +426,28 @@ export function isNewsLikeArticle(params: {
 
   const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
   return /ニュース|政治|経済|芸能|スポーツ|事件|事故|速報|報道/.test(tags);
+}
+
+export function isGirlsChannelNewsOrPoliticalArticle(params: {
+  url?: string;
+  title?: string;
+  tags?: string[];
+  talk?: Pick<Talk, 'title' | 'tag_names'> | null;
+  comments?: Pick<Comment, 'res_id' | 'body'>[];
+}): boolean {
+  if (!isGirlsChannelUrl(params.url)) return false;
+  if (isPoliticalTopic(params)) return true;
+
+  const tags = [...(params.tags || []), ...(params.talk?.tag_names || [])].join(' ');
+  if (/ニュース|政治|経済|事件|事故|速報|報道/.test(tags)) return true;
+
+  const text = [
+    params.title || '',
+    params.talk?.title || '',
+    getFirstCommentBody(params.comments),
+  ].join(' ');
+
+  return GIRLS_CHANNEL_NEWS_TITLE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function getFirstCommentBody(comments?: Pick<Comment, 'res_id' | 'body'>[]): string {
@@ -459,6 +533,14 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   comments?: Pick<Comment, 'res_id' | 'body'>[];
 }): string | null {
   if (!isOhimeBlog(blog)) return null;
+
+  if (isGirlsChannelUrl(params.url)) {
+    if (isGirlsChannelNewsOrPoliticalArticle(params)) {
+      return isPoliticalTopic(params) ? '政治系記事のため' : 'ニュース系記事のため';
+    }
+    return null;
+  }
+
   if (hasUrlInFirstComment(params.comments)) {
     return 'レス1にURLがある記事のため';
   }
