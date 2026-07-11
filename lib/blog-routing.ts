@@ -3,7 +3,7 @@ import type { BlogSettings, Comment, Talk } from './types';
 export const OHIME_BLOG_ID = 'local-ohimechan';
 export const OHIME_BLOG_NAME = 'おにひめちゃん';
 export const OHIME_LIVEDOOR_BLOG_ID = 'onihimechan';
-export const LIFE_BLOG_ROUTING_BADGE = 'ガルちゃんはニュース・政治以外OK';
+export const LIFE_BLOG_ROUTING_BADGE = 'ガルちゃんのみ';
 const OHIME_LEGACY_BLOG_IDS = ['ohimechan'] as const;
 
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
@@ -534,27 +534,13 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
 }): string | null {
   if (!isOhimeBlog(blog)) return null;
 
-  if (isGirlsChannelUrl(params.url)) {
-    if (isGirlsChannelNewsOrPoliticalArticle(params)) {
-      return isPoliticalTopic(params) ? '政治系記事のため' : 'ニュース系記事のため';
-    }
-    return null;
+  if (!isGirlsChannelUrl(params.url)) {
+    return 'ガルちゃん以外の記事のため';
   }
 
-  if (hasUrlInFirstComment(params.comments)) {
-    return 'レス1にURLがある記事のため';
+  if (isGirlsChannelNewsOrPoliticalArticle(params)) {
+    return isPoliticalTopic(params) ? '政治系記事のため' : 'ニュース系記事のため';
   }
-  if (isSportsOrCelebrityTopic(params)) {
-    return 'スポーツ・芸能人系記事のため';
-  }
-  if (isPoliticalTopic(params)) {
-    return '政治系記事のため';
-  }
-  if (isNewsLikeArticle(params)) {
-    return 'ニュース系記事のため';
-  }
-  if (!isLifeOrChatTopic(params)) {
-    return '生活系・雑談系以外の記事のため';
-  }
+
   return null;
 }
