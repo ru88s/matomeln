@@ -15,14 +15,29 @@ type LifestyleBlogDefinition = {
 
 export const LIFESTYLE_BLOGS: readonly LifestyleBlogDefinition[] = [
   {
-    id: 'local-kichisawa',
-    name: '基地沢',
+    id: 'local-kijo-matome',
+    name: '鬼女まとめ',
     blogId: 'kijyosokuhou',
   },
   {
     id: 'local-kongai-channel',
     name: '婚外ちゃんねる',
+    blogId: 'kongaich',
+  },
+  {
+    id: 'local-kichisawa',
+    name: '基地沢',
     blogId: 'tozayamitozayami',
+  },
+  {
+    id: 'local-okusama',
+    name: '奥様',
+    blogId: 'okusamakijyo',
+  },
+  {
+    id: 'local-unbiri',
+    name: 'アンビリ',
+    blogId: 'uwakimon',
   },
   {
     id: 'local-mojolica',
@@ -47,11 +62,26 @@ export const LIFESTYLE_BLOGS: readonly LifestyleBlogDefinition[] = [
     blogId: 'heart_life8',
   },
   {
+    id: 'local-kichimama',
+    name: 'キチママちゃんねる',
+    blogId: 'kichimamach',
+  },
+  {
+    id: 'local-saikyo-kijyo',
+    name: '最強の鬼女様',
+    blogId: 'saikyokijyo',
+  },
+  {
     id: 'local-kijoume',
     name: '鬼女梅',
     blogId: 'kijoume',
   },
 ];
+
+const LEGACY_LIFESTYLE_BLOG_ID_MIGRATIONS: Readonly<Record<string, string>> = {
+  // 40fbbd8 で基地沢として追加してしまった鬼女まとめの選択状態を引き継ぐ。
+  'local-kichisawa': 'local-kijo-matome',
+};
 
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = new Set([
   'garlsvip',
@@ -361,15 +391,16 @@ const LIFE_OR_CHAT_TOPIC_PATTERNS = [
 
 export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
   return blogs.map((blog) => {
-    const lifestyleBlog = findLifestyleBlogDefinition(blog);
+    const migratedLegacyBlog = migrateLegacyLifestyleBlog(blog);
+    const lifestyleBlog = findLifestyleBlogDefinition(migratedLegacyBlog);
     const migratedBlog = lifestyleBlog
       ? {
-          ...blog,
+          ...migratedLegacyBlog,
           name: lifestyleBlog.name,
           blogId: lifestyleBlog.blogId,
-          apiUsername: blog.apiUsername || 'garlsvip',
+          apiUsername: migratedLegacyBlog.apiUsername || 'garlsvip',
         }
-      : blog;
+      : migratedLegacyBlog;
 
     if (
       migratedBlog.blogType !== 'girls-matome' &&
@@ -380,6 +411,19 @@ export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogS
     }
     return migratedBlog;
   });
+}
+
+function migrateLegacyLifestyleBlog(blog: BlogSettings): BlogSettings {
+  if (blog.id === 'local-kichisawa' && blog.blogId === 'kijyosokuhou') {
+    return {
+      ...blog,
+      id: 'local-kijo-matome',
+      name: '鬼女まとめ',
+      blogId: 'kijyosokuhou',
+    };
+  }
+
+  return blog;
 }
 
 export function ensureLifestyleBlogs(blogs: BlogSettings[]): BlogSettings[] {
@@ -420,7 +464,7 @@ export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string |
 
     if (!settings.postToOtherBlogs) return settingsText;
     const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
-      ? settings.selectedOtherBlogIds
+      ? [...new Set(settings.selectedOtherBlogIds.map((id) => LEGACY_LIFESTYLE_BLOG_ID_MIGRATIONS[id] || id))]
       : [];
     const nextSelectedIds = [
       ...selectedIds,

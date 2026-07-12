@@ -61,7 +61,7 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 - `postBlog` と `uploadImage` には `blogId` だけでなく `apiUsername` も渡す。未指定時だけ `blogId` を認証ユーザー名として使う。
 - 設定編集時に `apiUsername` を消さない。ライブドアブログ設定には「認証ユーザー名」欄を維持する。
 - 既存ローカル設定で `apiUsername` が欠けている場合、既知ブログID `garlsvip`, `matome_blade`, `mnuhkhkbxmagwje`, `onihimechan` は `garlsvip` に補正する。
-- 生活系サイト（基地沢、婚外ちゃんねる、喪女リカ、怒り新党、おにひめちゃん、はーとらいふ、鬼女梅）への同時投稿は、ガルちゃん系（girlschannel.net）のみ許可する。5ch/Talk/open2ch/2ch.sc/まとめ記事由来は、生活・雑談っぽく見えても生活系サイトには同時投稿しない。ガルちゃん系でもニュース系・政治系は同時投稿からスキップし、芸能/スポーツ/雑談/恋愛/美容などは許可する。今後の生活系サイト追加時もこのルールと `LIFESTYLE_BLOGS` に必ず追加する。
+- 生活系サイト（鬼女まとめ、婚外ちゃんねる、基地沢、奥様、アンビリ、喪女リカ、怒り新党、おにひめちゃん、はーとらいふ、キチママちゃんねる、最強の鬼女様、鬼女梅）への同時投稿は、ガルちゃん系（girlschannel.net）のみ許可する。5ch/Talk/open2ch/2ch.sc/まとめ記事由来は、生活・雑談っぽく見えても生活系サイトには同時投稿しない。ガルちゃん系でもニュース系・政治系は同時投稿からスキップし、芸能/スポーツ/雑談/恋愛/美容などは許可する。今後の生活系サイト追加時もこのルールと `LIFESTYLE_BLOGS` に必ず追加する。
 
 ### エラー表示
 - 同時投稿の失敗を一律に「制限中」と表示しない。
