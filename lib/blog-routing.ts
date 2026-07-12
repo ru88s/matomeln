@@ -78,11 +78,6 @@ export const LIFESTYLE_BLOGS: readonly LifestyleBlogDefinition[] = [
   },
 ];
 
-const LEGACY_LIFESTYLE_BLOG_ID_MIGRATIONS: Readonly<Record<string, string>> = {
-  // 40fbbd8 で基地沢として追加してしまった鬼女まとめの選択状態を引き継ぐ。
-  'local-kichisawa': 'local-kijo-matome',
-};
-
 const SHARED_LIVEDOOR_AUTH_BLOG_IDS = new Set([
   'garlsvip',
   'matome_blade',
@@ -464,7 +459,7 @@ export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string |
 
     if (!settings.postToOtherBlogs) return settingsText;
     const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
-      ? [...new Set(settings.selectedOtherBlogIds.map((id) => LEGACY_LIFESTYLE_BLOG_ID_MIGRATIONS[id] || id))]
+      ? [...new Set(settings.selectedOtherBlogIds)]
       : [];
     const nextSelectedIds = [
       ...selectedIds,
