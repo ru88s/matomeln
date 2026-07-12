@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings } from '@/lib/types';
 import { useIsAdmin } from '@/lib/auth-context';
-import { LIFE_BLOG_ROUTING_BADGE, isOhimeBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog } from '@/lib/blog-routing';
 
 export default function SettingsPage() {
   const isAdmin = useIsAdmin();
@@ -256,7 +256,7 @@ export default function SettingsPage() {
                         className="w-4 h-4 accent-purple-500"
                       />
                       <span className="text-sm text-gray-700">{blog.name}</span>
-                      {isOhimeBlog(blog) && (
+                      {isLifestyleBlog(blog) && (
                         <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
                           {LIFE_BLOG_ROUTING_BADGE}
                         </span>

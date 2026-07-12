@@ -15,8 +15,8 @@ import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
 import {
-  ensureOhimeBlog,
-  ensureOhimeSelectedForOtherBlogs,
+  ensureLifestyleBlogs,
+  ensureLifestyleBlogsSelectedForOtherBlogs,
   getOtherBlogPostSkipReason,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
@@ -173,7 +173,7 @@ function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWith
 }
 
 function normalizeBlogSettingsForAuth(blogs: BlogSettings[]): BlogSettings[] {
-  return ensureOhimeBlog(normalizeBlogSettingsForSharedAuth(blogs));
+  return ensureLifestyleBlogs(normalizeBlogSettingsForSharedAuth(blogs));
 }
 
 function isExpectedBulkSkipError(errorMsg: string): boolean {
@@ -278,7 +278,7 @@ export default function Home() {
       try {
         blogsList = normalizeBlogSettingsForAuth(JSON.parse(savedBlogs) as BlogSettings[]);
         localStorage.setItem('blogSettingsList', JSON.stringify(blogsList));
-        const otherBlogsSettings = ensureOhimeSelectedForOtherBlogs(localStorage.getItem('matomeln_other_blogs_settings'));
+        const otherBlogsSettings = ensureLifestyleBlogsSelectedForOtherBlogs(localStorage.getItem('matomeln_other_blogs_settings'));
         if (otherBlogsSettings) {
           localStorage.setItem('matomeln_other_blogs_settings', otherBlogsSettings);
         }

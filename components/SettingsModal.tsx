@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider, OpenAIImageModel, OpenAIImageQuality } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { useIsAdmin } from '@/lib/auth-context';
-import { LIFE_BLOG_ROUTING_BADGE, isOhimeBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog } from '@/lib/blog-routing';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -1243,7 +1243,7 @@ export default function SettingsModal({
                             className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded cursor-pointer"
                           />
                           <span className="text-sm text-gray-700">{blog.name}</span>
-                          {isOhimeBlog(blog) && (
+                          {isLifestyleBlog(blog) && (
                             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
                               {LIFE_BLOG_ROUTING_BADGE}
                             </span>

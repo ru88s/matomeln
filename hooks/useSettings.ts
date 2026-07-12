@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import {
-  ensureOhimeBlog,
-  ensureOhimeSelectedForOtherBlogs,
+  ensureLifestyleBlogs,
+  ensureLifestyleBlogsSelectedForOtherBlogs,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import type { BlogSettings } from '@/lib/types';
@@ -53,7 +53,7 @@ function sanitizeCustomNameSettings(value: string): string {
 function normalizeBlogSettingsList(value: string): string {
   try {
     const blogs = JSON.parse(value) as BlogSettings[];
-    const normalizedBlogs = ensureOhimeBlog(normalizeBlogSettingsForSharedAuth(blogs));
+    const normalizedBlogs = ensureLifestyleBlogs(normalizeBlogSettingsForSharedAuth(blogs));
     return JSON.stringify(normalizedBlogs);
   } catch {
     return value;
@@ -69,7 +69,7 @@ function normalizeSettingsForStorage(settings: SettingsMap): SettingsMap {
     normalized.blogSettingsList = normalizeBlogSettingsList(normalized.blogSettingsList);
   }
   if (typeof normalized.matomeln_other_blogs_settings === 'string') {
-    normalized.matomeln_other_blogs_settings = ensureOhimeSelectedForOtherBlogs(normalized.matomeln_other_blogs_settings) || normalized.matomeln_other_blogs_settings;
+    normalized.matomeln_other_blogs_settings = ensureLifestyleBlogsSelectedForOtherBlogs(normalized.matomeln_other_blogs_settings) || normalized.matomeln_other_blogs_settings;
   }
   return normalized;
 }

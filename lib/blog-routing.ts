@@ -4,14 +4,61 @@ export const OHIME_BLOG_ID = 'local-ohimechan';
 export const OHIME_BLOG_NAME = 'おにひめちゃん';
 export const OHIME_LIVEDOOR_BLOG_ID = 'onihimechan';
 export const LIFE_BLOG_ROUTING_BADGE = 'ガルちゃんのみ';
-const OHIME_LEGACY_BLOG_IDS = ['ohimechan'] as const;
 
-const SHARED_LIVEDOOR_AUTH_BLOG_IDS = [
+type LifestyleBlogDefinition = {
+  id: string;
+  name: string;
+  blogId: string;
+  legacyNames?: readonly string[];
+  legacyBlogIds?: readonly string[];
+};
+
+export const LIFESTYLE_BLOGS: readonly LifestyleBlogDefinition[] = [
+  {
+    id: 'local-kichisawa',
+    name: '基地沢',
+    blogId: 'kijyosokuhou',
+  },
+  {
+    id: 'local-kongai-channel',
+    name: '婚外ちゃんねる',
+    blogId: 'tozayamitozayami',
+  },
+  {
+    id: 'local-mojolica',
+    name: '喪女リカ',
+    blogId: 'mojolicamojorca',
+  },
+  {
+    id: 'local-ikari-shintou',
+    name: '怒り新党',
+    blogId: 'ikarishintou',
+  },
+  {
+    id: OHIME_BLOG_ID,
+    name: OHIME_BLOG_NAME,
+    blogId: OHIME_LIVEDOOR_BLOG_ID,
+    legacyNames: ['おひめちゃん'],
+    legacyBlogIds: ['ohimechan'],
+  },
+  {
+    id: 'local-heart-life',
+    name: 'はーとらいふ',
+    blogId: 'heart_life8',
+  },
+  {
+    id: 'local-kijoume',
+    name: '鬼女梅',
+    blogId: 'kijoume',
+  },
+];
+
+const SHARED_LIVEDOOR_AUTH_BLOG_IDS = new Set([
   'garlsvip',
   'matome_blade',
   'mnuhkhkbxmagwje',
-  OHIME_LIVEDOOR_BLOG_ID,
-] as const;
+  ...LIFESTYLE_BLOGS.map((blog) => blog.blogId),
+]);
 
 const NEWS_LIKE_BOARDS = new Set([
   'news',
@@ -314,11 +361,12 @@ const LIFE_OR_CHAT_TOPIC_PATTERNS = [
 
 export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogSettings[] {
   return blogs.map((blog) => {
-    const migratedBlog = isOhimeBlog(blog)
+    const lifestyleBlog = findLifestyleBlogDefinition(blog);
+    const migratedBlog = lifestyleBlog
       ? {
           ...blog,
-          name: OHIME_BLOG_NAME,
-          blogId: OHIME_LIVEDOOR_BLOG_ID,
+          name: lifestyleBlog.name,
+          blogId: lifestyleBlog.blogId,
           apiUsername: blog.apiUsername || 'garlsvip',
         }
       : blog;
@@ -326,7 +374,7 @@ export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogS
     if (
       migratedBlog.blogType !== 'girls-matome' &&
       !migratedBlog.apiUsername &&
-      SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(migratedBlog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number])
+      SHARED_LIVEDOOR_AUTH_BLOG_IDS.has(migratedBlog.blogId)
     ) {
       return { ...migratedBlog, apiUsername: 'garlsvip' };
     }
@@ -334,34 +382,34 @@ export function normalizeBlogSettingsForSharedAuth(blogs: BlogSettings[]): BlogS
   });
 }
 
-export function ensureOhimeBlog(blogs: BlogSettings[]): BlogSettings[] {
+export function ensureLifestyleBlogs(blogs: BlogSettings[]): BlogSettings[] {
   const normalizedBlogs = normalizeBlogSettingsForSharedAuth(blogs);
-  const hasOhime = normalizedBlogs.some((blog) => isOhimeBlog(blog));
-  if (hasOhime) return normalizedBlogs;
-
   const credentialSource = normalizedBlogs.find((blog) =>
     blog.blogType !== 'girls-matome' &&
-    SHARED_LIVEDOOR_AUTH_BLOG_IDS.includes(blog.blogId as typeof SHARED_LIVEDOOR_AUTH_BLOG_IDS[number]) &&
+    SHARED_LIVEDOOR_AUTH_BLOG_IDS.has(blog.blogId) &&
     blog.apiKey
   );
 
   if (!credentialSource?.apiKey) return normalizedBlogs;
 
-  return [
-    ...normalizedBlogs,
-    {
-      id: OHIME_BLOG_ID,
-      name: OHIME_BLOG_NAME,
-      blogId: OHIME_LIVEDOOR_BLOG_ID,
+  const nextBlogs = [...normalizedBlogs];
+  for (const lifestyleBlog of LIFESTYLE_BLOGS) {
+    if (nextBlogs.some((blog) => matchesLifestyleBlog(blog, lifestyleBlog))) continue;
+
+    nextBlogs.push({
+      id: lifestyleBlog.id,
+      name: lifestyleBlog.name,
+      blogId: lifestyleBlog.blogId,
       apiUsername: credentialSource.apiUsername || 'garlsvip',
       apiKey: credentialSource.apiKey,
       blogType: 'livedoor',
       disabled: false,
-    },
-  ];
+    });
+  }
+  return nextBlogs;
 }
 
-export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): string | null {
+export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string | null): string | null {
   if (!settingsText) return settingsText;
 
   try {
@@ -374,24 +422,54 @@ export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): s
     const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
       ? settings.selectedOtherBlogIds
       : [];
-    if (selectedIds.includes(OHIME_BLOG_ID)) return settingsText;
+    const nextSelectedIds = [
+      ...selectedIds,
+      ...LIFESTYLE_BLOGS.map((blog) => blog.id).filter((id) => !selectedIds.includes(id)),
+    ];
+    if (nextSelectedIds.length === selectedIds.length) return settingsText;
 
     return JSON.stringify({
       ...settings,
-      selectedOtherBlogIds: [...selectedIds, OHIME_BLOG_ID],
+      selectedOtherBlogIds: nextSelectedIds,
     });
   } catch {
     return settingsText;
   }
 }
 
+/** @deprecated Use ensureLifestyleBlogs. */
+export function ensureOhimeBlog(blogs: BlogSettings[]): BlogSettings[] {
+  return ensureLifestyleBlogs(blogs);
+}
+
+/** @deprecated Use ensureLifestyleBlogsSelectedForOtherBlogs. */
+export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): string | null {
+  return ensureLifestyleBlogsSelectedForOtherBlogs(settingsText);
+}
+
 export function isOhimeBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): boolean {
+  const ohimeBlog = LIFESTYLE_BLOGS.find((definition) => definition.id === OHIME_BLOG_ID);
+  return !!ohimeBlog && matchesLifestyleBlog(blog, ohimeBlog);
+}
+
+export function isLifestyleBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): boolean {
+  return !!findLifestyleBlogDefinition(blog);
+}
+
+function findLifestyleBlogDefinition(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): LifestyleBlogDefinition | undefined {
+  return LIFESTYLE_BLOGS.find((definition) => matchesLifestyleBlog(blog, definition));
+}
+
+function matchesLifestyleBlog(
+  blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>,
+  definition: LifestyleBlogDefinition,
+): boolean {
   return (
-    blog.id === OHIME_BLOG_ID ||
-    blog.blogId === OHIME_LIVEDOOR_BLOG_ID ||
-    OHIME_LEGACY_BLOG_IDS.includes(blog.blogId as typeof OHIME_LEGACY_BLOG_IDS[number]) ||
-    blog.name.includes(OHIME_BLOG_NAME) ||
-    blog.name.includes('おひめちゃん')
+    blog.id === definition.id ||
+    blog.blogId === definition.blogId ||
+    definition.legacyBlogIds?.includes(blog.blogId) === true ||
+    blog.name.includes(definition.name) ||
+    definition.legacyNames?.some((name) => blog.name.includes(name)) === true
   );
 }
 
@@ -532,7 +610,7 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
   talk?: Pick<Talk, 'title' | 'tag_names'> | null;
   comments?: Pick<Comment, 'res_id' | 'body'>[];
 }): string | null {
-  if (!isOhimeBlog(blog)) return null;
+  if (!isLifestyleBlog(blog)) return null;
 
   if (!isGirlsChannelUrl(params.url)) {
     return 'ガルちゃん以外の記事のため';
