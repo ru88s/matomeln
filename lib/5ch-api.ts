@@ -106,17 +106,7 @@ function isMojibake(text: string): boolean {
     return true;
   }
 
-  // 3. 同じ文字の異常な連続（◇◇◇◇のような文字化け特有パターン）
-  // ただし、5chでよく使われる文字は除外（w, ー, -, =, _, ・, 草, 笑, !,?など）
-  const commonRepeatChars = /[wWｗＷー\-=_・草笑!?！？\s。、\.]/;
-  const repeatedCharMatches = text.match(/(.)\1{14,}/g) || []; // 15文字以上に緩和
-  const suspiciousRepeats = repeatedCharMatches.filter(match => !commonRepeatChars.test(match[0]));
-  if (suspiciousRepeats.length > 0) {
-    console.log(`[mojibake] 同一文字の異常連続を検出: ${suspiciousRepeats[0]?.substring(0, 20)}`);
-    return true;
-  }
-
-  // 4. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
+  // 3. 一般的な日本語（ひらがな・カタカナ・漢字）の割合チェック
   // 最初の1000文字で判定（スレタイと1レス目を含む）
   const sample = text.substring(0, 1000);
   const japaneseChars = (sample.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
@@ -1041,6 +1031,12 @@ function parseOpen2chDateString(dateStr: string): string {
 // 5chスレッドデータを取得（Deno Deploy経由）
 const DENO_5CH_API = 'https://polite-squirrel-51.deno.dev';
 
+// Deno側の取得APIは5ch.io形式を受け付けないため、取得時だけ.netへ戻す。
+// 画面表示や既存のフォールバックでは.ioを正規形として扱い続ける。
+function toDeno5chUrl(url: string): string {
+  return url.replace(/\.5ch\.io\//i, '.5ch.net/');
+}
+
 export async function fetch5chThread(url: string): Promise<{ talk: Talk; comments: Comment[] } | null> {
   // URLを正規化（モバイル版をPC版に変換）
   const normalizedUrl = normalize5chUrl(url);
@@ -1053,7 +1049,8 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
   try {
     // Deno Deploy APIを使用
     // 正規化されたURLを使用
-    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(normalizedUrl)}`);
+    const denoUrl = toDeno5chUrl(normalizedUrl);
+    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(denoUrl)}`);
 
     if (!response.ok) {
       // Deno Deployが失敗した場合、Cloudflare Functions経由でフォールバック
