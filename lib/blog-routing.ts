@@ -448,7 +448,7 @@ export function ensureLifestyleBlogs(blogs: BlogSettings[]): BlogSettings[] {
   return nextBlogs;
 }
 
-export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string | null): string | null {
+export function removeLifestyleBlogsFromOtherBlogSelection(settingsText: string | null): string | null {
   if (!settingsText) return settingsText;
 
   try {
@@ -457,14 +457,11 @@ export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string |
       selectedOtherBlogIds?: string[];
     };
 
-    if (!settings.postToOtherBlogs) return settingsText;
     const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
       ? [...new Set(settings.selectedOtherBlogIds)]
       : [];
-    const nextSelectedIds = [
-      ...selectedIds,
-      ...LIFESTYLE_BLOGS.map((blog) => blog.id).filter((id) => !selectedIds.includes(id)),
-    ];
+    const lifestyleBlogIds = new Set(LIFESTYLE_BLOGS.map((blog) => blog.id));
+    const nextSelectedIds = selectedIds.filter((id) => !lifestyleBlogIds.has(id));
     if (nextSelectedIds.length === selectedIds.length) return settingsText;
 
     return JSON.stringify({
@@ -481,9 +478,9 @@ export function ensureOhimeBlog(blogs: BlogSettings[]): BlogSettings[] {
   return ensureLifestyleBlogs(blogs);
 }
 
-/** @deprecated Use ensureLifestyleBlogsSelectedForOtherBlogs. */
+/** @deprecated Use removeLifestyleBlogsFromOtherBlogSelection. */
 export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): string | null {
-  return ensureLifestyleBlogsSelectedForOtherBlogs(settingsText);
+  return removeLifestyleBlogsFromOtherBlogSelection(settingsText);
 }
 
 export function isOhimeBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): boolean {

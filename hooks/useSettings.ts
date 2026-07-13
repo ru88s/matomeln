@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   ensureLifestyleBlogs,
-  ensureLifestyleBlogsSelectedForOtherBlogs,
+  removeLifestyleBlogsFromOtherBlogSelection,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import type { BlogSettings } from '@/lib/types';
@@ -69,7 +69,7 @@ function normalizeSettingsForStorage(settings: SettingsMap): SettingsMap {
     normalized.blogSettingsList = normalizeBlogSettingsList(normalized.blogSettingsList);
   }
   if (typeof normalized.matomeln_other_blogs_settings === 'string') {
-    normalized.matomeln_other_blogs_settings = ensureLifestyleBlogsSelectedForOtherBlogs(normalized.matomeln_other_blogs_settings) || normalized.matomeln_other_blogs_settings;
+    normalized.matomeln_other_blogs_settings = removeLifestyleBlogsFromOtherBlogSelection(normalized.matomeln_other_blogs_settings) || normalized.matomeln_other_blogs_settings;
   }
   return normalized;
 }

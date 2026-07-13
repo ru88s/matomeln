@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings } from '@/lib/types';
 import { useIsAdmin } from '@/lib/auth-context';
-import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog, removeLifestyleBlogsFromOtherBlogSelection } from '@/lib/blog-routing';
 
 export default function SettingsPage() {
   const isAdmin = useIsAdmin();
@@ -52,7 +52,11 @@ export default function SettingsPage() {
     const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
     if (savedOtherBlogsSettings) {
       try {
-        const settings = JSON.parse(savedOtherBlogsSettings);
+        const normalizedOtherBlogsSettings = removeLifestyleBlogsFromOtherBlogSelection(savedOtherBlogsSettings) || savedOtherBlogsSettings;
+        if (normalizedOtherBlogsSettings !== savedOtherBlogsSettings) {
+          localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
+        }
+        const settings = JSON.parse(normalizedOtherBlogsSettings);
         setPostToOtherBlogs(settings.postToOtherBlogs || false);
         setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
       } catch {

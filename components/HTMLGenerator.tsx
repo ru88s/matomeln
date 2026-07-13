@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
-import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isLifestyleBlog } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isLifestyleBlog, removeLifestyleBlogsFromOtherBlogSelection } from '@/lib/blog-routing';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
 
@@ -68,7 +68,11 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       const saved = localStorage.getItem('matomeln_other_blogs_settings');
       if (saved) {
         try {
-          const settings = JSON.parse(saved);
+          const normalizedOtherBlogsSettings = removeLifestyleBlogsFromOtherBlogSelection(saved) || saved;
+          if (normalizedOtherBlogsSettings !== saved) {
+            localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
+          }
+          const settings = JSON.parse(normalizedOtherBlogsSettings);
           setPostToOtherBlogs(settings.postToOtherBlogs || false);
           setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
         } catch {
