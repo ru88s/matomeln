@@ -95,6 +95,7 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 - livedoor系まとめ記事は `res_div` を1レス単位、`t_h` をレスヘッダー、`t_b` をレス本文として抽出する。
 - `sourceInfo.source` は `matomeBlog` とし、引用元URLは元スレURLではなく、ユーザーが入力したまとめ記事URLを使う。
 - 記事本文内に `p.source_link` があっても、Kotoria投稿時の引用元は取り込み元まとめ記事URLを優先する。
+- アーカイブHTMLに混入する「管理人オススメ」などの誘導枠は、見出しとアーカイブ経由リンクをレス本文から除外する。通常の引用URL・参考URLは残す。
 - 対応URLは最低限 `girlsvip-matome.com/acv/...` と `matomeblade.com/archives/...` を維持する。追加対応時も同じパーサーで扱えるか先に確認する。
 - 外部HTML取得はクライアント直fetchではなく、Cloudflare Pages Functionsのプロキシ経由にする。
 - プロキシはSSRF対策として許可ホスト・記事URLパターンを絞る。任意URLプロキシ化しない。

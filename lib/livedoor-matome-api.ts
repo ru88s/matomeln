@@ -156,8 +156,72 @@ function extractImages(bodyHtml: string): string[] {
   return [...images];
 }
 
+function getArchiveRedirectUrl(line: string): string | null {
+  const trimmed = line.trim();
+  const markdownMatch = trimmed.match(/^\[[^\]]+\]\((https?:\/\/[^\s)]+)\)$/);
+  const url = markdownMatch?.[1] || (trimmed.match(/^https?:\/\/\S+$/)?.[0] ?? '');
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(decodeHtmlEntities(url));
+    const isArchiveRedirect =
+      parsed.hostname.toLowerCase().endsWith('.doorblog.jp') &&
+      /^\/archives\/\d+\.html$/.test(parsed.pathname) &&
+      (parsed.searchParams.has('url') || parsed.searchParams.has('noadult'));
+    return isArchiveRedirect ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function isArchiveRecommendationHeading(line: string): boolean {
+  const normalized = line.replace(/[\s　]+/g, '');
+  return /(?:管理人|当サイト).{0,8}(?:オススメ|おすすめ).{0,30}(?:記事|エピソード).{0,16}(?:こちら|↓)/.test(normalized);
+}
+
+function removeArchiveRecommendationLinks(body: string): string {
+  const lines = body.split('\n').filter(Boolean);
+  const kept: string[] = [];
+
+  for (let index = 0; index < lines.length;) {
+    if (!isArchiveRecommendationHeading(lines[index])) {
+      kept.push(lines[index]);
+      index += 1;
+      continue;
+    }
+
+    let nextIndex = index + 1;
+    let removedLinkCount = 0;
+    while (nextIndex < lines.length) {
+      if (getArchiveRedirectUrl(lines[nextIndex])) {
+        removedLinkCount += 1;
+        nextIndex += 1;
+        continue;
+      }
+
+      if (nextIndex + 1 < lines.length && getArchiveRedirectUrl(lines[nextIndex + 1])) {
+        removedLinkCount += 1;
+        nextIndex += 2;
+        continue;
+      }
+
+      break;
+    }
+
+    if (removedLinkCount > 0) {
+      index = nextIndex;
+      continue;
+    }
+
+    kept.push(lines[index]);
+    index += 1;
+  }
+
+  return kept.join('\n');
+}
+
 function cleanBody(bodyHtml: string): string {
-  return bodyHtml
+  const body = bodyHtml
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -176,6 +240,8 @@ function cleanBody(bodyHtml: string): string {
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  return removeArchiveRecommendationLinks(body);
 }
 
 export function parseLivedoorMatomeHtml(html: string, articleUrl: string): { talk: Talk; comments: Comment[] } {
