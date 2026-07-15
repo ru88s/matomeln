@@ -206,6 +206,21 @@ export function isKeywordSpam(text: string): boolean {
   return false;
 }
 
+// 5chの自動スロット投稿のように、結果表示と絵文字だけを繰り返すレスを検出する。
+// 旧DATの数値文字参照はPrivate Use Areaの文字に変換されることがあるため、両方を数える。
+function isAutomatedTemplateSpamCommentText(text: string): boolean {
+  const normalized = sanitizeText(text).normalize('NFKC').trim();
+  if (!normalized) return false;
+
+  const privateUseCount = (normalized.match(/[\uE000-\uF8FF]/g) || []).length;
+  const emojiCount = (normalized.match(/[\u{1F000}-\u{1FAFF}\u2600-\u27BF]/gu) || []).length;
+  const decorativeCount = privateUseCount + emojiCount;
+  const hasSlotLabel = /(?:\bslot\b|スロット)/i.test(normalized);
+  const hasResultLabel = /(?:\(\s*la\s*:|\bwin!?\s*\d+\s*pts?\.?)/i.test(normalized);
+
+  return decorativeCount >= 5 && hasSlotLabel && hasResultLabel;
+}
+
 const EXPLICIT_DISCRIMINATORY_TERMS = [
   'ガイジ',
   'がいじ',
@@ -476,6 +491,38 @@ export function isLowQualitySpamCommentText(text: string): boolean {
   return false;
 }
 
+export function isSummarySpamCommentText(text: string): boolean {
+  return isAutomatedTemplateSpamCommentText(text)
+    || isLowQualitySpamCommentText(text)
+    || isKeywordSpam(text);
+}
+
+/**
+ * 記事化する意味がないほど自動投稿で埋まったスレッドを、AI呼び出し前に除外する。
+ * 個別の荒らしはレス単位で落とすが、過半数が同型スパムなら会話の流れ自体が成立しない。
+ */
+export function getThreadSummarySkipReason(comments: Comment[]): string | null {
+  const nonEmptyComments = comments.filter((comment) => sanitizeText(comment.body).trim().length > 0);
+  const totalCount = nonEmptyComments.length;
+  if (totalCount < 12) return null;
+
+  const automatedTemplateSpamCount = nonEmptyComments.filter((comment) => (
+    isAutomatedTemplateSpamCommentText(comment.body)
+  )).length;
+  const templateSpamThreshold = Math.max(8, Math.ceil(totalCount * 0.5));
+  if (automatedTemplateSpamCount >= templateSpamThreshold) {
+    return `自動投稿らしいテンプレート・絵文字スパムが${automatedTemplateSpamCount}/${totalCount}件あり、会話として成立していません`;
+  }
+
+  const summarySpamCount = nonEmptyComments.filter((comment) => isSummarySpamCommentText(comment.body)).length;
+  const summarySpamThreshold = Math.max(10, Math.ceil(totalCount * 0.7));
+  if (summarySpamCount >= summarySpamThreshold) {
+    return `低品質スパムが${summarySpamCount}/${totalCount}件あり、まとめに適した会話が不足しています`;
+  }
+
+  return null;
+}
+
 export function filterLowQualitySpamComments<T extends { body: string; res_id?: string | number }>(
   comments: T[]
 ): { keptComments: T[]; removedComments: T[] } {
@@ -483,7 +530,7 @@ export function filterLowQualitySpamComments<T extends { body: string; res_id?: 
   const removedComments: T[] = [];
 
   for (const comment of comments) {
-    if (isLowQualitySpamCommentText(comment.body)) {
+    if (isSummarySpamCommentText(comment.body)) {
       removedComments.push(comment);
     } else {
       keptComments.push(comment);
@@ -577,8 +624,8 @@ function getSummaryTargetCount(totalPosts: number): number {
 
 function getSummarySelectionRange(totalPosts: number): string {
   const target = getSummaryTargetCount(totalPosts);
-  const min = Math.max(12, Math.round(target * 0.85));
-  const max = Math.min(90, Math.round(target * 1.15));
+  const min = Math.min(target, Math.max(3, Math.round(target * 0.85)));
+  const max = Math.max(min, Math.min(totalPosts, 90, Math.round(target * 1.15)));
   return `${min}〜${max}`;
 }
 
@@ -597,15 +644,20 @@ export function buildAISummarizePrompt(title: string, comments: Comment[]): stri
   // 1000レス: 100文字、500レス: 200文字、100レス以下: 制限なし
   const maxBodyLength = totalPosts > 500 ? 100 : totalPosts > 100 ? 200 : 1000;
 
-  const selectionRange = getSummarySelectionRange(totalPosts);
+  const candidateEntries = comments
+    .map((comment, index) => ({ comment, originalPostNumber: index + 1 }))
+    .filter(({ comment, originalPostNumber }) => (
+      originalPostNumber === 1 || !isSummarySpamCommentText(comment.body)
+    ));
+  const selectionRange = getSummarySelectionRange(Math.min(totalPosts, candidateEntries.length));
 
   // タイトルもサニタイズ
   const sanitizedTitle = sanitizeText(title);
 
   // コメント本文を簡潔に（レス番号と本文のみ、スレ主マーク付き）
-  const postsText = comments
-    .map((comment, index) => {
-      const postNum = index + 1;
+  const postsText = candidateEntries
+    .map(({ comment, originalPostNumber }) => {
+      const postNum = originalPostNumber;
       const ownerMark = comment.is_talk_owner ? '[主]' : '';
       // 本文をサニタイズして切り詰め
       const sanitized = sanitizeText(comment.body);
@@ -660,8 +712,13 @@ JSONのみを返してください。説明文は不要です。`;
 
 function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comment; originalPostNumber: number }[] {
   const totalPosts = comments.length;
+  const candidateEntries = comments
+    .map((comment, index) => ({ comment, originalPostNumber: index + 1 }))
+    .filter(({ comment, originalPostNumber }) => (
+      originalPostNumber === 1 || !isSummarySpamCommentText(comment.body)
+    ));
   if (totalPosts <= 450) {
-    return comments.map((comment, index) => ({ comment, originalPostNumber: index + 1 }));
+    return candidateEntries;
   }
 
   const replyCount = new Map<number, number>();
@@ -671,8 +728,8 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
     }
   });
 
-  const scored = comments.map((comment, index) => {
-    const postNumber = index + 1;
+  const scored = candidateEntries.map(({ comment, originalPostNumber }) => {
+    const postNumber = originalPostNumber;
     const body = sanitizeText(comment.body).replace(/\s+/g, ' ').trim();
     const length = body.length;
     const anchorCount = extractAnchors(body).length;
@@ -689,7 +746,7 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
     if (length >= 20 && length <= 240) score += 22;
     if (length > 500) score -= 20;
     if (isSevereDiscriminatoryContent(body)) score -= 300;
-    if (isKeywordSpam(body)) score -= 80;
+    if (isSummarySpamCommentText(body)) score -= 300;
 
     return { comment, originalPostNumber: postNumber, score };
   });
@@ -705,7 +762,7 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
     selected.set(item.originalPostNumber, item);
     for (const anchor of extractAnchors(item.comment.body)) {
       const anchorComment = comments[anchor - 1];
-      if (anchorComment) {
+      if (anchorComment && !isSummarySpamCommentText(anchorComment.body)) {
         selected.set(anchor, { comment: anchorComment, originalPostNumber: anchor });
       }
     }
@@ -717,8 +774,8 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
 
 function buildLocalOllamaSummarizePrompt(title: string, comments: Comment[]): string {
   const totalPosts = comments.length;
-  const targetCount = getSummaryTargetCount(totalPosts);
   const candidateEntries = buildLocalOllamaCandidateEntries(comments);
+  const targetCount = getSummaryTargetCount(Math.min(totalPosts, candidateEntries.length));
   const maxBodyLength = candidateEntries.length > 300 ? 70 : totalPosts > 100 ? 120 : 220;
   const sanitizedTitle = sanitizeText(title);
 
@@ -803,24 +860,12 @@ export function enhanceAIResponse(
     return true;
   });
 
-  // 意味不明な政治・民族・暴言の単語羅列を除外（レス1は除く）
+  // 自動投稿・キーワード羅列など、記事として読めないスパムを除外（レス1は除く）
   selectedPosts = selectedPosts.filter(post => {
     if (post.post_number === 1) return true;
     const comment = comments[post.post_number - 1];
     if (!comment) return false;
-    if (isLowQualitySpamCommentText(comment.body)) {
-      console.log(`🚫 低品質スパムレスを除外: ${post.post_number}`);
-      return false;
-    }
-    return true;
-  });
-
-  // キーワードスパムを除外（レス1は除く）
-  selectedPosts = selectedPosts.filter(post => {
-    if (post.post_number === 1) return true; // レス1は除外しない
-    const comment = comments[post.post_number - 1];
-    if (!comment) return false;
-    if (isKeywordSpam(comment.body)) {
+    if (isSummarySpamCommentText(comment.body)) {
       console.log(`🚫 スパムレスを除外: ${post.post_number}`);
       return false;
     }

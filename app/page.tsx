@@ -499,9 +499,15 @@ export default function Home() {
     const {
       callAISummarize,
       filterLowQualitySpamComments,
+      getThreadSummarySkipReason,
       getAISummarizeProvider,
       sanitizeDiscriminatoryContentForPublishing
     } = await import('@/lib/ai-summarize');
+    const threadSkipReason = getThreadSummarySkipReason(comments);
+    if (threadSkipReason) {
+      toast.error(`AIまとめをスキップ: ${threadSkipReason}`);
+      return;
+    }
     const aiProvider = getAISummarizeProvider();
     const apiKey = localStorage.getItem('matomeln_claude_api_key') || '';
     if (aiProvider === 'claude' && !apiKey) {
@@ -669,6 +675,7 @@ export default function Home() {
         filterLowQualitySpamComments,
         getAISummarizeProvider,
         isAdultContent,
+        getThreadSummarySkipReason,
         sanitizeDiscriminatoryContentForPublishing
       } = await import('@/lib/ai-summarize');
       const aiProvider = getAISummarizeProvider();
@@ -752,6 +759,12 @@ export default function Home() {
       if (adultCheck.isAdult) {
         console.log(`🔞 アダルトコンテンツをスキップ: ${talk.title}`);
         throw new Error(`アダルトコンテンツのためスキップ: ${adultCheck.reason}`);
+      }
+
+      const threadSkipReason = getThreadSummarySkipReason(loadedComments);
+      if (threadSkipReason) {
+        console.log(`🚫 低品質スパムスレをスキップ: ${talk.title} (${threadSkipReason})`);
+        throw new Error(`低品質スパムのためスキップ: ${threadSkipReason}`);
       }
 
       // =====================
