@@ -448,7 +448,13 @@ export function ensureLifestyleBlogs(blogs: BlogSettings[]): BlogSettings[] {
   return nextBlogs;
 }
 
-export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string | null): string | null {
+/**
+ * 同時投稿の選択を正規化する。
+ *
+ * 以前は生活系ブログを常に追加していたため、ユーザーが外した選択まで
+ * 復活してしまっていた。ここでは不正値と重複だけを整理し、選択内容は保持する。
+ */
+export function normalizeOtherBlogSelectionSettings(settingsText: string | null): string | null {
   if (!settingsText) return settingsText;
 
   try {
@@ -458,17 +464,13 @@ export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string |
     };
 
     const selectedIds = Array.isArray(settings.selectedOtherBlogIds)
-      ? [...new Set(settings.selectedOtherBlogIds)]
+      ? [...new Set(settings.selectedOtherBlogIds.filter((id): id is string => typeof id === 'string' && id.length > 0))]
       : [];
-    const nextSelectedIds = [
-      ...selectedIds,
-      ...LIFESTYLE_BLOGS.map((blog) => blog.id).filter((id) => !selectedIds.includes(id)),
-    ];
-    if (nextSelectedIds.length === selectedIds.length) return settingsText;
 
     return JSON.stringify({
       ...settings,
-      selectedOtherBlogIds: nextSelectedIds,
+      postToOtherBlogs: settings.postToOtherBlogs === true,
+      selectedOtherBlogIds: selectedIds,
     });
   } catch {
     return settingsText;
@@ -480,9 +482,14 @@ export function ensureOhimeBlog(blogs: BlogSettings[]): BlogSettings[] {
   return ensureLifestyleBlogs(blogs);
 }
 
-/** @deprecated Use ensureLifestyleBlogsSelectedForOtherBlogs. */
+/** @deprecated Use normalizeOtherBlogSelectionSettings. */
+export function ensureLifestyleBlogsSelectedForOtherBlogs(settingsText: string | null): string | null {
+  return normalizeOtherBlogSelectionSettings(settingsText);
+}
+
+/** @deprecated Use normalizeOtherBlogSelectionSettings. */
 export function ensureOhimeSelectedForOtherBlogs(settingsText: string | null): string | null {
-  return ensureLifestyleBlogsSelectedForOtherBlogs(settingsText);
+  return normalizeOtherBlogSelectionSettings(settingsText);
 }
 
 export function isOhimeBlog(blog: Pick<BlogSettings, 'id' | 'name' | 'blogId'>): boolean {

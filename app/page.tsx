@@ -16,8 +16,8 @@ import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
 import {
   ensureLifestyleBlogs,
-  ensureLifestyleBlogsSelectedForOtherBlogs,
   getOtherBlogPostSkipReason,
+  normalizeOtherBlogSelectionSettings,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import {
@@ -278,7 +278,7 @@ export default function Home() {
       try {
         blogsList = normalizeBlogSettingsForAuth(JSON.parse(savedBlogs) as BlogSettings[]);
         localStorage.setItem('blogSettingsList', JSON.stringify(blogsList));
-        const otherBlogsSettings = ensureLifestyleBlogsSelectedForOtherBlogs(localStorage.getItem('matomeln_other_blogs_settings'));
+        const otherBlogsSettings = normalizeOtherBlogSelectionSettings(localStorage.getItem('matomeln_other_blogs_settings'));
         if (otherBlogsSettings) {
           localStorage.setItem('matomeln_other_blogs_settings', otherBlogsSettings);
         }
