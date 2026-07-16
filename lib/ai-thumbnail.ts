@@ -195,7 +195,7 @@ function generatePromptFromTitle(
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails in a cute Japanese anime chibi mascot style for a Garubi-like matome blog: soft 2.5D anime shading, round expressive face, big sparkling eyes, clean cel-shaded linework, warm pastel highlights, and a lively heroine-mascot feeling. Avoid hard plastic toy realism, stiff 3D figurine texture, photorealism, and overly glossy rendering. Do NOT imitate any specific commercial toy brand, existing anime character, or real person likeness.
+  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails as polished Japanese anime key art for a Garubi-like matome blog: elegant character proportions, refined linework, detailed hair and clothing, luminous eyes, transparent light, vivid but balanced colors, cinematic depth, and a beautifully finished commercial-illustration look. Keep the character appealing and expressive without making the head or body extremely chibi. Avoid hard plastic toy realism, stiff 3D figurine texture, photorealism, muddy colors, thick crude outlines, flat clip-art rendering, and excessive gloss. Do NOT imitate any specific commercial artwork, existing anime character, or real person likeness.
 
 🎯 YOUR MISSION: Create a reusable thumbnail that TELLS THE STORY of the article through visuals only!
 
@@ -248,7 +248,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
 Keep the character's IDENTITY from reference:
-- Same cute anime/illustration mascot style, face shape, eye color
+- Same polished anime/illustration mascot identity, face shape, eye color
 - Same hair color, hair style, hair length
 - Same accessories (glasses, ribbons, cat ears, hair clips)
 
@@ -263,29 +263,31 @@ Keep the character's IDENTITY from reference:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Character's reaction should match the article's emotional tone:
 
-【POSITIVE NEWS】 → Big smile, sparkling eyes, small natural anime hand waving, jumping, hearts floating
+【POSITIVE NEWS】 → Bright smile, sparkling eyes, natural anime hand gesture, lively posture, subtle light particles
 【SHOCKING NEWS】 → Wide eyes, small hands beside cheeks, jaw dropped, sweat drops
 【FUNNY/SILLY】 → Laughing with tears, one small hand near stomach, playful body tilt
 【CONTROVERSIAL】 → Smug face, arms crossed, raised eyebrow, knowing look
-【SAD/TRAGIC】 → Tears in cute style, downcast eyes, holding tissue
-【ANGRY/OUTRAGE】 → Puffed cheeks, steam, clenched fists, but still cute
+【SAD/TRAGIC】 → Subtle tears, downcast eyes, restrained emotional pose
+【ANGRY/OUTRAGE】 → Determined expression, tense posture, clenched fist, but still visually appealing
 【CONFUSED】 → Head tilt, confusion swirl, sweat drop, finger on chin
 【EXCITED】 → Sparkling eyes, raised fists, energetic pose, stars around
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎨 ART STYLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Cute anime chibi mascot, not realistic 3D
-- Soft 2.5D anime shading: slight depth, but primarily illustrated
-- Rounded face, big eyes, tiny body, expressive hands
-- Clean cel-shaded edges with soft gradients on cheeks and hair
-- Bright, friendly, slightly playful Garubi-like blog thumbnail mood
+- Polished modern Japanese anime key visual, not realistic 3D
+- Elegant stylized proportions; avoid super-deformed, oversized-head, or tiny-body chibi anatomy
+- Fine, controlled linework with detailed hair strands, fabric folds, and carefully rendered eyes
+- Clean anime shading enriched by soft painterly gradients and crisp highlights
+- Clear blue skies, luminous rim light, floating light particles, or other tasteful atmospheric detail when appropriate
+- Bright, clean, premium commercial-illustration finish with rich color separation; never dull, muddy, or overly pastel
+- Garubi-like approachable character appeal, while the overall finish remains graceful rather than childish
 - High readability at small thumbnail size
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✋ HANDS & LIMBS QUALITY (VERY IMPORTANT)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Use small, simple, natural anime-style hands
+- Use natural, anatomically coherent anime-style hands
 - Exactly two arms and at most two visible hands
 - Keep hands small, simple, and away from the focal point
 - Prefer simple open hands, tiny fists, or hands partly hidden behind props
@@ -297,10 +299,10 @@ Character's reaction should match the article's emotional tone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🖼️ COMPOSITION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Character: 45-65% of frame (leave room for background!)
+- Character: 40-65% of frame (leave room for a scenic background!)
 - Position: Slightly off-center for dynamic composition
 - Background: VISIBLE and DETAILED (not just solid color!)
-- Depth: Slight blur on far background, sharp character
+- Depth: Layered foreground, midground, and scenic background with subtle atmospheric perspective; sharp main character
 - Camera angle: Match the mood (low angle = powerful, high angle = cute)
 - Square 1:1 aspect ratio
 - Designed for livedoor blog thumbnails: clear subject at small size, strong contrast, no clutter
@@ -309,7 +311,7 @@ Character's reaction should match the article's emotional tone:
 ✨ VISUAL ENHANCEMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Lighting that matches the scene (stage lights, sunset, neon, etc.)
-- Atmospheric effects: Sparkles, confetti, petals, snow, rain drops
+- Atmospheric effects: Tasteful light particles, lens glints, petals, snow, rain drops, or confetti as the scene allows
 - Emotion indicators: Hearts, stars, sweat drops, anger marks, confusion swirls
 - Color grading: Warm for happy, cool for sad, vibrant for exciting
 
@@ -325,7 +327,7 @@ Character's reaction should match the article's emotional tone:
 - NO watermarks or signatures
 - Tell the story through VISUALS ONLY!
 
-CREATE A THUMBNAIL WHERE THE CUTE ANIME CHIBI MASCOT AND BACKGROUND TELL THE STORY.`;
+CREATE A BEAUTIFULLY FINISHED ANIME KEY-VISUAL THUMBNAIL WHERE THE EXPRESSIVE MASCOT AND CINEMATIC BACKGROUND TELL THE STORY.`;
 }
 
 /**

@@ -194,7 +194,7 @@ function normalizePlan(raw: unknown): ThumbnailPromptPlan | null {
     mainObjects,
     emotion: emotion || 'curious',
     characterAction: characterAction || 'reacting to the topic with a cute expressive pose',
-    colorMood: colorMood || 'bright, warm, high-contrast anime thumbnail colors',
+    colorMood: colorMood || 'clean vivid anime colors, luminous highlights, cinematic depth',
     avoid,
     reuseTag,
     confidence,
@@ -217,7 +217,8 @@ function buildPlanningPrompt(title: string, context: ThumbnailPromptContext): st
 画像そのものは別AIで生成します。あなたは短い設計だけ返します。
 
 目的:
-- 記事内容に合う、かわいいアニメ寄り2.5Dチビキャラサムネにする
+- 記事内容に合う、線が繊細で透明感と奥行きのある高品質アニメキービジュアル風サムネにする
+- 極端なデフォルメ体型や幼すぎるチビキャラ調を避け、端正で親しみやすいアニメキャラクターにする
 - 見た瞬間にテーマが分かる小物・背景・表情を選ぶ
 - 文字やタイトルを画像内に入れず、絵だけで伝える
 - 使い回し可能なサムネになりやすくする
