@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState } from 'react';
 import { BlogSettings, Comment } from '@/lib/types';
 
@@ -77,13 +78,13 @@ export default function SettingsSidebar({
           >
             {simultaneousPostNames || '投稿先は未選択'}
           </p>
-          <button
+          <HeroButton
             type="button"
             onClick={onOpenSettings}
             className="mt-2 text-xs font-bold text-purple-700 hover:text-purple-900 cursor-pointer"
           >
             同時投稿を設定
-          </button>
+          </HeroButton>
         </div>
 
         {/* 選択状況 - 最も重要なので一番上 */}
@@ -93,20 +94,20 @@ export default function SettingsSidebar({
             <span className="text-sm text-gray-500"> / {totalCount}件</span>
           </div>
           <div className="flex gap-2">
-            <button
+            <HeroButton
               onClick={onSelectAll}
               className="flex-1 text-xs bg-orange-500 text-white hover:bg-orange-600 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors"
             >
               全て選択
-            </button>
-            <button
+            </HeroButton>
+            <HeroButton
               onClick={onDeselectAll}
               className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors"
             >
               解除
-            </button>
+            </HeroButton>
           </div>
-          <button
+          <HeroButton
             type="button"
             onClick={() => onShowOnlySelectedChange(!showOnlySelected)}
             aria-pressed={showOnlySelected}
@@ -126,7 +127,7 @@ export default function SettingsSidebar({
                 </svg>
               </span>
             </span>
-          </button>
+          </HeroButton>
         </div>
 
         <div id="bulk-auto-run-sidebar-slot" className="[&:empty]:hidden" />
@@ -138,16 +139,16 @@ export default function SettingsSidebar({
               <h4 className="text-xs font-bold text-gray-600">スレ主</h4>
               <span className="text-xs text-orange-500 font-bold">{firstPosterCount}件</span>
             </div>
-            <button
+            <HeroButton
               onClick={onSelectFirstPoster}
               className="w-full text-sm bg-red-500 text-white hover:bg-red-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
             >
               スレ主を全選択
-            </button>
+            </HeroButton>
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-500">色:</span>
               {['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#000000'].map(color => (
-                <button
+                <HeroButton
                   key={color}
                   onClick={() => onChangeFirstPosterColor(color)}
                   className="w-6 h-6 rounded border-2 border-gray-200 hover:border-gray-400 hover:scale-110 transition-all cursor-pointer"
@@ -160,7 +161,7 @@ export default function SettingsSidebar({
 
         {/* 戻す・やり直す */}
         <div className="flex gap-2 pt-3 border-t border-gray-100">
-          <button
+          <HeroButton
             onClick={onUndo}
             disabled={!canUndo}
             className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
@@ -176,8 +177,8 @@ export default function SettingsSidebar({
               <span className="font-bold">戻す</span>
             </div>
             <kbd className="text-[9px] text-gray-400 font-mono">⌘Z</kbd>
-          </button>
-          <button
+          </HeroButton>
+          <HeroButton
             onClick={onRedo}
             disabled={!canRedo}
             className={`flex-1 text-xs px-2 py-2 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 ${
@@ -193,12 +194,12 @@ export default function SettingsSidebar({
               <span className="font-bold">やり直す</span>
             </div>
             <kbd className="text-[9px] text-gray-400 font-mono">⌘⇧Z</kbd>
-          </button>
+          </HeroButton>
         </div>
 
         {/* ショートカット - 折りたたみ可能 */}
         <div className="pt-3 border-t border-gray-100">
-          <button
+          <HeroButton
             onClick={() => setShowShortcuts(!showShortcuts)}
             className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
           >
@@ -211,7 +212,7 @@ export default function SettingsSidebar({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-          </button>
+          </HeroButton>
           {showShortcuts && (
             <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
               <div className="flex items-center gap-1">

@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState } from 'react';
 
 export default function AboutPage() {
@@ -19,7 +20,7 @@ export default function AboutPage() {
 
       {/* タブナビゲーション */}
       <div className="flex justify-center gap-2">
-        <button
+        <HeroButton
           onClick={() => setActiveTab('basic')}
           className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'basic'
@@ -28,8 +29,8 @@ export default function AboutPage() {
           }`}
         >
           基本の使い方
-        </button>
-        <button
+        </HeroButton>
+        <HeroButton
           onClick={() => setActiveTab('features')}
           className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'features'
@@ -38,8 +39,8 @@ export default function AboutPage() {
           }`}
         >
           便利な機能
-        </button>
-        <button
+        </HeroButton>
+        <HeroButton
           onClick={() => setActiveTab('faq')}
           className={`px-6 py-3 rounded-2xl font-bold transition-all ${
             activeTab === 'faq'
@@ -48,7 +49,7 @@ export default function AboutPage() {
           }`}
         >
           よくある質問
-        </button>
+        </HeroButton>
       </div>
 
       {/* 基本の使い方 */}

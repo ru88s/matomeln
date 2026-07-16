@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 
 :root {
   --background: #ffffff;
@@ -21,9 +22,50 @@
 }
 
 body {
-  background: #ffffff;
+  background: #f7f7f8;
   color: #171717;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* HeroUI foundation for legacy controls migrated through compatibility wrappers. */
+.matomeln-hero-button {
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.matomeln-hero-button[data-pressed] {
+  transform: scale(0.98);
+}
+
+.matomeln-hero-input,
+.matomeln-hero-textarea,
+.matomeln-hero-select {
+  border-radius: 8px;
+  border-color: #d4d4d8;
+  background-color: #ffffff;
+  letter-spacing: 0;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.matomeln-hero-select {
+  min-height: 40px;
+  appearance: auto;
+}
+
+.matomeln-hero-input:hover,
+.matomeln-hero-textarea:hover,
+.matomeln-hero-select:hover {
+  border-color: #a1a1aa;
+}
+
+.matomeln-hero-input:focus,
+.matomeln-hero-textarea:focus,
+.matomeln-hero-select:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 14%);
+  outline: none;
 }
 
 .matomeln-generated-preview {

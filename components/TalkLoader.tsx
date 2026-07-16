@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useRef, useEffect } from 'react';
 import { detectSourceType } from '@/lib/shikutoku-api';
 import { Talk, ThumbnailCharacter } from '@/lib/types';
@@ -276,7 +277,7 @@ export default function TalkLoader({
             <a href="https://open2ch.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">open2ch.net</a>
             {isDevMode && <> / <a href="https://talk.jp" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">talk.jp</a> / <a href="https://girlschannel.net" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">girlschannel.net</a></>}
           </label>
-          <input
+          <HeroInput
             type="text"
             id="url"
             value={input}
@@ -290,12 +291,12 @@ export default function TalkLoader({
           <div className="text-red-500 text-sm">{error}</div>
         )}
 
-        <button
+        <HeroButton
           type="submit"
           className="w-full bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-3 px-4 rounded-xl hover:from-orange-500 hover:to-pink-500 transition-all shadow-md hover:shadow-lg cursor-pointer"
         >
           読み込む
-        </button>
+        </HeroButton>
       </form>
 
       {currentTalk && (
@@ -303,7 +304,7 @@ export default function TalkLoader({
           <div className="flex gap-3">
             {/* サムネイル */}
             <div className="flex-shrink-0">
-              <input
+              <HeroInput
                 type="file"
                 ref={fileInputRef}
                 accept="image/*"
@@ -319,12 +320,12 @@ export default function TalkLoader({
                       className="w-20 h-20 object-cover rounded-lg border-2 border-orange-300 cursor-pointer"
                       onClick={() => fileInputRef.current?.click()}
                     />
-                    <button
+                    <HeroButton
                       onClick={() => onThumbnailUrlChange?.('')}
                       className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
                       ×
-                    </button>
+                    </HeroButton>
                     {isUploading && (
                       <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                         <LoadingSpinner size="md" color="white" />
@@ -332,7 +333,7 @@ export default function TalkLoader({
                     )}
                   </div>
                 ) : (
-                  <button
+                  <HeroButton
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading || isGeneratingAI || !apiSettings.blogUrl || !apiSettings.apiKey}
                     className={`w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-colors cursor-pointer ${
@@ -352,11 +353,11 @@ export default function TalkLoader({
                         <span className="text-[10px] mt-1">サムネ</span>
                       </>
                     )}
-                  </button>
+                  </HeroButton>
                 )}
                 {/* AIサムネイル生成ボタン（開発者モード時のみ） */}
                 {isDevMode && geminiApiKey && (
-                  <button
+                  <HeroButton
                     onClick={handleGenerateAIThumbnail}
                     disabled={isGeneratingAI || isUploading || !apiSettings.blogUrl || !apiSettings.apiKey}
                     className={`w-20 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
@@ -374,7 +375,7 @@ export default function TalkLoader({
                       </svg>
                     )}
                     AI生成
-                  </button>
+                  </HeroButton>
                 )}
               </div>
             </div>

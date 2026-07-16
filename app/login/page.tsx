@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Logo } from '@/components/ui/Logo';
@@ -61,7 +62,7 @@ function LoginContent() {
       </div>
 
       {/* Google Login Button */}
-      <button
+      <HeroButton
         onClick={handleLogin}
         className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm cursor-pointer"
       >
@@ -84,7 +85,7 @@ function LoginContent() {
           />
         </svg>
         Googleでログイン
-      </button>
+      </HeroButton>
 
       {/* Footer */}
       <p className="text-xs text-gray-400 text-center mt-6">

@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings } from '@/lib/types';
@@ -164,14 +165,14 @@ export default function SettingsPage() {
                 </label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
-                    <input
+                    <HeroInput
                       type={showApiKey ? 'text' : 'password'}
                       value={claudeApiKey}
                       onChange={(e) => setClaudeApiKey(e.target.value)}
                       placeholder="sk-ant-api03-..."
                       className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
-                    <button
+                    <HeroButton
                       type="button"
                       onClick={() => setShowApiKey(!showApiKey)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -186,14 +187,14 @@ export default function SettingsPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       )}
-                    </button>
+                    </HeroButton>
                   </div>
-                  <button
+                  <HeroButton
                     onClick={saveClaudeApiKey}
                     className="bg-purple-500 text-white hover:bg-purple-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                   >
                     保存
-                  </button>
+                  </HeroButton>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Anthropic ConsoleでAPIキーを取得してください。ローカルに保存されます。
@@ -228,7 +229,7 @@ export default function SettingsPage() {
               )}
 
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
+                <HeroInput
                   type="checkbox"
                   checked={postToOtherBlogs}
                   onChange={(e) => {
@@ -248,7 +249,7 @@ export default function SettingsPage() {
                 <div className="space-y-2 pl-6">
                   {otherBlogs.map(blog => (
                     <label key={blog.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
+                      <HeroInput
                         type="checkbox"
                         checked={selectedOtherBlogIds.includes(blog.id)}
                         onChange={(e) => {
@@ -265,7 +266,7 @@ export default function SettingsPage() {
                           {LIFE_BLOG_ROUTING_BADGE}
                         </span>
                       )}
-                      <button
+                      <HeroButton
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
@@ -276,7 +277,7 @@ export default function SettingsPage() {
                         className="ml-auto rounded border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-50 disabled:cursor-wait disabled:opacity-60"
                       >
                         {testingBlogId === blog.id ? '確認中' : '接続テスト'}
-                      </button>
+                      </HeroButton>
                       {blogTestResults[blog.id] && (
                         <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
                           blogTestResults[blog.id].ok
@@ -314,7 +315,7 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 生成HTMLの末尾に追加するHTML
               </label>
-              <textarea
+              <HeroTextArea
                 value={customFooterHtml}
                 onChange={(e) => setCustomFooterHtml(e.target.value)}
                 placeholder={'<p style="color:gray;text-align:right;"><a href="https://example.com/" target="_blank">https://example.com/</a></p>'}
@@ -326,7 +327,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <button
+              <HeroButton
                 onClick={() => {
                   setCustomFooterHtml('');
                   localStorage.removeItem('matomeln_custom_footer_html');
@@ -335,13 +336,13 @@ export default function SettingsPage() {
                 className="bg-gray-400 text-white hover:bg-gray-500 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
               >
                 クリア
-              </button>
-              <button
+              </HeroButton>
+              <HeroButton
                 onClick={saveCustomFooterHtml}
                 className="bg-orange-500 text-white hover:bg-orange-600 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"
               >
                 保存
-              </button>
+              </HeroButton>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Chip } from '@heroui/react';
 import { gradients, componentStyles } from '@/lib/design-system';
 
 export interface StepIndicatorProps {
@@ -29,8 +30,8 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   const gradient = variantMap[variant];
 
   return (
-    <div className={`${containerClass} ${gradient}`}>
+    <Chip className={`${containerClass} ${gradient}`}>
       <span className={textClass}>{number}</span>
-    </div>
+    </Chip>
   );
 };

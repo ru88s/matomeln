@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
@@ -1441,7 +1442,7 @@ export default function Home() {
             {/* AIまとめボタン（スレッド読み込み後のみ表示） */}
             {currentTalk && comments.length > 0 && (
               <div className="flex justify-end">
-                <button
+                <HeroButton
                   onClick={handleAISummarize}
                   disabled={generatingAI}
                   className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
@@ -1456,7 +1457,7 @@ export default function Home() {
                       AIでまとめる
                     </>
                   )}
-                </button>
+                </HeroButton>
               </div>
             )}
           </>
@@ -1480,7 +1481,7 @@ export default function Home() {
             {/* HTML生成ボタン */}
             {selectedComments.length > 0 && (
               <div className="fixed bottom-6 right-6 z-40">
-                <button
+                <HeroButton
                   onClick={openHTMLModal}
                   className="bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:from-orange-500 hover:to-pink-500 hover:shadow-xl transition-all flex items-center gap-2 cursor-pointer"
                 >
@@ -1489,13 +1490,13 @@ export default function Home() {
                   </svg>
                   タグを発行 ({selectedComments.length}件)
                   <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded">{typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter</kbd>
-                </button>
+                </HeroButton>
               </div>
             )}
 
             {/* 上下スクロールボタン */}
             <div className="fixed top-1/2 left-4 -translate-y-1/2 z-40 flex flex-col gap-2">
-              <button
+              <HeroButton
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="w-10 h-10 bg-white border border-gray-300 rounded-full shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer"
                 title="ページの先頭へ"
@@ -1503,8 +1504,8 @@ export default function Home() {
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
-              </button>
-              <button
+              </HeroButton>
+              <HeroButton
                 onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
                 className="w-10 h-10 bg-white border border-gray-300 rounded-full shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center cursor-pointer"
                 title="ページの末尾へ"
@@ -1512,7 +1513,7 @@ export default function Home() {
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-              </button>
+              </HeroButton>
             </div>
           </>
         )}
@@ -1535,7 +1536,7 @@ export default function Home() {
                   </span>
                   タグ発行
                 </h2>
-                <button
+                <HeroButton
                   onClick={() => {
                     setShowHTMLModal(false);
                     setHtmlModalComments([]);
@@ -1546,7 +1547,7 @@ export default function Home() {
                   <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </HeroButton>
               </div>
               <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
                 <HTMLGenerator

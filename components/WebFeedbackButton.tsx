@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea } from '@/components/ui/HeroControls';
 import { FormEvent, useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -66,13 +67,13 @@ export default function WebFeedbackButton() {
 
   return (
     <>
-      <button
+      <HeroButton
         type="button"
         onClick={() => setIsOpen(true)}
         className="text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
       >
         フィードバック
-      </button>
+      </HeroButton>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -84,18 +85,18 @@ export default function WebFeedbackButton() {
                   不具合や改善要望を送ってください。
                 </p>
               </div>
-              <button
+              <HeroButton
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="rounded-full px-2 py-1 text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                 aria-label="閉じる"
               >
                 ×
-              </button>
+              </HeroButton>
             </div>
 
             <form onSubmit={submitFeedback} className="space-y-4">
-              <textarea
+              <HeroTextArea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 rows={5}
@@ -103,20 +104,20 @@ export default function WebFeedbackButton() {
                 placeholder="例: タグ発行時に空白行が消える、〇〇の操作が分かりにくい"
               />
               <div className="flex items-center justify-end gap-3">
-                <button
+                <HeroButton
                   type="button"
                   onClick={() => setIsOpen(false)}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100"
                 >
                   キャンセル
-                </button>
-                <button
+                </HeroButton>
+                <HeroButton
                   type="submit"
                   disabled={isSending}
                   className="rounded-lg bg-gradient-to-r from-orange-400 to-pink-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSending ? '送信中...' : '送信する'}
-                </button>
+                </HeroButton>
               </div>
             </form>
           </div>

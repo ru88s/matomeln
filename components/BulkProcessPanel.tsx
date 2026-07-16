@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea, HeroSelect, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, fetchTalkUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
@@ -1034,7 +1035,7 @@ export default function BulkProcessPanel({
             <span className="block truncate text-xs font-bold">{label}</span>
             {subLabel && <span className="block truncate text-[11px] text-gray-500 mt-0.5">{subLabel}</span>}
           </span>
-          <input
+          <HeroInput
             type="checkbox"
             checked={checked}
             disabled={disabled}
@@ -1098,7 +1099,7 @@ export default function BulkProcessPanel({
 
       <label className="block mb-3">
         <span className="block text-xs text-gray-600 mb-1">チェック間隔</span>
-        <select
+        <HeroSelect
           value={autoRunInterval}
           onChange={(e) => setAutoRunInterval(Number(e.target.value))}
           className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-green-500 focus:border-green-500 bg-white"
@@ -1108,26 +1109,26 @@ export default function BulkProcessPanel({
           <option value={15}>15分</option>
           <option value={30}>30分</option>
           <option value={60}>60分</option>
-        </select>
+        </HeroSelect>
       </label>
 
       <div className="mb-3 grid grid-cols-2 gap-2">
-        <button
+        <HeroButton
           type="button"
           onClick={startAutoRun}
           disabled={autoRunEnabled || isProcessing || !hasAutoRunTargets}
           className="h-9 rounded-lg bg-green-600 px-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
         >
           スタート
-        </button>
-        <button
+        </HeroButton>
+        <HeroButton
           type="button"
           onClick={stopAutoRun}
           disabled={!autoRunEnabled}
           className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-xs font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           停止
-        </button>
+        </HeroButton>
       </div>
 
       {autoRunEnabled && (
@@ -1198,7 +1199,7 @@ export default function BulkProcessPanel({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           URL一覧（1行に1URL、#でコメント）
         </label>
-        <textarea
+        <HeroTextArea
           value={urls}
           onChange={(e) => setUrls(e.target.value)}
           className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -1209,7 +1210,7 @@ export default function BulkProcessPanel({
 
       {/* ボタン群 */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
-        <button
+        <HeroButton
           onClick={handleFetchAllUrls}
           disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-green-200 bg-white px-3 text-sm font-bold text-green-700 shadow-sm transition-all hover:border-green-300 hover:bg-green-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1230,9 +1231,9 @@ export default function BulkProcessPanel({
               すべて取得
             </>
           )}
-        </button>
+        </HeroButton>
 
-        <button
+        <HeroButton
           onClick={handleFetchUrls}
           disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-indigo-200 bg-white px-3 text-sm font-bold text-indigo-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1253,9 +1254,9 @@ export default function BulkProcessPanel({
               5ch取得
             </>
           )}
-        </button>
+        </HeroButton>
 
-        <button
+        <HeroButton
           onClick={handleFetchTalkUrls}
           disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-cyan-200 bg-white px-3 text-sm font-bold text-cyan-700 shadow-sm transition-all hover:border-cyan-300 hover:bg-cyan-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1276,9 +1277,9 @@ export default function BulkProcessPanel({
               Talk取得
             </>
           )}
-        </button>
+        </HeroButton>
 
-        <button
+        <HeroButton
           onClick={handleFetchGirlsChannelUrls}
           disabled={isProcessing || isFetchingAny}
           className="h-11 rounded-lg border border-pink-200 bg-white px-3 text-sm font-bold text-pink-700 shadow-sm transition-all hover:border-pink-300 hover:bg-pink-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1299,10 +1300,10 @@ export default function BulkProcessPanel({
               ガルちゃん取得
             </>
           )}
-        </button>
+        </HeroButton>
 
         {!status.isProcessing ? (
-          <button
+          <HeroButton
             onClick={handleStartBulk}
             disabled={isProcessing || !urls.trim()}
             className="h-11 rounded-lg bg-indigo-600 px-4 font-bold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:col-span-4 flex items-center justify-center gap-2 cursor-pointer"
@@ -1312,9 +1313,9 @@ export default function BulkProcessPanel({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             一括処理開始
-          </button>
+          </HeroButton>
         ) : (
-          <button
+          <HeroButton
             onClick={handleStop}
             className="h-11 rounded-lg bg-red-500 px-4 font-bold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow sm:col-span-4 flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -1323,7 +1324,7 @@ export default function BulkProcessPanel({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
             </svg>
             停止
-          </button>
+          </HeroButton>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useEffect } from 'react';
 
 export default function GlobalError({
@@ -41,9 +42,9 @@ export default function GlobalError({
       <body>
         <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
           <p>画面を復旧しています...</p>
-          <button type="button" onClick={() => window.location.reload()}>
+          <HeroButton type="button" onClick={() => window.location.reload()}>
             再読み込み
-          </button>
+          </HeroButton>
         </main>
       </body>
     </html>

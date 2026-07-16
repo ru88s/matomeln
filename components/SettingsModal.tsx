@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea, HeroSelect, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider, OpenAIImageModel, OpenAIImageQuality } from '@/lib/types';
@@ -522,14 +523,14 @@ export default function SettingsModal({
               <span>⚙️</span>
               設定
             </h2>
-            <button
+            <HeroButton
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
             >
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </HeroButton>
           </div>
 
           {/* コンテンツ */}
@@ -539,7 +540,7 @@ export default function SettingsModal({
               <h3 className="font-bold text-gray-800 mb-3">ブログ設定</h3>
               {blogs.length > 0 ? (
                 <div className="space-y-2">
-                  <select
+                  <HeroSelect
                     value={selectedBlogId || ''}
                     onChange={(e) => onSelectedBlogIdChange(e.target.value || null)}
                     className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer"
@@ -547,15 +548,15 @@ export default function SettingsModal({
                     {blogs.map(blog => (
                       <option key={blog.id} value={blog.id} disabled={blog.disabled}>{blog.name}{blog.disabled ? '（更新中止）' : ''}</option>
                     ))}
-                  </select>
+                  </HeroSelect>
                   <div className="flex gap-2">
-                    <button
+                    <HeroButton
                       onClick={openAddBlogModal}
                       className="flex-1 text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                     >
                       + 追加
-                    </button>
-                    <button
+                    </HeroButton>
+                    <HeroButton
                       onClick={() => {
                         const blog = blogs.find(b => b.id === selectedBlogId);
                         if (blog) openEditBlogModal(blog);
@@ -564,16 +565,16 @@ export default function SettingsModal({
                       className="flex-1 text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 px-2 py-2 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       編集
-                    </button>
+                    </HeroButton>
                   </div>
                 </div>
               ) : (
-                <button
+                <HeroButton
                   onClick={openAddBlogModal}
                   className="w-full text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   + ブログを追加
-                </button>
+                </HeroButton>
               )}
               <p className="text-xs text-gray-500 mt-2">
                 ライブドアブログ、ガールズまとめ、Kotoriaの投稿先を登録できます
@@ -585,15 +586,15 @@ export default function SettingsModal({
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-gray-800">レス名</h3>
                 {customName && (
-                  <button
+                  <HeroButton
                     onClick={() => onCustomNameChange('')}
                     className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
                   >
                     リセット
-                  </button>
+                  </HeroButton>
                 )}
               </div>
-              <input
+              <HeroInput
                 type="text"
                 value={customName}
                 onChange={(e) => onCustomNameChange(e.target.value)}
@@ -602,7 +603,7 @@ export default function SettingsModal({
               />
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
+                  <HeroInput
                     type="checkbox"
                     checked={customNameBold}
                     onChange={(e) => onCustomNameBoldChange(e.target.checked)}
@@ -612,7 +613,7 @@ export default function SettingsModal({
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">色:</span>
-                  <input
+                  <HeroInput
                     type="color"
                     value={customNameColor}
                     onChange={(e) => onCustomNameColorChange(e.target.value)}
@@ -627,7 +628,7 @@ export default function SettingsModal({
             <div className="bg-gray-50 rounded-xl p-4">
               <h3 className="font-bold text-gray-800 mb-3">HTML出力設定</h3>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
+                <HeroInput
                   type="checkbox"
                   checked={showIdInHtml}
                   onChange={(e) => onShowIdInHtmlChange(e.target.checked)}
@@ -640,7 +641,7 @@ export default function SettingsModal({
             {/* カスタムフッターHTML */}
             <div className="bg-gray-50 rounded-xl p-4">
               <h3 className="font-bold text-gray-800 mb-3">カスタムフッターHTML</h3>
-              <textarea
+              <HeroTextArea
                 value={customFooterHtml}
                 onChange={(e) => setCustomFooterHtml(e.target.value)}
                 placeholder='例: <p style="color:gray;text-align:right;"><a href="https://shikutoku.me/" target="_blank">https://shikutoku.me/</a></p>'
@@ -651,7 +652,7 @@ export default function SettingsModal({
                   生成HTMLの最後に追加されます
                 </p>
                 <div className="flex gap-2">
-                  <button
+                  <HeroButton
                     onClick={() => {
                       setCustomFooterHtml('');
                       persistSettings({ matomeln_custom_footer_html: null });
@@ -660,13 +661,13 @@ export default function SettingsModal({
                     className="text-sm bg-gray-400 text-white hover:bg-gray-500 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
                   >
                     クリア
-                  </button>
-                  <button
+                  </HeroButton>
+                  <HeroButton
                     onClick={saveCustomFooterHtml}
                     className="text-sm bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
                   >
                     保存
-                  </button>
+                  </HeroButton>
                 </div>
               </div>
             </div>
@@ -686,14 +687,14 @@ export default function SettingsModal({
                     </label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
-                        <input
+                        <HeroInput
                           type={showClaudeApiKey ? 'text' : 'password'}
                           value={claudeApiKey}
                           onChange={(e) => setClaudeApiKey(e.target.value)}
                           placeholder="sk-ant-api03-..."
                           className="w-full px-3 py-2 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                         />
-                        <button
+                        <HeroButton
                           type="button"
                           onClick={() => setShowClaudeApiKey(!showClaudeApiKey)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -708,14 +709,14 @@ export default function SettingsModal({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           )}
-                        </button>
+                        </HeroButton>
                       </div>
-                      <button
+                      <HeroButton
                         onClick={saveClaudeApiKey}
                         className="text-sm bg-purple-500 text-white hover:bg-purple-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                       >
                         保存
-                      </button>
+                      </HeroButton>
                     </div>
                   </div>
 
@@ -728,7 +729,7 @@ export default function SettingsModal({
                       <label className="block text-xs font-medium text-gray-700 mb-1">AIまとめプロバイダー</label>
                       <div className="flex gap-2">
                         {(['claude', 'ollama'] as const).map((provider) => (
-                          <button
+                          <HeroButton
                             key={provider}
                             type="button"
                             onClick={() => {
@@ -742,14 +743,14 @@ export default function SettingsModal({
                             }`}
                           >
                             {provider === 'claude' ? 'Claude' : 'Ollama'}
-                          </button>
+                          </HeroButton>
                         ))}
                       </div>
                     </div>
 
                     {aiSummaryProvider === 'ollama' && (
                       <div className="space-y-2">
-                        <input
+                        <HeroInput
                           type="text"
                           value={ollamaEndpoint}
                           onChange={(e) => setOllamaEndpoint(e.target.value)}
@@ -757,7 +758,7 @@ export default function SettingsModal({
                           placeholder="http://127.0.0.1:11434"
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         />
-                        <input
+                        <HeroInput
                           type="text"
                           value={ollamaModel}
                           onChange={(e) => setOllamaModel(e.target.value)}
@@ -766,7 +767,7 @@ export default function SettingsModal({
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         />
                         <label className="flex items-center gap-2 text-xs text-gray-700">
-                          <input
+                          <HeroInput
                             type="checkbox"
                             checked={imageModerationEnabled}
                             onChange={(e) => {
@@ -777,7 +778,7 @@ export default function SettingsModal({
                           />
                           画像付きレスのグロ・エロ判定を有効にする
                         </label>
-                        <input
+                        <HeroInput
                           type="text"
                           value={imageModerationModel}
                           onChange={(e) => setImageModerationModel(e.target.value)}
@@ -791,7 +792,7 @@ export default function SettingsModal({
 
                   <div className="rounded-lg border border-purple-200 bg-white p-3">
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input
+                      <HeroInput
                         type="checkbox"
                         checked={aiInputMode === 'token-saving'}
                         onChange={(e) => {
@@ -820,7 +821,7 @@ export default function SettingsModal({
                 <div className="flex items-center gap-2 mb-3">
                   <h3 className="font-bold text-gray-800">AIサムネイル</h3>
                   <label className="flex items-center gap-1 ml-auto cursor-pointer">
-                    <input
+                    <HeroInput
                       type="checkbox"
                       checked={thumbnailEnabled}
                       onChange={(e) => {
@@ -847,7 +848,7 @@ export default function SettingsModal({
                       プロバイダー
                     </label>
                     <div className="flex gap-2">
-                      <button
+                      <HeroButton
                         type="button"
                         onClick={() => saveThumbnailProvider('gemini')}
                         className={`flex-1 px-3 py-2 text-xs rounded-lg font-bold cursor-pointer transition-colors ${
@@ -857,8 +858,8 @@ export default function SettingsModal({
                         }`}
                       >
                         Gemini
-                      </button>
-                      <button
+                      </HeroButton>
+                      <HeroButton
                         type="button"
                         onClick={() => saveThumbnailProvider('openai')}
                         className={`flex-1 px-3 py-2 text-xs rounded-lg font-bold cursor-pointer transition-colors ${
@@ -868,7 +869,7 @@ export default function SettingsModal({
                         }`}
                       >
                         OpenAI
-                      </button>
+                      </HeroButton>
                     </div>
 
                     {/* OpenAI選択時: モデル・品質設定 */}
@@ -882,7 +883,7 @@ export default function SettingsModal({
                               { value: 'gpt-image-1' as const, label: 'GPT Image 1' },
                               { value: 'gpt-image-1-mini' as const, label: 'GPT Image 1 Mini' },
                             ]).map(({ value, label }) => (
-                              <button
+                              <HeroButton
                                 key={value}
                                 type="button"
                                 onClick={() => saveOpenaiImageModel(value)}
@@ -893,7 +894,7 @@ export default function SettingsModal({
                                 }`}
                               >
                                 {label}
-                              </button>
+                              </HeroButton>
                             ))}
                           </div>
                         </div>
@@ -907,7 +908,7 @@ export default function SettingsModal({
                               { value: 'medium' as const, label: 'Medium' },
                               { value: 'high' as const, label: 'High' },
                             ]).map(({ value, label }) => (
-                              <button
+                              <HeroButton
                                 key={value}
                                 type="button"
                                 onClick={() => saveOpenaiImageQuality(value)}
@@ -918,7 +919,7 @@ export default function SettingsModal({
                                 }`}
                               >
                                 {label}
-                              </button>
+                              </HeroButton>
                             ))}
                           </div>
                         </div>
@@ -985,14 +986,14 @@ export default function SettingsModal({
                     </label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
-                        <input
+                        <HeroInput
                           type={showGeminiApiKey ? 'text' : 'password'}
                           value={geminiApiKey}
                           onChange={(e) => setGeminiApiKey(e.target.value)}
                           placeholder="AIza..."
                           className="w-full px-3 py-2 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
-                        <button
+                        <HeroButton
                           type="button"
                           onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -1007,14 +1008,14 @@ export default function SettingsModal({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           )}
-                        </button>
+                        </HeroButton>
                       </div>
-                      <button
+                      <HeroButton
                         onClick={saveGeminiApiKey}
                         className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                       >
                         保存
-                      </button>
+                      </HeroButton>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">
                       サムネイル生成 + キャラクター選択に使用
@@ -1027,14 +1028,14 @@ export default function SettingsModal({
                     </label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
-                        <input
+                        <HeroInput
                           type={showOpenaiApiKey ? 'text' : 'password'}
                           value={openaiApiKey}
                           onChange={(e) => setOpenaiApiKey(e.target.value)}
                           placeholder="sk-..."
                           className="w-full px-3 py-2 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
                         />
-                        <button
+                        <HeroButton
                           type="button"
                           onClick={() => setShowOpenaiApiKey(!showOpenaiApiKey)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -1049,14 +1050,14 @@ export default function SettingsModal({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           )}
-                        </button>
+                        </HeroButton>
                       </div>
-                      <button
+                      <HeroButton
                         onClick={saveOpenaiApiKey}
                         className="text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                       >
                         保存
-                      </button>
+                      </HeroButton>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">
                       サムネイル生成に使用
@@ -1069,12 +1070,12 @@ export default function SettingsModal({
                       <label className="block text-xs font-medium text-gray-700">
                         参考キャラクター
                       </label>
-                      <button
+                      <HeroButton
                         onClick={openAddCharacterModal}
                         className="text-xs bg-blue-500 text-white hover:bg-blue-600 px-2 py-1 rounded font-bold cursor-pointer transition-colors"
                       >
                         + 追加
-                      </button>
+                      </HeroButton>
                     </div>
 
                     {thumbnailCharacters.length === 0 ? (
@@ -1109,7 +1110,7 @@ export default function SettingsModal({
                                   {char.referenceImageUrls.length}枚の参考画像
                                 </div>
                               </div>
-                              <button
+                              <HeroButton
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTestPreviewCharacter(char);
@@ -1120,7 +1121,7 @@ export default function SettingsModal({
                                 className="text-xs bg-green-500 text-white hover:bg-green-600 px-2 py-1 rounded font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 テスト
-                              </button>
+                              </HeroButton>
                             </div>
                           </div>
                         ))}
@@ -1141,7 +1142,7 @@ export default function SettingsModal({
                               {thumbnailProvider === 'openai' ? 'OpenAI' : 'Gemini'}
                             </span>
                           </span>
-                          <button
+                          <HeroButton
                             onClick={() => {
                               setTestPreviewCharacter(null);
                               setTestPreviewImage(null);
@@ -1151,10 +1152,10 @@ export default function SettingsModal({
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                          </button>
+                          </HeroButton>
                         </div>
                         <div className="space-y-2">
-                          <input
+                          <HeroInput
                             type="text"
                             value={testTitle}
                             onChange={(e) => setTestTitle(e.target.value)}
@@ -1163,16 +1164,16 @@ export default function SettingsModal({
                           />
                           <div className="flex gap-1 flex-wrap">
                             {sampleTitles.slice(0, 3).map((title, i) => (
-                              <button
+                              <HeroButton
                                 key={i}
                                 onClick={() => setTestTitle(title)}
                                 className="text-[10px] bg-gray-100 hover:bg-gray-200 px-1.5 py-0.5 rounded cursor-pointer transition-colors truncate max-w-[120px]"
                               >
                                 {title}
-                              </button>
+                              </HeroButton>
                             ))}
                           </div>
-                          <button
+                          <HeroButton
                             onClick={() => handleTestGenerate(testPreviewCharacter, testTitle)}
                             disabled={testGenerating !== null || !testTitle.trim()}
                             className="w-full text-sm bg-green-500 text-white hover:bg-green-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -1188,7 +1189,7 @@ export default function SettingsModal({
                             ) : (
                               'サムネイルを生成'
                             )}
-                          </button>
+                          </HeroButton>
                           {testPreviewImage && (
                             <div className="mt-2">
                               <img
@@ -1219,7 +1220,7 @@ export default function SettingsModal({
 
                 <div className="space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
+                    <HeroInput
                       type="checkbox"
                       checked={postToOtherBlogs}
                       onChange={(e) => {
@@ -1239,7 +1240,7 @@ export default function SettingsModal({
                     <div className="space-y-2 pl-6">
                       {otherBlogs.map(blog => (
                         <label key={blog.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
+                          <HeroInput
                             type="checkbox"
                             checked={selectedOtherBlogIds.includes(blog.id)}
                             onChange={(e) => {
@@ -1256,7 +1257,7 @@ export default function SettingsModal({
                               {LIFE_BLOG_ROUTING_BADGE}
                             </span>
                           )}
-                          <button
+                          <HeroButton
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1267,7 +1268,7 @@ export default function SettingsModal({
                             className="ml-auto rounded border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-50 disabled:cursor-wait disabled:opacity-60"
                           >
                             {testingBlogId === blog.id ? '確認中' : '接続テスト'}
-                          </button>
+                          </HeroButton>
                           {blogTestResults[blog.id] && (
                             <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
                               blogTestResults[blog.id].ok
@@ -1305,7 +1306,7 @@ export default function SettingsModal({
               <h3 id="blog-modal-title" className="font-bold text-gray-900">
                 {editingBlog ? 'ブログを編集' : 'ブログを追加'}
               </h3>
-              <button
+              <HeroButton
                 onClick={() => setShowBlogModal(false)}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
                 aria-label="閉じる"
@@ -1313,7 +1314,7 @@ export default function SettingsModal({
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </HeroButton>
             </div>
             <div className="p-4 space-y-4">
               <div>
@@ -1321,7 +1322,7 @@ export default function SettingsModal({
                   ブログタイプ
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  <button
+                  <HeroButton
                     type="button"
                     onClick={() => selectBlogType('livedoor')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
@@ -1331,8 +1332,8 @@ export default function SettingsModal({
                     }`}
                   >
                     ライブドアブログ
-                  </button>
-                  <button
+                  </HeroButton>
+                  <HeroButton
                     type="button"
                     onClick={() => selectBlogType('girls-matome')}
                     className={`flex-1 px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
@@ -1342,8 +1343,8 @@ export default function SettingsModal({
                     }`}
                   >
                     ガールズまとめ
-                  </button>
-                  <button
+                  </HeroButton>
+                  <HeroButton
                     type="button"
                     onClick={() => selectBlogType('kotoria')}
                     className={`px-3 py-2 text-sm rounded-lg font-bold cursor-pointer transition-colors ${
@@ -1353,14 +1354,14 @@ export default function SettingsModal({
                     }`}
                   >
                     Kotoria
-                  </button>
+                  </HeroButton>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   表示名
                 </label>
-                <input
+                <HeroInput
                   type="text"
                   value={blogForm.name}
                   onChange={(e) => setBlogForm({ ...blogForm, name: e.target.value })}
@@ -1372,7 +1373,7 @@ export default function SettingsModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {blogForm.blogType === 'livedoor' ? 'ブログID' : blogForm.blogType === 'kotoria' ? 'Kotoria URL' : 'API URL'}
                 </label>
-                <input
+                <HeroInput
                   type="text"
                   value={blogForm.blogId}
                   onChange={(e) => setBlogForm({ ...blogForm, blogId: e.target.value })}
@@ -1392,7 +1393,7 @@ export default function SettingsModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     認証ユーザー名
                   </label>
-                  <input
+                  <HeroInput
                     type="text"
                     value={blogForm.apiUsername}
                     onChange={(e) => setBlogForm({ ...blogForm, apiUsername: e.target.value })}
@@ -1408,7 +1409,7 @@ export default function SettingsModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   APIキー
                 </label>
-                <input
+                <HeroInput
                   type="password"
                   value={blogForm.apiKey}
                   onChange={(e) => setBlogForm({ ...blogForm, apiKey: e.target.value })}
@@ -1417,7 +1418,7 @@ export default function SettingsModal({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
+                <HeroInput
                   type="checkbox"
                   id="blog-disabled"
                   checked={blogForm.disabled}
@@ -1430,26 +1431,26 @@ export default function SettingsModal({
               </div>
               <div className="flex gap-2 pt-2">
                 {editingBlog && (
-                  <button
+                  <HeroButton
                     onClick={() => deleteBlog(editingBlog.id)}
                     className="px-4 py-2 text-sm bg-red-500 text-white hover:bg-red-600 rounded-lg font-bold cursor-pointer transition-colors"
                   >
                     削除
-                  </button>
+                  </HeroButton>
                 )}
                 <div className="flex-1" />
-                <button
+                <HeroButton
                   onClick={() => setShowBlogModal(false)}
                   className="px-4 py-2 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   キャンセル
-                </button>
-                <button
+                </HeroButton>
+                <HeroButton
                   onClick={saveBlog}
                   className="px-4 py-2 text-sm bg-orange-500 text-white hover:bg-orange-600 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   保存
-                </button>
+                </HeroButton>
               </div>
             </div>
           </div>
@@ -1468,21 +1469,21 @@ export default function SettingsModal({
               <h3 className="font-bold text-gray-900">
                 {editingCharacter ? 'キャラクターを編集' : 'キャラクターを追加'}
               </h3>
-              <button
+              <HeroButton
                 onClick={() => setShowCharacterModal(false)}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </HeroButton>
             </div>
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   キャラクター名 <span className="text-red-500">*</span>
                 </label>
-                <input
+                <HeroInput
                   type="text"
                   value={characterForm.name}
                   onChange={(e) => setCharacterForm({ ...characterForm, name: e.target.value })}
@@ -1494,7 +1495,7 @@ export default function SettingsModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   キャラ説明（プロンプト用）
                 </label>
-                <textarea
+                <HeroTextArea
                   value={characterForm.description}
                   onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })}
                   placeholder="例: 金髪ボブカットにリボン、明るい表情、アニメ風イラスト"
@@ -1529,21 +1530,21 @@ export default function SettingsModal({
                             }}
                           />
                           <div className="flex-1 min-w-0">
-                            <input
+                            <HeroInput
                               type="text"
                               value={url}
                               readOnly
                               className="w-full text-xs px-2 py-1 bg-white border border-gray-200 rounded truncate"
                             />
                           </div>
-                          <button
+                          <HeroButton
                             onClick={() => removeImageFromCharacter(editingCharacter.id, index)}
                             className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                          </button>
+                          </HeroButton>
                         </div>
                       ))}
                     </div>
@@ -1551,14 +1552,14 @@ export default function SettingsModal({
 
                   {/* 新しい画像を追加 */}
                   <div className="flex gap-2">
-                    <input
+                    <HeroInput
                       type="text"
                       value={characterForm.imageUrl}
                       onChange={(e) => setCharacterForm({ ...characterForm, imageUrl: e.target.value })}
                       placeholder="https://livedoor.blogimg.jp/.../image.png"
                       className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
-                    <button
+                    <HeroButton
                       onClick={() => {
                         if (characterForm.imageUrl.trim()) {
                           addImageToCharacter(editingCharacter.id, characterForm.imageUrl);
@@ -1573,7 +1574,7 @@ export default function SettingsModal({
                       className="text-sm bg-blue-500 text-white hover:bg-blue-600 px-3 py-2 rounded-lg font-bold cursor-pointer transition-colors"
                     >
                       追加
-                    </button>
+                    </HeroButton>
                   </div>
                 </div>
               )}
@@ -1584,7 +1585,7 @@ export default function SettingsModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     参考画像URL（最初の1枚）
                   </label>
-                  <input
+                  <HeroInput
                     type="text"
                     value={characterForm.imageUrl}
                     onChange={(e) => setCharacterForm({ ...characterForm, imageUrl: e.target.value })}
@@ -1599,26 +1600,26 @@ export default function SettingsModal({
 
               <div className="flex gap-2 pt-2">
                 {editingCharacter && (
-                  <button
+                  <HeroButton
                     onClick={() => deleteCharacter(editingCharacter.id)}
                     className="px-4 py-2 text-sm bg-red-500 text-white hover:bg-red-600 rounded-lg font-bold cursor-pointer transition-colors"
                   >
                     削除
-                  </button>
+                  </HeroButton>
                 )}
                 <div className="flex-1" />
-                <button
+                <HeroButton
                   onClick={() => setShowCharacterModal(false)}
                   className="px-4 py-2 text-sm bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   キャンセル
-                </button>
-                <button
+                </HeroButton>
+                <HeroButton
                   onClick={saveCharacter}
                   className="px-4 py-2 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded-lg font-bold cursor-pointer transition-colors"
                 >
                   保存
-                </button>
+                </HeroButton>
               </div>
             </div>
           </div>

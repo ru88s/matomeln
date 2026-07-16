@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Logo } from '@/components/ui/Logo';
@@ -66,26 +67,28 @@ export default function Header() {
               )}
             </div>
 
-            <div className="flex items-center gap-4">
-              <button
+            <div className="flex min-w-0 items-center gap-1 sm:gap-4">
+              <HeroButton
                 onClick={() => setShowHelpModal(true)}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 cursor-pointer"
+                className="min-w-0 px-2 text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 cursor-pointer sm:px-3"
+                aria-label="使い方"
               >
                 <span>💡</span>
-                <span>使い方</span>
-              </button>
-              <button
+                <span className="hidden sm:inline">使い方</span>
+              </HeroButton>
+              <HeroButton
                 onClick={openSettingsModal}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 cursor-pointer"
+                className="min-w-0 px-2 text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 cursor-pointer sm:px-3"
+                aria-label="設定"
               >
                 <span>⚙️</span>
-                <span>設定</span>
-              </button>
+                <span className="hidden sm:inline">設定</span>
+              </HeroButton>
 
               {/* User info and logout */}
               {!loading && user && (
-                <div className="flex items-center gap-3 ml-2 pl-4 border-l border-gray-200">
-                  <div className="flex items-center gap-2">
+                <div className="ml-1 flex min-w-0 items-center gap-1 border-l border-gray-200 pl-2 sm:ml-2 sm:gap-3 sm:pl-4">
+                  <div className="hidden items-center gap-2 sm:flex">
                     {user.image ? (
                       <img
                         src={user.image}
@@ -106,12 +109,14 @@ export default function Header() {
                       </span>
                     )}
                   </div>
-                  <button
+                  <HeroButton
                     onClick={logout}
-                    className="text-xs text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                    className="min-w-0 px-2 text-xs text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                    aria-label="ログアウト"
                   >
-                    ログアウト
-                  </button>
+                    <span className="sm:hidden" aria-hidden="true">↪</span>
+                    <span className="hidden sm:inline">ログアウト</span>
+                  </HeroButton>
                 </div>
               )}
             </div>

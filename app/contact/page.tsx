@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState } from 'react';
 
 export default function ContactPage() {
@@ -45,7 +46,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
       <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-lg border border-orange-100">
         {/* タブ切り替え */}
         <div className="flex border border-gray-200 rounded-xl overflow-hidden mb-6">
-          <button
+          <HeroButton
             onClick={() => setActiveTab('bug')}
             className={`flex-1 py-3 px-4 font-bold transition-all cursor-pointer ${
               activeTab === 'bug'
@@ -54,8 +55,8 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
             }`}
           >
             バグ報告
-          </button>
-          <button
+          </HeroButton>
+          <HeroButton
             onClick={() => setActiveTab('other')}
             className={`flex-1 py-3 px-4 font-bold transition-all cursor-pointer ${
               activeTab === 'other'
@@ -64,7 +65,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
             }`}
           >
             その他
-          </button>
+          </HeroButton>
         </div>
 
         {/* メールアドレス */}
@@ -100,7 +101,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="font-bold text-sm text-gray-700">件名</span>
-              <button
+              <HeroButton
                 onClick={() => {
                   const subject = activeTab === 'bug' ? 'まとめるんの不具合報告' : 'まとめるんへのお問い合わせ';
                   navigator.clipboard.writeText(subject);
@@ -111,7 +112,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-              </button>
+              </HeroButton>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
               {activeTab === 'bug' ? 'まとめるんの不具合報告' : 'まとめるんへのお問い合わせ'}
@@ -122,7 +123,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="font-bold text-sm text-gray-700">本文</span>
-              <button
+              <HeroButton
                 onClick={() => {
                   const body = activeTab === 'bug'
                     ? `## 不具合の説明\n\n\n## 不具合の再現手順\n\n\n## 詳細データ（編集しないでください）\nWebApp: ${JSON.stringify((navigator as Navigator & { userAgentData?: unknown }).userAgentData || { userAgent: navigator.userAgent })}\nURL: ${window.location.href}`
@@ -135,7 +136,7 @@ URL: ${typeof window !== 'undefined' ? window.location.href : 'N/A'}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-              </button>
+              </HeroButton>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap font-mono">
               {activeTab === 'bug' ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
@@ -368,7 +369,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-green-700 mb-1">サムネイル設定済み</p>
-                <input
+                <HeroInput
                   type="text"
                   value={thumbnailUrl}
                   readOnly
@@ -383,14 +384,14 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           <div>
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-bold text-gray-900">タイトル:</h4>
-              <button
+              <HeroButton
                 onClick={() => handleCopy(generatedHTML.title)}
                 className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
-              </button>
+              </HeroButton>
             </div>
-            <textarea
+            <HeroTextArea
               value={generatedHTML.title}
               onChange={(e) => setGeneratedHTML({...generatedHTML, title: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-12"
@@ -401,14 +402,14 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           <div>
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-bold text-gray-900">本文の内容: <span className="text-sm font-normal text-gray-600">（本文に設定したレス）</span></h4>
-              <button
+              <HeroButton
                 onClick={() => handleCopy(generatedHTML.body)}
                 className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
-              </button>
+              </HeroButton>
             </div>
-            <textarea
+            <HeroTextArea
               value={generatedHTML.body}
               onChange={(e) => setGeneratedHTML({...generatedHTML, body: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-[200px]"
@@ -419,14 +420,14 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
           <div>
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-bold text-gray-900">「続きを読む」の内容: <span className="text-sm font-normal text-gray-600">（本文以外のレス）</span></h4>
-              <button
+              <HeroButton
                 onClick={() => handleCopy(generatedHTML.footer)}
                 className="text-sm px-3 py-1 bg-orange-400 text-white rounded-xl hover:bg-orange-500 transition-colors"
               >
                 コピー
-              </button>
+              </HeroButton>
             </div>
-            <textarea
+            <HeroTextArea
               value={generatedHTML.footer}
               onChange={(e) => setGeneratedHTML({...generatedHTML, footer: e.target.value})}
               className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm bg-white h-[200px]"
@@ -483,7 +484,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               </div>
             )}
 
-            <button
+            <HeroButton
               onClick={handleBlogPost}
               disabled={!apiSettings.blogUrl || !apiSettings.apiKey || isPosting}
               className={`w-full py-3 rounded-lg font-bold transition-all cursor-pointer ${
@@ -497,7 +498,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
                 : apiSettings.blogUrl && apiSettings.apiKey
                   ? 'ブログに投稿'
                   : 'ブログに投稿（ブログ設定が必要）'}
-            </button>
+            </HeroButton>
           </div>
         </div>
       ) : (

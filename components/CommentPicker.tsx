@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton, HeroTextArea, HeroInput } from '@/components/ui/HeroControls';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
@@ -199,7 +200,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
       )}
 
       <div className="flex items-start gap-3">
-        <input
+        <HeroInput
           type="checkbox"
           checked={isSelected}
           onChange={onToggle}
@@ -261,7 +262,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                 </div>
               )}
               {canShowOptions && (
-                <button
+                <HeroButton
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -274,13 +275,13 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   <svg className={`w-3 h-3 transition-transform ${showOptionsMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                </button>
+                </HeroButton>
               )}
               {showOptionsMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
                   {!isFirstSelected && (
                     <>
-                    <button
+                    <HeroButton
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveUp?.();
@@ -292,8 +293,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                       </svg>
                       1つ上へ
-                    </button>
-                    <button
+                    </HeroButton>
+                    <HeroButton
                       onClick={(e) => {
                         e.stopPropagation();
                         onMoveDown?.();
@@ -305,9 +306,9 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                       1つ下へ
-                    </button>
+                    </HeroButton>
                     <div className="border-t border-gray-200">
-                      <button
+                      <HeroButton
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToTop?.();
@@ -319,8 +320,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 11l7-7 7 7M5 19l7-7 7 7" />
                         </svg>
                         本文の下へ
-                      </button>
-                      <button
+                      </HeroButton>
+                      <HeroButton
                         onClick={(e) => {
                           e.stopPropagation();
                           onMoveToEnd?.();
@@ -332,11 +333,11 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13l-7 7-7-7M19 5l-7 7-7-7" />
                         </svg>
                         最後へ
-                      </button>
+                      </HeroButton>
                     </div>
                     <div className="border-t border-gray-200 px-3 py-2">
                       <div className="flex items-center gap-1">
-                        <input
+                        <HeroInput
                           type="number"
                           value={targetPosition}
                           onChange={(e) => {
@@ -360,7 +361,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                           min="1"
                         />
                         <span className="text-xs text-gray-500">の下へ</span>
-                        <button
+                        <HeroButton
                           onClick={(e) => {
                             e.stopPropagation();
                             const targetResId = parseInt(targetPosition);
@@ -374,14 +375,14 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs px-2 py-1 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
                         >
                           移動
-                        </button>
+                        </HeroButton>
                       </div>
                     </div>
                     </>
                   )}
                   {hasPosterIdOption && (
                     <div className={`${!isFirstSelected ? 'border-t border-gray-200' : ''}`}>
-                      <button
+                      <HeroButton
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -396,7 +397,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
                         このIDを除外
-                      </button>
+                      </HeroButton>
                     </div>
                   )}
                 </div>
@@ -409,7 +410,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
             {colorPalette.map((paletteColor, index) => {
               const keyHint = index === 9 ? '0' : (index + 1).toString();
               return (
-                <button
+                <HeroButton
                   key={paletteColor}
                   className={`relative w-6 h-6 md:w-6 md:h-6 min-w-[28px] min-h-[28px] rounded border-2 transition-all hover:scale-110 cursor-pointer ${
                     color === paletteColor ? 'border-orange-400 shadow-md' : 'border-gray-300'
@@ -426,14 +427,14 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       {keyHint}
                     </span>
                   )}
-                </button>
+                </HeroButton>
               );
             })}
           </div>
 
           {/* 文字サイズ選択 - カラーパレットの下に表示 */}
           <div className="flex gap-2 mb-3">
-            <button
+            <HeroButton
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('large');
@@ -449,8 +450,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   Q
                 </span>
               )}
-            </button>
-            <button
+            </HeroButton>
+            <HeroButton
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('medium');
@@ -466,8 +467,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   W
                 </span>
               )}
-            </button>
-            <button
+            </HeroButton>
+            <HeroButton
               onClick={(e) => {
                 e.stopPropagation();
                 onSizeChange('small');
@@ -483,13 +484,13 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   E
                 </span>
               )}
-            </button>
+            </HeroButton>
           </div>
 
           <div>
             {isEditing ? (
               <div onClick={(e) => e.stopPropagation()}>
-                <textarea
+                <HeroTextArea
                   value={editingBody}
                   onChange={(e) => setEditingBody(e.target.value)}
                   onKeyDown={(e) => {
@@ -508,7 +509,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   autoFocus
                 />
                 <div className="flex items-center justify-end mt-2 gap-2">
-                  <button
+                  <HeroButton
                     onClick={(e) => {
                       e.stopPropagation();
                       onEditingChange?.(false);
@@ -517,8 +518,8 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     className="px-3 py-1 text-gray-600 text-sm rounded-lg hover:bg-gray-100 transition-colors font-medium"
                   >
                     キャンセル (Esc)
-                  </button>
-                  <button
+                  </HeroButton>
+                  <HeroButton
                     onClick={(e) => {
                       e.stopPropagation();
                       handleBodyEdit();
@@ -526,7 +527,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                     className="px-3 py-1 bg-orange-400 text-white text-sm rounded-lg hover:bg-orange-500 transition-colors font-medium"
                   >
                     保存 ({typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter)
-                  </button>
+                  </HeroButton>
                 </div>
               </div>
             ) : (
@@ -546,7 +547,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                   </span>
                 </div>
                 {/* 編集ボタン - テキストの右側に配置 */}
-                <button
+                <HeroButton
                   onClick={(e) => {
                     e.stopPropagation();
                     onEditingChange?.(true);
@@ -564,7 +565,7 @@ function CommentItem({ comment, isSelected, onToggle, onColorChange, onCommentEd
                       </span>
                     )}
                   </div>
-                </button>
+                </HeroButton>
               </div>
             )}
           </div>
@@ -1021,7 +1022,7 @@ export default function CommentPicker({
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2">
           <span className="text-xs font-bold text-red-600">除外中のID</span>
           {[...excludedNameIds].map(nameId => (
-            <button
+            <HeroButton
               key={nameId}
               type="button"
               onClick={() => restorePosterId(nameId)}
@@ -1029,14 +1030,14 @@ export default function CommentPicker({
               title="このIDのレスを表示に戻す"
             >
               ID:{nameId} を戻す
-            </button>
+            </HeroButton>
           ))}
         </div>
       )}
 
       {selectedCommentsWithNameIdCount > 0 && (
         <div className="mb-4 flex justify-end">
-          <button
+          <HeroButton
             type="button"
             onClick={clearSelectedNameIds}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
@@ -1046,7 +1047,7 @@ export default function CommentPicker({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M8 6V4h8v2m-9 4l1 10h8l1-10" />
             </svg>
             選択済みのIDを消す ({selectedCommentsWithNameIdCount})
-          </button>
+          </HeroButton>
         </div>
       )}
 
@@ -1316,12 +1317,12 @@ export default function CommentPicker({
       {/* もっと見るボタン（全表示モードで、まだ表示していないコメントがある場合） */}
       {!showOnlySelected && visibleComments.length > displayCount && (
         <div className="text-center py-4">
-          <button
+          <HeroButton
             onClick={() => setDisplayCount(prev => prev + LOAD_MORE_COUNT)}
             className="px-6 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors cursor-pointer font-bold"
           >
             もっと見る（残り{visibleComments.length - displayCount}件）
-          </button>
+          </HeroButton>
         </div>
       )}
 
@@ -1347,7 +1348,7 @@ export default function CommentPicker({
           <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
             <div className="relative pointer-events-auto max-w-[90vw] max-h-[90vh]">
               {/* 閉じるボタン */}
-              <button
+              <HeroButton
                 onClick={() => setExpandedImage(null)}
                 className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
                 aria-label="閉じる"
@@ -1355,7 +1356,7 @@ export default function CommentPicker({
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </HeroButton>
               {/* 画像 */}
               <img
                 src={expandedImage}

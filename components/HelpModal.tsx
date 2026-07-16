@@ -1,5 +1,6 @@
 'use client';
 
+import { HeroButton } from '@/components/ui/HeroControls';
 import { useState } from 'react';
 
 interface HelpModalProps {
@@ -26,19 +27,19 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <span>💡</span>
             使い方
           </h2>
-          <button
+          <HeroButton
             onClick={onClose}
             className="p-2 hover:bg-orange-100 rounded-full transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </HeroButton>
         </div>
 
         {/* タブ */}
         <div className="flex gap-1 p-3 bg-white/50 border-b border-orange-100">
-          <button
+          <HeroButton
             onClick={() => setActiveTab('basic')}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'basic'
@@ -47,8 +48,8 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             }`}
           >
             基本の使い方
-          </button>
-          <button
+          </HeroButton>
+          <HeroButton
             onClick={() => setActiveTab('features')}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'features'
@@ -57,8 +58,8 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             }`}
           >
             便利な機能
-          </button>
-          <button
+          </HeroButton>
+          <HeroButton
             onClick={() => setActiveTab('faq')}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'faq'
@@ -67,7 +68,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             }`}
           >
             よくある質問
-          </button>
+          </HeroButton>
         </div>
 
         {/* コンテンツ */}

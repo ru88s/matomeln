@@ -1,4 +1,5 @@
 import React from 'react';
+import { Chip } from '@heroui/react';
 import { componentStyles } from '@/lib/design-system';
 
 export type BadgeVariant = 'required' | 'optional' | 'info' | 'purple';
@@ -20,8 +21,8 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   return (
-    <span className={`${componentStyles.badge.base} ${variantStyles[variant]}`}>
+    <Chip className={`${componentStyles.badge.base} ${variantStyles[variant]}`}>
       {children}
-    </span>
+    </Chip>
   );
 };
