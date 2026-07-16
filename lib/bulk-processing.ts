@@ -52,8 +52,8 @@ export async function fetchUnsummarizedUrls(options?: {
   const isTalkUrl = (url: string) => /talk\.jp\/boards\//i.test(url);
   const isGirlsChannelUrl = (url: string) => /girlschannel\.net\/topics\//i.test(url);
 
-  // スレッドIDでソート（新しい順 = ID降順）
-  // 5ch URLのスレッドIDはUnix timestamp形式
+  // スレッドIDでソート（古い順 = ID昇順）
+  // 5ch/Talk URLのスレッドIDは時系列で増えるため、小さいIDを先に処理する。
   const filteredUrls = data.urls.filter((url) => {
     if (options?.source === 'talk') {
       return isTalkUrl(url);
@@ -68,8 +68,7 @@ export async function fetchUnsummarizedUrls(options?: {
     const idA = extractThreadId(a);
     const idB = extractThreadId(b);
     if (!idA || !idB) return 0;
-    // 降順（新しい順）
-    return parseInt(idB) - parseInt(idA);
+    return parseInt(idA, 10) - parseInt(idB, 10);
   });
 
   return {
@@ -162,13 +161,13 @@ export async function fetchGirlsChannelUrls(options?: {
     throw new Error('未まとめURLの取得に失敗しました（API接続エラー）');
   }
 
-  // URLをソート（ガルちゃんはトピックID）
+  // URLを古い順にソート（ガルちゃんは小さいトピックIDが古い）
   const sortedUrls = allUrls.sort((a, b) => {
     // ガルちゃんURL
     if (a.includes('girlschannel.net') && b.includes('girlschannel.net')) {
       const idA = extractGirlsChannelTopicId(a);
       const idB = extractGirlsChannelTopicId(b);
-      if (idA && idB) return parseInt(idB) - parseInt(idA);
+      if (idA && idB) return parseInt(idA, 10) - parseInt(idB, 10);
     }
     return 0;
   });
