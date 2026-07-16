@@ -200,6 +200,39 @@ function uniqueThreadUrls(urls: string[]): string[] {
 }
 
 const AUTO_RUN_PROCESSED_URLS_KEY = 'matomeln:auto-run-processed-urls';
+const AUTO_RUN_LEASE_KEY = 'matomeln:auto-run-lease';
+const AUTO_RUN_LEASE_MS = 90 * 1000;
+
+type AutoRunLease = { owner: string; expiresAt: number };
+
+function readAutoRunLease(): AutoRunLease | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(AUTO_RUN_LEASE_KEY) || 'null') as AutoRunLease | null;
+    return parsed && typeof parsed.owner === 'string' && typeof parsed.expiresAt === 'number' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function claimAutoRunLease(owner: string): boolean {
+  const current = readAutoRunLease();
+  if (current && current.owner !== owner && current.expiresAt > Date.now()) return false;
+  const next = { owner, expiresAt: Date.now() + AUTO_RUN_LEASE_MS };
+  localStorage.setItem(AUTO_RUN_LEASE_KEY, JSON.stringify(next));
+  return readAutoRunLease()?.owner === owner;
+}
+
+function refreshAutoRunLease(owner: string): boolean {
+  const current = readAutoRunLease();
+  if (current?.owner !== owner) return false;
+  localStorage.setItem(AUTO_RUN_LEASE_KEY, JSON.stringify({ owner, expiresAt: Date.now() + AUTO_RUN_LEASE_MS }));
+  return true;
+}
+
+function releaseAutoRunLease(owner: string): void {
+  if (readAutoRunLease()?.owner === owner) localStorage.removeItem(AUTO_RUN_LEASE_KEY);
+}
 
 function loadProcessedAutoRunUrls(): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -266,6 +299,12 @@ export default function BulkProcessPanel({
   const [isFetchingTalk, setIsFetchingTalk] = useState(false);
   const [isFetchingGC, setIsFetchingGC] = useState(false);
   const processedAutoRunUrlsRef = useRef(loadProcessedAutoRunUrls());
+  const autoRunOwnerRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
+  const autoRunLeaseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
 
@@ -679,7 +718,18 @@ export default function BulkProcessPanel({
   const runAutoProcessCycle = useCallback(async (sources: AutoRunSource[]): Promise<boolean> => {
     // 戻り値: true = 未まとめURLがまだある, false = 未まとめURLがない
     if (isAutoRunningRef.current) return false;
+    if (!claimAutoRunLease(autoRunOwnerRef.current)) {
+      console.log('定期実行: 別タブで処理中のため待機します');
+      return false;
+    }
     isAutoRunningRef.current = true;
+    if (autoRunLeaseTimerRef.current) clearInterval(autoRunLeaseTimerRef.current);
+    autoRunLeaseTimerRef.current = setInterval(() => {
+      if (!refreshAutoRunLease(autoRunOwnerRef.current)) {
+        console.warn('定期実行の実行権が別タブへ移ったため、このタブの処理を停止します');
+        shouldStopRef.current = true;
+      }
+    }, 20 * 1000);
     lastAutoRunProgressAtRef.current = Date.now();
 
     const sourceLabel = sources.length === 1
@@ -897,6 +947,11 @@ export default function BulkProcessPanel({
       }
       return false;
     } finally {
+      if (autoRunLeaseTimerRef.current) {
+        clearInterval(autoRunLeaseTimerRef.current);
+        autoRunLeaseTimerRef.current = null;
+      }
+      releaseAutoRunLease(autoRunOwnerRef.current);
       isAutoRunningRef.current = false;
       shouldStopRef.current = false;
       lastAutoRunProgressAtRef.current = Date.now();
@@ -952,11 +1007,17 @@ export default function BulkProcessPanel({
     setNextRunTime(null);
     consecutiveErrorsRef.current = 0;
     localStorage.setItem('autoRunActive', 'false');
+    releaseAutoRunLease(autoRunOwnerRef.current);
     if (autoRunTimerRef.current) {
       clearInterval(autoRunTimerRef.current);
       autoRunTimerRef.current = null;
     }
     toast('定期実行を停止しました', { icon: '⏹️' });
+  }, []);
+
+  useEffect(() => () => {
+    if (autoRunLeaseTimerRef.current) clearInterval(autoRunLeaseTimerRef.current);
+    releaseAutoRunLease(autoRunOwnerRef.current);
   }, []);
 
   useEffect(() => {
