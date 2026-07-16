@@ -661,6 +661,10 @@ export function getOtherBlogPostSkipReason(blog: BlogSettings, params: {
     return 'ガルちゃん以外の記事のため';
   }
 
+  if (hasUrlInFirstComment(params.comments)) {
+    return 'レス1に外部URLがあるため';
+  }
+
   if (isGirlsChannelNewsOrPoliticalArticle(params)) {
     return isPoliticalTopic(params) ? '政治系記事のため' : 'ニュース系記事のため';
   }
