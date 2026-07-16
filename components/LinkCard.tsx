@@ -10,6 +10,23 @@ interface OGPData {
   url: string;
 }
 
+function parseOgpResponse(text: string, fallbackUrl: string): OGPData | null {
+  if (!text.trim()) return null;
+  try {
+    const parsed = JSON.parse(text) as Partial<OGPData> | null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title : '',
+      description: typeof parsed.description === 'string' ? parsed.description : '',
+      image: typeof parsed.image === 'string' ? parsed.image : '',
+      siteName: typeof parsed.siteName === 'string' ? parsed.siteName : '',
+      url: typeof parsed.url === 'string' && parsed.url ? parsed.url : fallbackUrl,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function LinkCard({ url }: { url: string }) {
   const [ogp, setOgp] = useState<OGPData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,30 +36,40 @@ export function LinkCard({ url }: { url: string }) {
   const isImgur = /^https?:\/\/(i\.)?imgur\.com\//i.test(url);
 
   useEffect(() => {
+    setOgp(null);
+    setError(false);
+    setLoading(!isImgur);
+
     // imgurの場合はOGP取得をスキップ
     if (isImgur) {
       setLoading(false);
       return;
     }
 
+    const controller = new AbortController();
+
     const fetchOGP = async () => {
       try {
-        const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
+        const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) throw new Error('Failed to fetch OGP');
-        const data = await response.json() as OGPData;
+        const data = parseOgpResponse(await response.text(), url);
+        if (!data) {
+          setError(true);
+          return;
+        }
         setOgp(data);
       } catch (err) {
-        // 開発環境のみエラーログを出力
-        if (process.env.NODE_ENV === 'development') {
-          console.error('OGP fetch error:', err);
-        }
+        if (controller.signal.aborted) return;
         setError(true);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchOGP();
+    return () => controller.abort();
   }, [url, isImgur]);
 
   // imgurの場合はフルURLでテキストリンク表示
