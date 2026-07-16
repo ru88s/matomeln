@@ -185,6 +185,37 @@ function isExpectedSkippableErrorMessage(errorMsg: string): boolean {
 
 type AutoRunSource = '5ch' | 'talk' | 'gc';
 
+function normalizeThreadUrl(url: string): string {
+  return url.trim().replace(/[?#].*$/, '').replace(/\/+$/, '');
+}
+
+function uniqueThreadUrls(urls: string[]): string[] {
+  const seen = new Set<string>();
+  return urls.filter((url) => {
+    const normalized = normalizeThreadUrl(url);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+const AUTO_RUN_PROCESSED_URLS_KEY = 'matomeln:auto-run-processed-urls';
+
+function loadProcessedAutoRunUrls(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(AUTO_RUN_PROCESSED_URLS_KEY) || '[]');
+    return new Set(Array.isArray(stored) ? stored.filter((url): url is string => typeof url === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveProcessedAutoRunUrls(urls: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(AUTO_RUN_PROCESSED_URLS_KEY, JSON.stringify([...urls].slice(-2000)));
+}
+
 function interleaveUniqueUrlLists(urlLists: string[][]): string[] {
   const seenUrls = new Set<string>();
   const maxQueueLength = Math.max(...urlLists.map((urls) => urls.length), 0);
@@ -234,6 +265,7 @@ export default function BulkProcessPanel({
   const [isFetching, setIsFetching] = useState(false);
   const [isFetchingTalk, setIsFetchingTalk] = useState(false);
   const [isFetchingGC, setIsFetchingGC] = useState(false);
+  const processedAutoRunUrlsRef = useRef(loadProcessedAutoRunUrls());
   // useRefで停止フラグを管理（クロージャ問題を回避）
   const shouldStopRef = useRef(false);
 
@@ -457,10 +489,10 @@ export default function BulkProcessPanel({
 
   // 一括処理開始
   const handleStartBulk = useCallback(async () => {
-    const urlList = urls
+    const urlList = uniqueThreadUrls(urls
       .split('\n')
       .map(u => u.trim())
-      .filter(u => u && !u.startsWith('#')); // コメント行は除外
+      .filter(u => u && !u.startsWith('#'))); // コメント行と重複URLは除外
 
     if (urlList.length === 0) {
       toast.error('URLを入力してください');
@@ -660,7 +692,14 @@ export default function BulkProcessPanel({
       toast.loading(`定期実行[${sourceLabel}]: URL取得中...`, { id: 'auto-run' });
       const results = await Promise.all(sources.map(fetchAutoRunSourceUrls));
       lastAutoRunProgressAtRef.current = Date.now();
-      const urlList = interleaveUniqueUrlLists(results);
+      const fetchedUrls = interleaveUniqueUrlLists(results);
+      const urlList = fetchedUrls.filter(
+        (url) => !processedAutoRunUrlsRef.current.has(normalizeThreadUrl(url))
+      );
+
+      if (fetchedUrls.length > 0 && urlList.length === 0) {
+        console.log(`定期実行[${sourceLabel}]: API反映待ちの処理済みURL ${fetchedUrls.length}件を除外`);
+      }
 
       if (urlList.length === 0) {
         toast.success(`定期実行[${sourceLabel}]: 未まとめURLがありません`, { id: 'auto-run' });
@@ -772,6 +811,8 @@ export default function BulkProcessPanel({
         }
 
         if (success) {
+          processedAutoRunUrlsRef.current.add(normalizeThreadUrl(url));
+          saveProcessedAutoRunUrls(processedAutoRunUrlsRef.current);
           completedCount++;
           lastAutoRunProgressAtRef.current = Date.now();
           consecutiveFailures = 0; // 成功したらリセット
@@ -801,6 +842,8 @@ export default function BulkProcessPanel({
           // スレメモくんにスキップ済みとしてマーク（次回取得リストから除外）
           try {
             await markThreadAsSkipped(url, safeError);
+            processedAutoRunUrlsRef.current.add(normalizeThreadUrl(url));
+            saveProcessedAutoRunUrls(processedAutoRunUrlsRef.current);
           } catch (skipError) {
             console.error('Failed to mark as skipped:', skipError);
           }
@@ -902,6 +945,8 @@ export default function BulkProcessPanel({
     }
 
     consecutiveErrorsRef.current = 0;
+    processedAutoRunUrlsRef.current.clear();
+    saveProcessedAutoRunUrls(processedAutoRunUrlsRef.current);
     shouldStopRef.current = false;
     setNextRunTime(null);
     setAutoRunActive(true);
