@@ -1,4 +1,5 @@
 import type { Comment } from './types';
+import { type ThumbnailVisualStyle, validateThumbnailVisualStyle } from './thumbnail-visual-style';
 
 export interface ThumbnailPromptContext {
   originalTitle?: string;
@@ -8,6 +9,7 @@ export interface ThumbnailPromptContext {
 }
 
 export interface ThumbnailPromptPlan {
+  visualStyle: ThumbnailVisualStyle;
   category: string;
   scene: string;
   mainObjects: string[];
@@ -169,7 +171,7 @@ function compactComments(comments: Comment[] | undefined): string {
     .join('\n');
 }
 
-function normalizePlan(raw: unknown): ThumbnailPromptPlan | null {
+function normalizePlan(raw: unknown, title: string, firstCommentBody = ''): ThumbnailPromptPlan | null {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as Record<string, unknown>;
 
@@ -189,6 +191,7 @@ function normalizePlan(raw: unknown): ThumbnailPromptPlan | null {
   }
 
   return {
+    visualStyle: validateThumbnailVisualStyle(record.visualStyle, title, firstCommentBody),
     category: category || 'generic',
     scene,
     mainObjects,
@@ -217,8 +220,7 @@ function buildPlanningPrompt(title: string, context: ThumbnailPromptContext): st
 画像そのものは別AIで生成します。あなたは短い設計だけ返します。
 
 目的:
-- 記事内容に合う、線が繊細で透明感と奥行きのある高品質アニメキービジュアル風サムネにする
-- 極端なデフォルメ体型や幼すぎるチビキャラ調を避け、端正で親しみやすいアニメキャラクターにする
+- 記事内容に合う visualStyle を許可候補から1つ選ぶ
 - 見た瞬間にテーマが分かる小物・背景・表情を選ぶ
 - 文字やタイトルを画像内に入れず、絵だけで伝える
 - 使い回し可能なサムネになりやすくする
@@ -232,8 +234,15 @@ function buildPlanningPrompt(title: string, context: ThumbnailPromptContext): st
 - 「ドラム」は、ドラムセット/楽器、ドラム式洗濯機、ドラム缶を絶対に混同しない
 - 不確実なら confidence を下げる
 
+visualStyleの許可候補と選び方:
+- anime_key_visual: 生活、恋愛、雑談、面白、ゲーム、漫画、芸能人、スポーツ選手
+- product_photo: 食べ物、旅行、風景、商品。人物を主役にしない
+- editorial_photo: 事件、政治、災害。人物の顔を出さず、象徴物や無人風景のみ
+- mascot: 内容を判定できない場合
+- 実在人物、芸能人、選手を写真風にしない
+
 返却JSON:
-{"category":"","scene":"","mainObjects":[],"emotion":"","characterAction":"","colorMood":"","avoid":[],"reuseTag":"","confidence":0,"reason":""}
+{"visualStyle":"anime_key_visual|editorial_photo|product_photo|mascot","category":"","scene":"","mainObjects":[],"emotion":"","characterAction":"","colorMood":"","avoid":[],"reuseTag":"","confidence":0,"reason":""}
 
 サムネ生成対象タイトル:
 ${title}${originalTitle}${reuseTag}${firstComment}${selectedBlock}`;
@@ -284,7 +293,7 @@ export async function createThumbnailPromptPlan(
 
     const data = await response.json() as { message?: { content?: string }; response?: string };
     const parsed = parseJsonObject(data.message?.content || data.response || '');
-    const plan = normalizePlan(parsed);
+    const plan = normalizePlan(parsed, context.originalTitle || title, context.firstCommentBody);
     if (plan && hasDrumSenseMismatch(title, plan)) {
       console.warn('ローカルLLMサムネ設計を意味不一致で破棄:', title, plan);
       return null;
@@ -310,6 +319,7 @@ export function formatThumbnailPromptPlan(plan: ThumbnailPromptPlan | null): str
 Use this validated plan as the primary visual direction. If any item conflicts with safety, no-text, or character-identity rules, ignore the conflicting item.
 
 - Category: ${plan.category}
+- Visual style: ${plan.visualStyle}
 - Scene/backdrop: ${plan.scene}
 - Main visual objects: ${plan.mainObjects.join(', ')}
 - Character emotion: ${plan.emotion}

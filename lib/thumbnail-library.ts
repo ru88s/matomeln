@@ -3,6 +3,7 @@ import {
   refineSemanticThumbnailKeywords,
   shouldUseThumbnailCandidate,
 } from './thumbnail-semantic-guard';
+import { inferThumbnailVisualStyle, type ThumbnailVisualStyle } from './thumbnail-visual-style';
 
 export type ThumbnailReuseCategory =
   | 'life'
@@ -25,7 +26,7 @@ export interface ThumbnailLibraryRecord {
   title: string;
   category: ThumbnailReuseCategory;
   keywords: string[];
-  style: 'deformed-mascot' | 'anime-chibi';
+  style: ThumbnailVisualStyle;
   usageCount: number;
   createdAt: string;
   lastUsedAt: string;
@@ -80,8 +81,17 @@ function loadLibrary(): ThumbnailLibraryRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as ThumbnailLibraryRecord[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as Array<ThumbnailLibraryRecord & { style?: string }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((record) => ({
+      ...record,
+      style: record.style === 'editorial_photo' || record.style === 'product_photo'
+        || record.style === 'mascot' || record.style === 'anime_key_visual'
+        ? record.style
+        : record.style === 'deformed-mascot'
+          ? 'mascot'
+          : 'anime_key_visual',
+    }));
   } catch {
     return [];
   }
@@ -120,11 +130,12 @@ export function extractThumbnailKeywords(title: string): string[] {
   return refineSemanticThumbnailKeywords(title, [...new Set(keywords)]).slice(0, MAX_KEYWORDS);
 }
 
-export function findReusableThumbnail(title: string): ThumbnailReuseMatch | null {
+export function findReusableThumbnail(title: string, firstCommentBody = ''): ThumbnailReuseMatch | null {
   const records = loadLibrary();
   if (records.length === 0) return null;
 
   const category = classifyThumbnailCategory(title);
+  const expectedStyle = inferThumbnailVisualStyle(title, firstCommentBody);
   const keywords = extractThumbnailKeywords(title);
   const now = Date.now();
 
@@ -145,6 +156,7 @@ export function findReusableThumbnail(title: string): ThumbnailReuseMatch | null
       };
     })
     .filter((match) => {
+      if (match.record.style !== expectedStyle) return false;
       if (match.score < 6) return false;
       const assessment = assessThumbnailSemanticFit(title, {
         label: match.record.title,
@@ -203,7 +215,12 @@ function normalizeSharedRecord(record: SharedThumbnailRecord): ThumbnailLibraryR
     keywords: Array.isArray(record.keywords)
       ? record.keywords.filter((keyword): keyword is string => typeof keyword === 'string')
       : [],
-    style: record.style === 'deformed-mascot' ? 'deformed-mascot' : 'anime-chibi',
+    style: record.style === 'editorial_photo' || record.style === 'product_photo'
+      || record.style === 'mascot' || record.style === 'anime_key_visual'
+      ? record.style
+      : record.style === 'deformed-mascot'
+        ? 'mascot'
+        : 'anime_key_visual',
     usageCount: typeof record.usageCount === 'number'
       ? record.usageCount
       : typeof record.usage_count === 'number'
@@ -222,7 +239,7 @@ function normalizeSharedRecord(record: SharedThumbnailRecord): ThumbnailLibraryR
   };
 }
 
-export async function findSharedReusableThumbnail(title: string): Promise<ThumbnailReuseMatch | null> {
+export async function findSharedReusableThumbnail(title: string, firstCommentBody = ''): Promise<ThumbnailReuseMatch | null> {
   try {
     const response = await fetch(`/api/proxy/thumbnailLibrary?title=${encodeURIComponent(title)}`);
     if (!response.ok) return null;
@@ -231,6 +248,7 @@ export async function findSharedReusableThumbnail(title: string): Promise<Thumbn
 
     const record = normalizeSharedRecord(data.match.record);
     if (!record) return null;
+    if (record.style !== inferThumbnailVisualStyle(title, firstCommentBody)) return null;
 
     const isSemanticallySafe = await shouldUseThumbnailCandidate(title, {
       label: record.title,
@@ -273,7 +291,11 @@ export function markThumbnailReused(recordId: string): void {
   saveLibrary(records);
 }
 
-export function saveGeneratedThumbnailToLibrary(title: string, imageUrl: string): void {
+export function saveGeneratedThumbnailToLibrary(
+  title: string,
+  imageUrl: string,
+  style: ThumbnailVisualStyle = inferThumbnailVisualStyle(title)
+): void {
   if (!imageUrl) return;
   const now = new Date().toISOString();
   const records = loadLibrary();
@@ -285,7 +307,7 @@ export function saveGeneratedThumbnailToLibrary(title: string, imageUrl: string)
     title,
     category: classifyThumbnailCategory(title),
     keywords: extractThumbnailKeywords(title),
-    style: 'anime-chibi',
+    style,
     usageCount: 0,
     createdAt: now,
     lastUsedAt: now,
@@ -293,7 +315,11 @@ export function saveGeneratedThumbnailToLibrary(title: string, imageUrl: string)
   saveLibrary(records);
 }
 
-export async function saveGeneratedThumbnailToSharedLibrary(title: string, imageUrl: string): Promise<void> {
+export async function saveGeneratedThumbnailToSharedLibrary(
+  title: string,
+  imageUrl: string,
+  style: ThumbnailVisualStyle = inferThumbnailVisualStyle(title)
+): Promise<void> {
   if (!imageUrl) return;
 
   try {
@@ -305,7 +331,7 @@ export async function saveGeneratedThumbnailToSharedLibrary(title: string, image
         imageUrl,
         category: classifyThumbnailCategory(title),
         keywords: extractThumbnailKeywords(title),
-        style: 'anime-chibi',
+        style,
       }),
     });
   } catch (error) {

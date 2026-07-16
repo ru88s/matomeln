@@ -29,6 +29,7 @@ import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-res
 import toast from 'react-hot-toast';
 import { keepFirstResponseFirst, sortCommentsByAnchorOrder } from '@/lib/comment-ordering';
 import { readOtherBlogPostingSettings } from '@/lib/settings-store';
+import { inferThumbnailVisualStyle, isPhotographicThumbnailStyle } from '@/lib/thumbnail-visual-style';
 
 const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
   ssr: false,
@@ -817,18 +818,20 @@ export default function Home() {
         toast.loading('サムネイルキャッシュを検索中...', { id: 'bulk-step' });
         const { searchTagByTitle } = await import('@/lib/tag-thumbnail-cache');
         cachedTagResult = await searchTagByTitle(talk.title);
+        const expectedThumbnailStyle = inferThumbnailVisualStyle(talk.title, loadedComments[0]?.body || '');
+        const canUseLegacyTagThumbnail = !isPhotographicThumbnailStyle(expectedThumbnailStyle);
 
-        if (cachedTagResult?.tag?.thumbnail_url && cachedTagResult.tag.is_original) {
+        if (canUseLegacyTagThumbnail && cachedTagResult?.tag?.thumbnail_url && cachedTagResult.tag.is_original) {
           // オリジナルサムネのキャッシュヒット - そのまま使用
           generatedThumbnailUrl = cachedTagResult.tag.thumbnail_url;
           skipThumbnailGeneration = true;
           console.log('キャッシュサムネイル使用:', cachedTagResult.tag.tag);
           toast.success(`キャッシュサムネイル使用（${cachedTagResult.tag.tag}）`, { id: 'bulk-step' });
-        } else if (cachedTagResult?.tag?.thumbnail_url && !cachedTagResult.tag.is_original) {
+        } else if (canUseLegacyTagThumbnail && cachedTagResult?.tag?.thumbnail_url && !cachedTagResult.tag.is_original) {
           // 旧サムネ → AI生成して置換（skipしない）
           console.log('旧サムネを検出、オリジナル生成で置換:', cachedTagResult.tag.tag);
           toast.loading(`旧サムネを置換生成中（${cachedTagResult.tag.tag}）...`, { id: 'bulk-step' });
-        } else if (cachedTagResult?.categoryFallback?.thumbnail_url && cachedTagResult.categoryFallback.is_original) {
+        } else if (canUseLegacyTagThumbnail && cachedTagResult?.categoryFallback?.thumbnail_url && cachedTagResult.categoryFallback.is_original) {
           // カテゴリフォールバック（オリジナルサムネ）
           generatedThumbnailUrl = cachedTagResult.categoryFallback.thumbnail_url;
           skipThumbnailGeneration = true;
@@ -841,7 +844,7 @@ export default function Home() {
             markSharedThumbnailReused,
             markThumbnailReused,
           } = await import('@/lib/thumbnail-library');
-          const sharedThumbnail = await findSharedReusableThumbnail(talk.title);
+          const sharedThumbnail = await findSharedReusableThumbnail(talk.title, loadedComments[0]?.body || '');
           if (sharedThumbnail) {
             generatedThumbnailUrl = sharedThumbnail.record.imageUrl;
             skipThumbnailGeneration = true;
@@ -849,7 +852,7 @@ export default function Home() {
             console.log('共有ライブラリサムネイル再利用:', sharedThumbnail.reason);
             toast.success(`共有サムネ再利用（${sharedThumbnail.reason}）`, { id: 'bulk-step' });
           } else {
-            const reusableThumbnail = findReusableThumbnail(talk.title);
+            const reusableThumbnail = findReusableThumbnail(talk.title, loadedComments[0]?.body || '');
             if (reusableThumbnail) {
               generatedThumbnailUrl = reusableThumbnail.record.imageUrl;
               skipThumbnailGeneration = true;
@@ -951,8 +954,11 @@ export default function Home() {
                       saveGeneratedThumbnailToLibrary,
                       saveGeneratedThumbnailToSharedLibrary,
                     } = await import('@/lib/thumbnail-library');
-                    saveGeneratedThumbnailToLibrary(titleForThumbnail, generatedThumbnailUrl);
-                    await saveGeneratedThumbnailToSharedLibrary(titleForThumbnail, generatedThumbnailUrl);
+                    const { inferThumbnailVisualStyle } = await import('@/lib/thumbnail-visual-style');
+                    const generatedVisualStyle = thumbnailResult.visualStyle
+                      || inferThumbnailVisualStyle(talk.title, loadedComments[0]?.body || '');
+                    saveGeneratedThumbnailToLibrary(titleForThumbnail, generatedThumbnailUrl, generatedVisualStyle);
+                    await saveGeneratedThumbnailToSharedLibrary(titleForThumbnail, generatedThumbnailUrl, generatedVisualStyle);
                   } catch (e) {
                     console.warn('サムネイルライブラリ保存失敗:', e);
                   }

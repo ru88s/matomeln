@@ -8,7 +8,14 @@ import {
   createThumbnailPromptPlan,
   formatThumbnailPromptPlan,
   type ThumbnailPromptContext,
+  type ThumbnailPromptPlan,
 } from './thumbnail-prompt-planner';
+import {
+  inferThumbnailVisualStyle,
+  isPhotographicThumbnailStyle,
+  thumbnailStylePrompt,
+  type ThumbnailVisualStyle,
+} from './thumbnail-visual-style';
 
 /** API呼び出しのタイムアウト（60秒） */
 const API_TIMEOUT_MS = 60000;
@@ -181,7 +188,7 @@ function generatePromptFromTitle(
   title: string,
   character?: ThumbnailCharacter,
   sanitize = false,
-  promptPlanBlock = ''
+  promptPlan: ThumbnailPromptPlan | null = null
 ): string {
   // タイトルから装飾を除去
   let cleanTitle = title.replace(/【.*?】|§\s*/g, '').trim();
@@ -195,7 +202,14 @@ function generatePromptFromTitle(
     ? `- EXACT hair style and color: ${character.description}`
     : '- Same hair style and color from reference';
 
-  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create STORY-DRIVEN thumbnails as polished Japanese anime key art for a Garubi-like matome blog: elegant character proportions, refined linework, detailed hair and clothing, luminous eyes, transparent light, vivid but balanced colors, cinematic depth, and a beautifully finished commercial-illustration look. Keep the character appealing and expressive without making the head or body extremely chibi. Avoid hard plastic toy realism, stiff 3D figurine texture, photorealism, muddy colors, thick crude outlines, flat clip-art rendering, and excessive gloss. Do NOT imitate any specific commercial artwork, existing anime character, or real person likeness.
+  const visualStyle = promptPlan?.visualStyle || inferThumbnailVisualStyle(cleanTitle);
+  const styleDirection = thumbnailStylePrompt(visualStyle);
+  const photographicStyle = isPhotographicThumbnailStyle(visualStyle);
+
+  return `You are the WORLD'S BEST Japanese matome-blog thumbnail artist. Create a clear, reusable, story-driven thumbnail with a premium commercial finish. Do NOT imitate any specific commercial artwork, existing character, brand campaign, news photograph, or real person likeness.
+
+MANDATORY VISUAL STYLE: ${visualStyle}
+${styleDirection}
 
 🎯 YOUR MISSION: Create a reusable thumbnail that TELLS THE STORY of the article through visuals only!
 
@@ -204,7 +218,7 @@ Visual context only (DO NOT render this text in the image): "${cleanTitle}"
 Use the context above only to infer the scene, mood, character reaction, setting, props, and colors.
 Never copy, translate, summarize, abbreviate, or stylize the article title as visible text in the image.
 
-${promptPlanBlock ? `${promptPlanBlock}\n` : ''}
+${promptPlan ? `${formatThumbnailPromptPlan(promptPlan)}\n` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌍 SCENE & BACKGROUND (MOST IMPORTANT!)
@@ -247,6 +261,7 @@ Extract: WHO, WHAT, WHERE, WHEN from the title
 🎨 CHARACTER IDENTITY (keep same)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${characterAppearance}
+${photographicStyle ? '- PHOTOGRAPHIC STYLE OVERRIDE: do not include the mascot, an identifiable person, or a visible face. Ignore the character identity rules below.' : ''}
 Keep the character's IDENTITY from reference:
 - Same polished anime/illustration mascot identity, face shape, eye color
 - Same hair color, hair style, hair length
@@ -275,13 +290,12 @@ Character's reaction should match the article's emotional tone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎨 ART STYLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Polished modern Japanese anime key visual, not realistic 3D
-- Elegant stylized proportions; avoid super-deformed, oversized-head, or tiny-body chibi anatomy
-- Fine, controlled linework with detailed hair strands, fabric folds, and carefully rendered eyes
-- Clean anime shading enriched by soft painterly gradients and crisp highlights
-- Clear blue skies, luminous rim light, floating light particles, or other tasteful atmospheric detail when appropriate
-- Bright, clean, premium commercial-illustration finish with rich color separation; never dull, muddy, or overly pastel
-- Garubi-like approachable character appeal, while the overall finish remains graceful rather than childish
+- Follow the MANDATORY VISUAL STYLE exactly; do not blend anime and photography
+- anime_key_visual: refined linework, elegant proportions, luminous modern anime rendering
+- editorial_photo: realistic but clearly illustrative editorial scene, symbolic and faceless, never fake documentary evidence
+- product_photo: premium realistic commercial photography of objects, food, products, travel, or scenery
+- mascot: polished original anime mascot with a simple reusable scene
+- Bright, clean, premium finish with strong color separation; never dull, muddy, or cluttered
 - High readability at small thumbnail size
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -327,7 +341,7 @@ Character's reaction should match the article's emotional tone:
 - NO watermarks or signatures
 - Tell the story through VISUALS ONLY!
 
-CREATE A BEAUTIFULLY FINISHED ANIME KEY-VISUAL THUMBNAIL WHERE THE EXPRESSIVE MASCOT AND CINEMATIC BACKGROUND TELL THE STORY.`;
+CREATE A BEAUTIFULLY FINISHED THUMBNAIL IN THE MANDATORY VISUAL STYLE, USING THE SCENE AND OBJECTS TO TELL THE STORY.`;
 }
 
 /**
@@ -354,6 +368,7 @@ export interface ThumbnailGenerationResult {
   error?: string;
   /** 参考画像の読み込みに失敗した数 */
   referenceImageFailures?: number;
+  visualStyle?: ThumbnailVisualStyle;
 }
 
 /**
@@ -397,6 +412,9 @@ export async function generateThumbnail(
   sanitize = false,
   promptContext: ThumbnailPromptContext = {}
 ): Promise<ThumbnailGenerationResult> {
+  const promptPlan = sanitize ? null : await createThumbnailPromptPlan(title, promptContext);
+  const visualStyle = promptPlan?.visualStyle || inferThumbnailVisualStyle(promptContext.originalTitle || title, promptContext.firstCommentBody);
+  const useCharacterReference = !isPhotographicThumbnailStyle(visualStyle);
   // リクエストパーツを構築（参考画像を先に、テキストを後に）
   type TextPart = { text: string };
   type ImagePart = { inlineData: { mimeType: string; data: string } };
@@ -407,7 +425,7 @@ export async function generateThumbnail(
   let referenceImageFailures = 0;
   const totalReferenceImages = character?.referenceImageUrls?.length || 0;
 
-  if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
+  if (useCharacterReference && character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
     console.log('📷 参考画像を読み込み中...', imagesToUse.length, '枚');
 
@@ -435,8 +453,7 @@ export async function generateThumbnail(
   }
 
   // プロンプトを生成して追加
-  const promptPlan = sanitize ? null : await createThumbnailPromptPlan(title, promptContext);
-  const prompt = generatePromptFromTitle(title, character, sanitize, formatThumbnailPromptPlan(promptPlan));
+  const prompt = generatePromptFromTitle(title, useCharacterReference ? character : undefined, sanitize, promptPlan);
 
   if (hasReferenceImages) {
     // 参考画像がある場合は強力なキャラクター指定を追加
@@ -630,7 +647,8 @@ ${prompt}`
       return {
         success: true,
         imageBase64: imagePart.inlineData.data,
-        referenceImageFailures
+        referenceImageFailures,
+        visualStyle,
       };
 
     } catch (error) {
@@ -669,7 +687,9 @@ export async function generateThumbnailWithOpenAI(
 ): Promise<ThumbnailGenerationResult> {
   // プロンプトを生成
   const promptPlan = sanitize ? null : await createThumbnailPromptPlan(title, promptContext);
-  const basePrompt = generatePromptFromTitle(title, character, sanitize, formatThumbnailPromptPlan(promptPlan));
+  const visualStyle = promptPlan?.visualStyle || inferThumbnailVisualStyle(promptContext.originalTitle || title, promptContext.firstCommentBody);
+  const useCharacterReference = !isPhotographicThumbnailStyle(visualStyle);
+  const basePrompt = generatePromptFromTitle(title, useCharacterReference ? character : undefined, sanitize, promptPlan);
 
   // マルチモーダル入力のcontentを構築
   const content: Array<{ type: string; text?: string; image_url?: string }> = [];
@@ -679,7 +699,7 @@ export async function generateThumbnailWithOpenAI(
   let referenceImageFailures = 0;
   const totalReferenceImages = character?.referenceImageUrls?.length || 0;
 
-  if (character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
+  if (useCharacterReference && character?.referenceImageUrls && character.referenceImageUrls.length > 0) {
     const imagesToUse = character.referenceImageUrls.slice(0, 3);
     console.log('📷 [OpenAI] 参考画像を読み込み中...', imagesToUse.length, '枚');
 
@@ -854,7 +874,8 @@ ${basePrompt}`;
       return {
         success: true,
         imageBase64: data.data[0].b64_json,
-        referenceImageFailures
+        referenceImageFailures,
+        visualStyle,
       };
 
     } catch (error) {
