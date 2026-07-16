@@ -46,30 +46,31 @@ export function LinkCard({ url }: { url: string }) {
       return;
     }
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     const fetchOGP = async () => {
       try {
-        const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
         if (!response.ok) throw new Error('Failed to fetch OGP');
         const data = parseOgpResponse(await response.text(), url);
+        if (cancelled) return;
         if (!data) {
           setError(true);
           return;
         }
         setOgp(data);
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setError(true);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchOGP();
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [url, isImgur]);
 
   // imgurの場合はフルURLでテキストリンク表示
