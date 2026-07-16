@@ -872,8 +872,8 @@ export default function BulkProcessPanel({
         failCount: failedCount,
       });
 
-      // 停止されていなければ、まだURLがある可能性を返す
-      return !shouldStopRef.current;
+      // 取得した1バッチの処理完了。次回は設定間隔後に取得する。
+      return false;
     } catch (error) {
       // エラーを確実に文字列に変換
       const errorMsg = stringifyError(error);
@@ -907,7 +907,7 @@ export default function BulkProcessPanel({
   // 定期実行のメインループをrefで保持（useEffect依存を避ける）
   const startAutoRunLoopRef = useRef<(() => Promise<void>) | null>(null);
 
-  // 定期実行のメインループ（処理完了後に再チェック）
+  // 定期実行のメインループ（1バッチ処理後は設定間隔まで待機）
   startAutoRunLoopRef.current = async () => {
     if (!autoRunActive || !hasAutoRunTargets) return;
 
@@ -917,16 +917,9 @@ export default function BulkProcessPanel({
     if (autoRunGCEnabled) enabledSources.push('gc');
 
     if (!autoRunActive || shouldStopRef.current) return;
-    const processedAnySource = await runAutoProcessCycle(enabledSources);
+    await runAutoProcessCycle(enabledSources);
 
-    if (processedAnySource && autoRunActive && !shouldStopRef.current) {
-      toast('選択中の未まとめを再チェック中...', { icon: '🔄' });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      startAutoRunLoopRef.current?.();
-      return;
-    }
-
-    // どちらもURLがないので、指定時間待機
+    // バッチ完了後は指定時間待機。次回タイマーで新しい未まとめ一覧を取得する。
     const nextRun = new Date(Date.now() + autoRunInterval * 60 * 1000);
     setNextRunTime(nextRun);
   };
