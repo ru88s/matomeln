@@ -35,6 +35,43 @@ type SettingsKey = typeof SYNCED_KEYS[number];
 
 type SettingsMap = Partial<Record<SettingsKey, string | null>>;
 
+function hasSelectedOtherBlogs(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const settings = JSON.parse(value) as {
+      postToOtherBlogs?: boolean;
+      selectedOtherBlogIds?: unknown;
+    };
+    return settings.postToOtherBlogs === true
+      && Array.isArray(settings.selectedOtherBlogIds)
+      && settings.selectedOtherBlogIds.some((id) => typeof id === 'string' && id.length > 0);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The local development settings endpoint is memory-backed and resets when the
+ * dev server restarts. Do not let that empty default erase a valid browser
+ * selection; use the browser copy to repopulate the server instead.
+ */
+function mergeServerSettingsWithDurableLocal(
+  serverSettings: SettingsMap,
+  localSettings: SettingsMap
+): { merged: SettingsMap; shouldRestoreServer: boolean } {
+  const merged = { ...serverSettings };
+  let shouldRestoreServer = false;
+  const localOtherBlogs = localSettings.matomeln_other_blogs_settings;
+  const serverOtherBlogs = serverSettings.matomeln_other_blogs_settings;
+
+  if (hasSelectedOtherBlogs(localOtherBlogs) && !hasSelectedOtherBlogs(serverOtherBlogs)) {
+    merged.matomeln_other_blogs_settings = localOtherBlogs;
+    shouldRestoreServer = true;
+  }
+
+  return { merged, shouldRestoreServer };
+}
+
 function sanitizeCustomNameSettings(value: string): string {
   try {
     const settings = JSON.parse(value) as { name?: unknown; bold?: unknown; color?: unknown };
@@ -134,7 +171,11 @@ export function useSettings() {
 
       const localSettings = normalizeSettingsForStorage(readAllFromLocalStorage());
       const normalizedServerSettings = normalizeSettingsForStorage(serverSettings);
-      const hasServerData = Object.keys(normalizedServerSettings).length > 0;
+      const {
+        merged: mergedServerSettings,
+        shouldRestoreServer,
+      } = mergeServerSettingsWithDurableLocal(normalizedServerSettings, localSettings);
+      const hasServerData = Object.keys(mergedServerSettings).length > 0;
       const hasLocalData = Object.keys(localSettings).length > 0;
 
       if (!hasServerData && hasLocalData) {
@@ -146,10 +187,13 @@ export function useSettings() {
       if (hasServerData) {
         // サーバーの設定をlocalStorageに反映（サーバー優先）
         for (const key of SYNCED_KEYS) {
-          const serverValue = normalizedServerSettings[key];
+          const serverValue = mergedServerSettings[key];
           if (serverValue !== undefined && serverValue !== null) {
             localStorage.setItem(key, serverValue as string);
           }
+        }
+        if (shouldRestoreServer) {
+          await postServerSettings(normalizeSettingsForStorage(readAllFromLocalStorage()));
         }
         // ページのstateはlocalStorageから読み込まれるので、
         // 設定が変わった場合はリロードイベントで反映
