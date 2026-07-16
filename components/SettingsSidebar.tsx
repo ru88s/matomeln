@@ -22,7 +22,6 @@ interface SettingsSidebarProps {
   selectedBlogId: string | null;
   postToOtherBlogs: boolean;
   selectedOtherBlogIds: string[];
-  onOpenSettings: () => void;
 }
 
 export default function SettingsSidebar({
@@ -43,7 +42,6 @@ export default function SettingsSidebar({
   selectedBlogId,
   postToOtherBlogs,
   selectedOtherBlogIds,
-  onOpenSettings,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -54,7 +52,6 @@ export default function SettingsSidebar({
   const simultaneousPostBlogs = postToOtherBlogs
     ? blogs.filter((blog) => blog.id !== selectedBlogId && selectedOtherBlogIds.includes(blog.id))
     : [];
-  const simultaneousPostNames = simultaneousPostBlogs.map((blog) => blog.name).join('・');
 
   return (
     <div className="w-full flex-shrink-0 lg:w-56">
@@ -70,21 +67,6 @@ export default function SettingsSidebar({
               {simultaneousPostBlogs.length > 0 ? `${simultaneousPostBlogs.length}サイト` : 'OFF'}
             </span>
           </div>
-          <p
-            title={simultaneousPostNames || undefined}
-            className={`mt-1 truncate text-xs ${
-              simultaneousPostBlogs.length > 0 ? 'text-gray-700' : 'text-gray-400'
-            }`}
-          >
-            {simultaneousPostNames || '投稿先は未選択'}
-          </p>
-          <HeroButton
-            type="button"
-            onClick={onOpenSettings}
-            className="mt-2 text-xs font-bold text-purple-700 hover:text-purple-900 cursor-pointer"
-          >
-            同時投稿を設定
-          </HeroButton>
         </div>
 
         {/* 選択状況 - 最も重要なので一番上 */}

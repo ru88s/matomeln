@@ -1487,7 +1487,6 @@ export default function Home() {
         selectedBlogId={selectedBlogId}
         postToOtherBlogs={otherBlogPostingSettings.postToOtherBlogs}
         selectedOtherBlogIds={otherBlogPostingSettings.selectedOtherBlogIds}
-        onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       {/* 設定モーダル */}
