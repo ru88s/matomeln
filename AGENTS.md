@@ -44,8 +44,10 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 ```bash
 lsof -ti tcp:3000 | xargs kill 2>/dev/null || true
 export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
-./scripts/dev-setup.sh && ./node_modules/.bin/next dev --turbopack -p 3000
+./scripts/dev-setup.sh && ./node_modules/.bin/next dev -p 3000
 ```
+
+- ローカルの定期処理は長時間動作するため、開発サーバーにTurbopackを使わない。処理中のFast Refreshで動的チャンクが入れ替わり、`Failed to load chunk`で中断することがあるため、安定性を優先してWebpackモードで起動する。
 
 ### Git管理
 - コミット前に `git status --short` と `git diff --stat` を確認する。
