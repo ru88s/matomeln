@@ -5,7 +5,11 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { BlogSettings } from '@/lib/types';
 import { useIsAdmin } from '@/lib/auth-context';
-import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog, normalizeOtherBlogSelectionSettings } from '@/lib/blog-routing';
+import { ensureLifestyleBlogs, normalizeBlogSettingsForSharedAuth } from '@/lib/blog-routing';
+import { useOtherBlogPostingSettings } from '@/hooks/useOtherBlogPostingSettings';
+import { useSettings } from '@/hooks/useSettings';
+import { writeSetting } from '@/lib/settings-store';
+import SimultaneousPostingSection from '@/components/settings/SimultaneousPostingSection';
 
 export default function SettingsPage() {
   const isAdmin = useIsAdmin();
@@ -14,9 +18,8 @@ export default function SettingsPage() {
   // ブログ設定
   const [blogs, setBlogs] = useState<BlogSettings[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState('');
-  // 他のブログにも投稿設定
-  const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
-  const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  const { settings: otherBlogSettings, setSettings: setOtherBlogSettings } = useOtherBlogPostingSettings();
+  const { saveSettings } = useSettings();
   const [blogTestResults, setBlogTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
   const [testingBlogId, setTestingBlogId] = useState<string | null>(null);
   // カスタムフッターHTML
@@ -37,32 +40,17 @@ export default function SettingsPage() {
       setClaudeApiKey(savedApiKey);
     }
     // ブログ設定を読み込み
-    const savedBlogs = localStorage.getItem('matomeln_blogs');
+    const savedBlogs = localStorage.getItem('blogSettingsList');
     if (savedBlogs) {
       try {
-        setBlogs(JSON.parse(savedBlogs));
+        setBlogs(ensureLifestyleBlogs(normalizeBlogSettingsForSharedAuth(JSON.parse(savedBlogs))));
       } catch {
         // パースエラーは無視
       }
     }
-    const savedSelectedBlogId = localStorage.getItem('matomeln_selected_blog');
+    const savedSelectedBlogId = localStorage.getItem('selectedBlogId');
     if (savedSelectedBlogId) {
       setSelectedBlogId(savedSelectedBlogId);
-    }
-    // 他のブログにも投稿設定を読み込み
-    const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
-    if (savedOtherBlogsSettings) {
-      try {
-        const normalizedOtherBlogsSettings = normalizeOtherBlogSelectionSettings(savedOtherBlogsSettings) || savedOtherBlogsSettings;
-        if (normalizedOtherBlogsSettings !== savedOtherBlogsSettings) {
-          localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
-        }
-        const settings = JSON.parse(normalizedOtherBlogsSettings);
-        setPostToOtherBlogs(settings.postToOtherBlogs || false);
-        setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
-      } catch {
-        // パースエラーは無視
-      }
     }
     // カスタムフッターHTMLを読み込み
     const savedCustomFooter = localStorage.getItem('matomeln_custom_footer_html');
@@ -74,22 +62,20 @@ export default function SettingsPage() {
   // Claude APIキーを保存
   const saveClaudeApiKey = () => {
     if (claudeApiKey.trim()) {
-      localStorage.setItem('matomeln_claude_api_key', claudeApiKey.trim());
+      saveSettings({ matomeln_claude_api_key: claudeApiKey.trim() });
       toast.success('APIキーを保存しました');
     } else {
-      localStorage.removeItem('matomeln_claude_api_key');
+      saveSettings({ matomeln_claude_api_key: null });
       toast.success('APIキーを削除しました');
     }
   };
 
   // 他のブログにも投稿設定を保存
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
-    setPostToOtherBlogs(newPostToOtherBlogs);
-    setSelectedOtherBlogIds(newSelectedOtherBlogIds);
-    localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
+    setOtherBlogSettings({
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
-    }));
+    });
   };
 
   const testBlogConnection = async (blog: BlogSettings) => {
@@ -124,14 +110,11 @@ export default function SettingsPage() {
 
   // カスタムフッターHTMLを保存
   const saveCustomFooterHtml = () => {
-    localStorage.setItem('matomeln_custom_footer_html', customFooterHtml);
+    writeSetting('matomeln_custom_footer_html', customFooterHtml);
+    saveSettings({ matomeln_custom_footer_html: customFooterHtml });
     toast.success('フッターHTMLを保存しました');
   };
 
-  // 現在選択中のブログを取得
-  const selectedBlog = blogs.find(b => b.id === selectedBlogId);
-  // 他のブログ一覧（選択中のブログを除く）
-  const otherBlogs = blogs.filter(b => b.id !== selectedBlogId);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -216,95 +199,16 @@ export default function SettingsPage() {
 
         {/* 他のブログにも投稿（管理者のみ） */}
         {isAdmin && blogs.length > 1 && (
-          <div className="bg-white rounded-2xl border border-purple-200 p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-gray-800">複数ブログ同時投稿</h2>
-            </div>
-
-            <div className="space-y-4">
-              {selectedBlog && (
-                <div className="text-sm text-gray-600">
-                  メインブログ: <span className="font-bold text-gray-800">{selectedBlog.name}</span>
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <HeroInput
-                  type="checkbox"
-                  checked={postToOtherBlogs}
-                  onChange={(e) => {
-                    const newValue = e.target.checked;
-                    if (!newValue) {
-                      saveOtherBlogsSettings(false, []);
-                    } else {
-                      saveOtherBlogsSettings(true, selectedOtherBlogIds);
-                    }
-                  }}
-                  className="w-4 h-4 accent-purple-500"
-                />
-                <span className="text-sm font-bold text-purple-700">他のブログにも同時投稿する</span>
-              </label>
-
-              {postToOtherBlogs && otherBlogs.length > 0 && (
-                <div className="space-y-2 pl-6">
-                  {otherBlogs.map(blog => (
-                    <label key={blog.id} className="flex items-center gap-2 cursor-pointer">
-                      <HeroInput
-                        type="checkbox"
-                        checked={selectedOtherBlogIds.includes(blog.id)}
-                        onChange={(e) => {
-                          const newIds = e.target.checked
-                            ? [...selectedOtherBlogIds, blog.id]
-                            : selectedOtherBlogIds.filter(id => id !== blog.id);
-                          saveOtherBlogsSettings(true, newIds);
-                        }}
-                        className="w-4 h-4 accent-purple-500"
-                      />
-                      <span className="text-sm text-gray-700">{blog.name}</span>
-                      {isLifestyleBlog(blog) && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
-                          {LIFE_BLOG_ROUTING_BADGE}
-                        </span>
-                      )}
-                      <HeroButton
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          testBlogConnection(blog);
-                        }}
-                        disabled={testingBlogId === blog.id}
-                        className="ml-auto rounded border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-50 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {testingBlogId === blog.id ? '確認中' : '接続テスト'}
-                      </HeroButton>
-                      {blogTestResults[blog.id] && (
-                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
-                          blogTestResults[blog.id].ok
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {blogTestResults[blog.id].message}
-                        </span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {postToOtherBlogs && otherBlogs.length === 0 && (
-                <p className="text-sm text-gray-500 pl-6">
-                  他にブログが登録されていません。メイン画面のサイドバーからブログを追加してください。
-                </p>
-              )}
-
-              <div className="bg-purple-50 rounded-lg p-4 mt-4">
-                <p className="text-sm text-purple-700">
-                  投稿時に選択したブログにも同じ内容が投稿されます。
-                </p>
-              </div>
-            </div>
-          </div>
+          <SimultaneousPostingSection
+            blogs={blogs}
+            selectedBlogId={selectedBlogId}
+            enabled={otherBlogSettings.postToOtherBlogs}
+            selectedBlogIds={otherBlogSettings.selectedOtherBlogIds}
+            testingBlogId={testingBlogId}
+            testResults={blogTestResults}
+            onChange={saveOtherBlogsSettings}
+            onTest={testBlogConnection}
+          />
         )}
 
         {/* カスタムフッターHTML */}
@@ -330,7 +234,8 @@ export default function SettingsPage() {
               <HeroButton
                 onClick={() => {
                   setCustomFooterHtml('');
-                  localStorage.removeItem('matomeln_custom_footer_html');
+                  writeSetting('matomeln_custom_footer_html', null);
+                  saveSettings({ matomeln_custom_footer_html: null });
                   toast.success('フッターHTMLを削除しました');
                 }}
                 className="bg-gray-400 text-white hover:bg-gray-500 px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors"

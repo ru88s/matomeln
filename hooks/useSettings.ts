@@ -7,6 +7,7 @@ import {
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import type { BlogSettings } from '@/lib/types';
+import { writeSetting } from '@/lib/settings-store';
 
 // サーバーに同期する設定キー一覧
 const SYNCED_KEYS = [
@@ -216,11 +217,7 @@ export function useSettings() {
     const normalizedUpdates = normalizeSettingsForStorage(updates);
     // localStorageに即座に書き込み
     for (const [key, value] of Object.entries(normalizedUpdates)) {
-      if (value === null || value === undefined) {
-        localStorage.removeItem(key);
-      } else {
-        localStorage.setItem(key, value);
-      }
+      writeSetting(key, value ?? null);
     }
 
     // サーバーに非同期送信（2秒デバウンス）

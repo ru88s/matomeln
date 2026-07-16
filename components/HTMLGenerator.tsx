@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react';
 import { Talk, CommentWithStyle, MatomeOptions, BlogSettings, BlogType } from '@/lib/types';
 import { generateMatomeHTML, GeneratedHTML } from '@/lib/html-templates';
 import { markThreadAsSummarized } from '@/lib/bulk-processing';
-import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isLifestyleBlog, normalizeOtherBlogSelectionSettings } from '@/lib/blog-routing';
+import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isLifestyleBlog } from '@/lib/blog-routing';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
+import { useOtherBlogPostingSettings } from '@/hooks/useOtherBlogPostingSettings';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -55,53 +56,21 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
   });
   const [generatedHTML, setGeneratedHTML] = useState<GeneratedHTML | null>(null);
   const [isPosting, setIsPosting] = useState(false);
-  // 他のブログにも投稿するかどうか（DEVモード専用）
-  const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
-  // 投稿先として選択されたブログID
-  const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
-  const [otherBlogSettingsLoaded, setOtherBlogSettingsLoaded] = useState(false);
+  const {
+    settings: { postToOtherBlogs, selectedOtherBlogIds },
+  } = useOtherBlogPostingSettings();
   // カスタムフッターHTML
   const [customFooterHtml, setCustomFooterHtml] = useState('');
   const previewHtml = generatedHTML ? buildFullGeneratedHtml(generatedHTML) : '';
 
-  // LocalStorageから設定を読み込み
+  // LocalStorageから記事固有設定を読み込み
   useEffect(() => {
-    if (!isDevMode) {
-      setOtherBlogSettingsLoaded(false);
-    } else {
-      const saved = localStorage.getItem('matomeln_other_blogs_settings');
-      if (saved) {
-        try {
-          const normalizedOtherBlogsSettings = normalizeOtherBlogSelectionSettings(saved) || saved;
-          if (normalizedOtherBlogsSettings !== saved) {
-            localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
-          }
-          const settings = JSON.parse(normalizedOtherBlogsSettings);
-          setPostToOtherBlogs(settings.postToOtherBlogs === true);
-          setSelectedOtherBlogIds(Array.isArray(settings.selectedOtherBlogIds) ? settings.selectedOtherBlogIds : []);
-        } catch {
-          setPostToOtherBlogs(false);
-          setSelectedOtherBlogIds([]);
-        }
-      }
-      setOtherBlogSettingsLoaded(true);
-    }
     // カスタムフッターHTMLを読み込み
     const savedFooter = localStorage.getItem('matomeln_custom_footer_html');
     if (savedFooter) {
       setCustomFooterHtml(savedFooter);
     }
-  }, [isDevMode]);
-
-  // 設定変更時にLocalStorageに保存
-  useEffect(() => {
-    if (isDevMode && otherBlogSettingsLoaded) {
-      localStorage.setItem('matomeln_other_blogs_settings', JSON.stringify({
-        postToOtherBlogs,
-        selectedOtherBlogIds,
-      }));
-    }
-  }, [isDevMode, otherBlogSettingsLoaded, postToOtherBlogs, selectedOtherBlogIds]);
+  }, []);
 
   // モーダルが開いたら自動でHTML生成
   useEffect(() => {

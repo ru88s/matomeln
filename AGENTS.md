@@ -53,6 +53,12 @@ export PATH="/Users/wataruyonamine/.cache/codex-runtimes/codex-primary-runtime/d
 - 認証情報やローカル設定を含むファイルを不用意にコミットしない。
 - 既存の未追跡・未コミット変更はユーザー作業の可能性があるため、勝手に削除・リセットしない。
 
+### フロントエンド状態管理
+- 同時投稿設定は `lib/settings-store.ts` と `hooks/useOtherBlogPostingSettings.ts` を唯一の読み書き経路にする。画面コンポーネントから `matomeln_other_blogs_settings` を直接操作しない。
+- メイン画面、設定モーダル、独立設定ページ、タグ発行画面は同じ設定フックを購読し、別々のローカルstateへ複製しない。
+- 複数画面で使う設定UIは `components/settings/` の共通セクションへ切り出す。設定キーや保存形式を画面ごとに増やさない。
+- コメントの表示順・アンカー順・レス1固定などの純粋ロジックは `lib/comment-ordering.ts` に置き、画面コンポーネント内へ重複実装しない。
+
 ## ライブドア複数ブログ投稿ルール - 重要
 
 ### 認証ユーザー名

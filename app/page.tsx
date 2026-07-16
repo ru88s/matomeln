@@ -12,13 +12,13 @@ import { Talk, Comment, CommentWithStyle, BlogSettings } from '@/lib/types';
 import type { TagSearchResult } from '@/lib/tag-thumbnail-cache';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useSettings } from '@/hooks/useSettings';
+import { useOtherBlogPostingSettings } from '@/hooks/useOtherBlogPostingSettings';
 import { ThumbnailCharacter } from '@/lib/types';
 import { logActivity, logError } from '@/lib/activity-log';
 import { useIsAdmin } from '@/lib/auth-context';
 import {
   ensureLifestyleBlogs,
   getOtherBlogPostSkipReason,
-  normalizeOtherBlogSelectionSettings,
   normalizeBlogSettingsForSharedAuth,
 } from '@/lib/blog-routing';
 import {
@@ -27,6 +27,8 @@ import {
 } from '@/lib/default-thumbnail';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import toast from 'react-hot-toast';
+import { keepFirstResponseFirst, sortCommentsByAnchorOrder } from '@/lib/comment-ordering';
+import { readOtherBlogPostingSettings } from '@/lib/settings-store';
 
 const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
   ssr: false,
@@ -85,94 +87,6 @@ function sanitizeCustomName(value: unknown): string {
   return trimmed;
 }
 
-// アンカー（>>数字）から参照先のレス番号を抽出
-function extractAnchor(body: string): number | null {
-  const match = body.match(/>>(\d+)/);
-  return match ? parseInt(match[1]) : null;
-}
-
-// 選択済みコメントをアンカー順に並び替え（画面表示と一致させる）
-// 入れ子アンカーや循環があっても、選択したレスは必ず1回だけ残す。
-function sortByAnchorOrder(selectedComments: CommentWithStyle[]): CommentWithStyle[] {
-  if (selectedComments.length === 0) return [];
-
-  const resIdToComment = new Map<number, CommentWithStyle>();
-  selectedComments.forEach(c => {
-    resIdToComment.set(Number(c.res_id), c);
-  });
-
-  const repliesMap = new Map<number, CommentWithStyle[]>();
-  const childCommentIds = new Set<string>();
-
-  selectedComments.forEach(comment => {
-    const anchorId = extractAnchor(comment.body);
-    if (anchorId !== null && resIdToComment.has(anchorId)) {
-      if (!repliesMap.has(anchorId)) {
-        repliesMap.set(anchorId, []);
-      }
-      repliesMap.get(anchorId)!.push(comment);
-      childCommentIds.add(comment.id);
-    }
-  });
-
-  const result: CommentWithStyle[] = [];
-  const addedCommentIds = new Set<string>();
-  const visitingCommentIds = new Set<string>();
-
-  const sortedComments = [...selectedComments].sort((a, b) => Number(a.res_id) - Number(b.res_id));
-  repliesMap.forEach(replies => {
-    replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-  });
-
-  const addWithReplies = (comment: CommentWithStyle) => {
-    if (addedCommentIds.has(comment.id)) {
-      return;
-    }
-
-    if (visitingCommentIds.has(comment.id)) {
-      result.push(comment);
-      addedCommentIds.add(comment.id);
-      return;
-    }
-
-    visitingCommentIds.add(comment.id);
-    result.push(comment);
-    addedCommentIds.add(comment.id);
-
-    const replies = repliesMap.get(Number(comment.res_id));
-    if (replies) {
-      replies.forEach(addWithReplies);
-    }
-    visitingCommentIds.delete(comment.id);
-  };
-
-  sortedComments.forEach(comment => {
-    if (!childCommentIds.has(comment.id)) {
-      addWithReplies(comment);
-    }
-  });
-
-  selectedComments.forEach(comment => {
-    if (!addedCommentIds.has(comment.id)) {
-      addWithReplies(comment);
-    }
-  });
-
-  return result;
-}
-
-function keepSourceFirstCommentAsBody(comments: CommentWithStyle[]): CommentWithStyle[] {
-  const sourceFirstIndex = comments.findIndex((comment) => Number(comment.res_id) === 1);
-  if (sourceFirstIndex <= 0) return comments;
-
-  const sourceFirstComment = comments[sourceFirstIndex];
-  return [
-    sourceFirstComment,
-    ...comments.slice(0, sourceFirstIndex),
-    ...comments.slice(sourceFirstIndex + 1),
-  ];
-}
-
 function normalizeBlogSettingsForAuth(blogs: BlogSettings[]): BlogSettings[] {
   return ensureLifestyleBlogs(normalizeBlogSettingsForSharedAuth(blogs));
 }
@@ -198,16 +112,6 @@ function isExpectedBulkSkipError(errorMsg: string): boolean {
   return patterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
 }
 
-type OtherBlogPostingSettings = {
-  postToOtherBlogs: boolean;
-  selectedOtherBlogIds: string[];
-};
-
-const DEFAULT_OTHER_BLOG_POSTING_SETTINGS: OtherBlogPostingSettings = {
-  postToOtherBlogs: false,
-  selectedOtherBlogIds: [],
-};
-
 export default function Home() {
   const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -226,7 +130,7 @@ export default function Home() {
     maxHistorySize: 30
   });
   const setSelectedComments = useCallback((nextComments: CommentWithStyle[]) => {
-    setSelectedCommentsValue(keepSourceFirstCommentAsBody(nextComments));
+    setSelectedCommentsValue(keepFirstResponseFirst(nextComments));
   }, [setSelectedCommentsValue]);
   const [showHTMLModal, setShowHTMLModal] = useState(false);
   const [htmlModalComments, setHtmlModalComments] = useState<CommentWithStyle[]>([]);
@@ -243,7 +147,10 @@ export default function Home() {
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [blogs, setBlogs] = useState<BlogSettings[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
-  const [otherBlogPostingSettings, setOtherBlogPostingSettings] = useState<OtherBlogPostingSettings>(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
+  const {
+    settings: otherBlogPostingSettings,
+    setSettings: setOtherBlogPostingSettings,
+  } = useOtherBlogPostingSettings();
   const [showIdInHtml, setShowIdInHtml] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理後にモーダルを開くための期待するコメント数
@@ -282,24 +189,6 @@ export default function Home() {
       }
     } else {
       setIsDevMode(false);
-    }
-    const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
-    if (savedOtherBlogsSettings) {
-      try {
-        const normalizedOtherBlogsSettings = normalizeOtherBlogSelectionSettings(savedOtherBlogsSettings) || savedOtherBlogsSettings;
-        if (normalizedOtherBlogsSettings !== savedOtherBlogsSettings) {
-          localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
-        }
-        const settings = JSON.parse(normalizedOtherBlogsSettings) as Partial<OtherBlogPostingSettings>;
-        setOtherBlogPostingSettings({
-          postToOtherBlogs: settings.postToOtherBlogs === true,
-          selectedOtherBlogIds: Array.isArray(settings.selectedOtherBlogIds) ? settings.selectedOtherBlogIds : [],
-        });
-      } catch {
-        setOtherBlogPostingSettings(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
-      }
-    } else {
-      setOtherBlogPostingSettings(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
     }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
@@ -1130,7 +1019,7 @@ export default function Home() {
       toast.loading('ブログに投稿中...', { id: 'bulk-step' });
 
       // アンカー順に並び替え
-      const sortedComments = sortByAnchorOrder(newSelectedComments);
+      const sortedComments = sortCommentsByAnchorOrder(newSelectedComments);
 
       // HTML生成（記事要点・編集部まとめを含む）
       const { generateMatomeHTML } = await import('@/lib/html-templates');
@@ -1251,10 +1140,8 @@ export default function Home() {
       // 4.5. 他のブログにも同時投稿（設定がある場合）
       // =====================
       try {
-        const otherBlogsSettingsStr = localStorage.getItem('matomeln_other_blogs_settings');
-        if (otherBlogsSettingsStr) {
-          const otherBlogsSettings = JSON.parse(otherBlogsSettingsStr);
-          if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds?.length > 0) {
+        const otherBlogsSettings = readOtherBlogPostingSettings();
+        if (otherBlogsSettings.postToOtherBlogs && otherBlogsSettings.selectedOtherBlogIds.length > 0) {
             const blogsStr = localStorage.getItem('blogSettingsList');
             if (blogsStr) {
               const allBlogs = normalizeBlogSettingsForAuth(JSON.parse(blogsStr) as BlogSettings[]);
@@ -1332,7 +1219,6 @@ export default function Home() {
               }
             }
           }
-        }
       } catch (otherBlogsError) {
         console.warn('他のブログへの投稿処理エラー:', otherBlogsError);
         // エラーでも続行

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { LinkCard } from '@/components/LinkCard';
+import { buildDisplayCommentOrder, extractCommentAnchor, orderSelectedCommentsByDisplay } from '@/lib/comment-ordering';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -655,92 +656,6 @@ function renderBodyWithAnchorsAndLinks(body: string, color: string | undefined, 
   return elements;
 }
 
-// コメントからアンカー（>>番号）を抽出する関数
-function extractAnchor(body: string): number | null {
-  const match = body.match(/>>(\d+)/);
-  if (match) {
-    return parseInt(match[1]);
-  }
-  return null;
-}
-
-function buildFullDisplayComments(
-  comments: Comment[],
-  commentPositions: Record<string, number>,
-  editedComments: Record<string, string>,
-): Array<Comment & { body: string; sortKey: number }> {
-  const resIdToComment = new Map<number, Comment>();
-  comments.forEach(c => {
-    resIdToComment.set(Number(c.res_id), c);
-  });
-
-  const repliesMap = new Map<number, Comment[]>();
-  const commentsWithAnchor = new Set<string>();
-
-  comments.forEach(comment => {
-    const body = editedComments[comment.id] || comment.body;
-    const anchorId = extractAnchor(body);
-    if (anchorId !== null && resIdToComment.has(anchorId)) {
-      if (!repliesMap.has(anchorId)) {
-        repliesMap.set(anchorId, []);
-      }
-      repliesMap.get(anchorId)!.push(comment);
-      commentsWithAnchor.add(comment.id);
-    }
-  });
-
-  const result: Array<Comment & { body: string; sortKey: number }> = [];
-  let sortIndex = 0;
-
-  comments.forEach((c) => {
-    if (commentsWithAnchor.has(c.id)) {
-      return;
-    }
-
-    const targetPosition = commentPositions[c.id] !== undefined
-      ? commentPositions[c.id]
-      : sortIndex;
-
-    result.push({
-      ...c,
-      body: editedComments[c.id] || c.body,
-      sortKey: targetPosition
-    });
-    sortIndex++;
-
-    const replies = repliesMap.get(Number(c.res_id));
-    if (replies) {
-      replies.sort((a, b) => Number(a.res_id) - Number(b.res_id));
-      replies.forEach(reply => {
-        const replyPosition = commentPositions[reply.id] !== undefined
-          ? commentPositions[reply.id]
-          : sortIndex;
-        result.push({
-          ...reply,
-          body: editedComments[reply.id] || reply.body,
-          sortKey: replyPosition
-        });
-        sortIndex++;
-      });
-    }
-  });
-
-  return result.sort((a, b) => a.sortKey - b.sortKey);
-}
-
-function orderSelectedCommentsByDisplay(
-  selected: CommentWithStyle[],
-  displayComments: Comment[],
-): CommentWithStyle[] {
-  const displayOrder = new Map(displayComments.map((comment, index) => [comment.id, index]));
-  return [...selected].sort((a, b) => {
-    const aOrder = displayOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-    const bOrder = displayOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    return Number(a.res_id) - Number(b.res_id);
-  });
-}
-
 export default function CommentPicker({
   comments,
   selectedComments,
@@ -798,7 +713,7 @@ export default function CommentPicker({
   }, [comments, excludedNameIds]);
 
   const fullDisplayComments = useMemo(() => {
-    return buildFullDisplayComments(visibleComments, commentPositions, editedComments);
+    return buildDisplayCommentOrder(visibleComments, commentPositions, editedComments);
   }, [visibleComments, commentPositions, editedComments]);
 
   // toggleComment関数を先に定義（useCallbackでメモ化）
@@ -1058,7 +973,7 @@ export default function CommentPicker({
             body: editedComments[comment.id] || comment.body
           };
           const isSelected = selectedComments.some(sc => sc.id === comment.id);
-          const anchorId = extractAnchor(displayComment.body);
+          const anchorId = extractCommentAnchor(displayComment.body);
           const anchorTargetIsShown = anchorId !== null && (
             showOnlySelected
               ? arrangedComments.some(c => c.id !== comment.id && Number(c.res_id) === anchorId)

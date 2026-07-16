@@ -6,7 +6,9 @@ import toast from 'react-hot-toast';
 import { BlogSettings, ThumbnailCharacter, BlogType, ThumbnailProvider, OpenAIImageModel, OpenAIImageQuality } from '@/lib/types';
 import { generateThumbnail, generateThumbnailWithOpenAI, base64ToDataUrl } from '@/lib/ai-thumbnail';
 import { useIsAdmin } from '@/lib/auth-context';
-import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog, normalizeOtherBlogSelectionSettings } from '@/lib/blog-routing';
+import { useOtherBlogPostingSettings } from '@/hooks/useOtherBlogPostingSettings';
+import SimultaneousPostingSection from '@/components/settings/SimultaneousPostingSection';
+import { writeSetting } from '@/lib/settings-store';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -78,9 +80,10 @@ export default function SettingsModal({
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ThumbnailCharacter | null>(null);
   const [characterForm, setCharacterForm] = useState({ name: '', description: '', imageUrl: '' });
-  // 他のブログにも投稿設定
-  const [postToOtherBlogs, setPostToOtherBlogs] = useState(false);
-  const [selectedOtherBlogIds, setSelectedOtherBlogIds] = useState<string[]>([]);
+  const {
+    settings: { postToOtherBlogs, selectedOtherBlogIds },
+    setSettings: setOtherBlogPostingSettings,
+  } = useOtherBlogPostingSettings();
   const [blogTestResults, setBlogTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
   const [testingBlogId, setTestingBlogId] = useState<string | null>(null);
   // テスト生成関連
@@ -102,11 +105,7 @@ export default function SettingsModal({
   // localStorage書き込み + サーバー同期のヘルパー
   const persistSettings = useCallback((updates: Record<string, string | null>) => {
     for (const [key, value] of Object.entries(updates)) {
-      if (value === null) {
-        localStorage.removeItem(key);
-      } else {
-        localStorage.setItem(key, value);
-      }
+      writeSetting(key, value);
     }
     onSaveSettings?.(updates);
   }, [onSaveSettings]);
@@ -166,21 +165,6 @@ export default function SettingsModal({
           setThumbnailCharacters(JSON.parse(savedCharacters));
         } catch {
           setThumbnailCharacters([]);
-        }
-      }
-      // 他のブログにも投稿設定を読み込み
-      const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
-      if (savedOtherBlogsSettings) {
-        try {
-          const normalizedOtherBlogsSettings = normalizeOtherBlogSelectionSettings(savedOtherBlogsSettings) || savedOtherBlogsSettings;
-          if (normalizedOtherBlogsSettings !== savedOtherBlogsSettings) {
-            localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
-          }
-          const settings = JSON.parse(normalizedOtherBlogsSettings);
-          setPostToOtherBlogs(settings.postToOtherBlogs || false);
-          setSelectedOtherBlogIds(settings.selectedOtherBlogIds || []);
-        } catch {
-          // パースエラーは無視
         }
       }
       // カスタムフッターHTMLを読み込み
@@ -245,12 +229,11 @@ export default function SettingsModal({
 
   // 他のブログにも投稿設定を保存
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
-    setPostToOtherBlogs(newPostToOtherBlogs);
-    setSelectedOtherBlogIds(newSelectedOtherBlogIds);
     const settings = {
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
     };
+    setOtherBlogPostingSettings(settings);
     persistSettings({ matomeln_other_blogs_settings: JSON.stringify(settings) });
     onOtherBlogSettingsChange?.(settings);
   };
@@ -292,8 +275,6 @@ export default function SettingsModal({
   };
 
   // 他のブログ一覧（選択中のブログを除く）
-  const otherBlogs = blogs.filter(b => b.id !== selectedBlogId);
-
   // サンプルタイトル一覧
   const sampleTitles = [
     '【悲報】ワイ、彼女にフラれる',
@@ -1211,83 +1192,17 @@ export default function SettingsModal({
               </div>
             )}
 
-            {/* 複数ブログ同時投稿（管理者 & 2つ以上のブログがある場合のみ） */}
             {isAdmin && blogs.length > 1 && (
-              <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <h3 className="font-bold text-gray-800">複数ブログ同時投稿</h3>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <HeroInput
-                      type="checkbox"
-                      checked={postToOtherBlogs}
-                      onChange={(e) => {
-                        const newValue = e.target.checked;
-                        if (!newValue) {
-                          saveOtherBlogsSettings(false, []);
-                        } else {
-                          saveOtherBlogsSettings(true, selectedOtherBlogIds);
-                        }
-                      }}
-                      className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded cursor-pointer"
-                    />
-                    <span className="text-sm font-bold text-purple-700">他のブログにも同時投稿する</span>
-                  </label>
-
-                  {postToOtherBlogs && otherBlogs.length > 0 && (
-                    <div className="space-y-2 pl-6">
-                      {otherBlogs.map(blog => (
-                        <label key={blog.id} className="flex items-center gap-2 cursor-pointer">
-                          <HeroInput
-                            type="checkbox"
-                            checked={selectedOtherBlogIds.includes(blog.id)}
-                            onChange={(e) => {
-                              const newIds = e.target.checked
-                                ? [...selectedOtherBlogIds, blog.id]
-                                : selectedOtherBlogIds.filter(id => id !== blog.id);
-                              saveOtherBlogsSettings(true, newIds);
-                            }}
-                            className="h-4 w-4 text-purple-500 focus:ring-purple-400 border-gray-300 rounded cursor-pointer"
-                          />
-                          <span className="text-sm text-gray-700">{blog.name}</span>
-                          {isLifestyleBlog(blog) && (
-                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">
-                              {LIFE_BLOG_ROUTING_BADGE}
-                            </span>
-                          )}
-                          <HeroButton
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              testBlogConnection(blog);
-                            }}
-                            disabled={testingBlogId === blog.id}
-                            className="ml-auto rounded border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-50 disabled:cursor-wait disabled:opacity-60"
-                          >
-                            {testingBlogId === blog.id ? '確認中' : '接続テスト'}
-                          </HeroButton>
-                          {blogTestResults[blog.id] && (
-                            <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
-                              blogTestResults[blog.id].ok
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {blogTestResults[blog.id].message}
-                            </span>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-purple-600">
-                    投稿時に選択したブログにも同じ内容が投稿されます
-                  </p>
-                </div>
-              </div>
+              <SimultaneousPostingSection
+                blogs={blogs}
+                selectedBlogId={selectedBlogId}
+                enabled={postToOtherBlogs}
+                selectedBlogIds={selectedOtherBlogIds}
+                testingBlogId={testingBlogId}
+                testResults={blogTestResults}
+                onChange={saveOtherBlogsSettings}
+                onTest={testBlogConnection}
+              />
             )}
           </div>
         </div>
