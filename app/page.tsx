@@ -1405,7 +1405,7 @@ export default function Home() {
   }, [resetHistory, setSelectedComments]);
 
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
       {/* メインコンテンツ */}
       <div className="flex-1 min-w-0 space-y-6">
         <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-center text-xs font-bold text-orange-700 sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis">

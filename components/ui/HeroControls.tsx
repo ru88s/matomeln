@@ -17,11 +17,12 @@ type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
 
 export const HeroButton = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ disabled, className = '', type = 'button', ...props }, ref) => (
+  ({ disabled, className = '', type = 'button', variant = 'tertiary', ...props }, ref) => (
     <HeroUIButton
       {...props}
       ref={ref}
       type={type}
+      variant={variant}
       isDisabled={disabled}
       className={`matomeln-hero-button ${className}`}
     />

@@ -32,12 +32,54 @@ body {
   border-radius: 8px;
   font-weight: 600;
   letter-spacing: 0;
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
 
 .matomeln-hero-button[data-pressed] {
   transform: scale(0.98);
 }
+
+.matomeln-hero-button:not([data-disabled]):hover {
+  filter: brightness(0.96);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 14%);
+}
+
+.matomeln-hero-button[data-disabled] {
+  background: #e4e4e7 !important;
+  border-color: #d4d4d8 !important;
+  color: #71717a !important;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.matomeln-hero-button:focus-visible {
+  outline: 3px solid rgb(249 115 22 / 35%);
+  outline-offset: 2px;
+}
+
+/* HeroUI variants are intentionally lower priority than product action colors. */
+.matomeln-hero-button.bg-blue-500 { background-color: #3b82f6 !important; }
+.matomeln-hero-button.bg-blue-600 { background-color: #2563eb !important; }
+.matomeln-hero-button.bg-blue-700 { background-color: #1d4ed8 !important; }
+.matomeln-hero-button.bg-purple-400 { background-color: #c084fc !important; }
+.matomeln-hero-button.bg-purple-500 { background-color: #a855f7 !important; }
+.matomeln-hero-button.bg-purple-600 { background-color: #9333ea !important; }
+.matomeln-hero-button.bg-green-400 { background-color: #4ade80 !important; }
+.matomeln-hero-button.bg-green-500 { background-color: #22c55e !important; }
+.matomeln-hero-button.bg-green-600 { background-color: #16a34a !important; }
+.matomeln-hero-button.bg-green-700 { background-color: #15803d !important; }
+.matomeln-hero-button.bg-orange-400 { background-color: #fb923c !important; }
+.matomeln-hero-button.bg-orange-500 { background-color: #f97316 !important; }
+.matomeln-hero-button.bg-orange-600 { background-color: #ea580c !important; }
+.matomeln-hero-button.bg-red-500 { background-color: #ef4444 !important; }
+.matomeln-hero-button.bg-red-600 { background-color: #dc2626 !important; }
+.matomeln-hero-button.bg-indigo-600 { background-color: #4f46e5 !important; }
+.matomeln-hero-button.bg-indigo-700 { background-color: #4338ca !important; }
+.matomeln-hero-button.bg-pink-500 { background-color: #ec4899 !important; }
+.matomeln-hero-button.bg-rose-500 { background-color: #f43f5e !important; }
+.matomeln-hero-button.text-white { color: #ffffff !important; }
 
 .matomeln-hero-input,
 .matomeln-hero-textarea,

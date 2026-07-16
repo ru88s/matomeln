@@ -57,8 +57,8 @@ export default function SettingsSidebar({
   const simultaneousPostNames = simultaneousPostBlogs.map((blog) => blog.name).join('・');
 
   return (
-    <div className="w-56 flex-shrink-0">
-      <div className="sticky top-20 bg-white rounded-2xl border border-orange-200 p-4 shadow-sm space-y-4">
+    <div className="w-full flex-shrink-0 lg:w-56">
+      <div className="bg-white rounded-lg border border-orange-200 p-4 shadow-sm space-y-4 lg:sticky lg:top-20">
         <div id="auto-run-sidebar-slot" />
 
         <div className="border-t border-gray-100 pt-3">
