@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Comment } from '@/lib/types';
+import { BlogSettings, Comment } from '@/lib/types';
 
 interface SettingsSidebarProps {
   comments: Comment[];
@@ -17,6 +17,11 @@ interface SettingsSidebarProps {
   onShowOnlySelectedChange: (show: boolean) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  blogs: BlogSettings[];
+  selectedBlogId: string | null;
+  postToOtherBlogs: boolean;
+  selectedOtherBlogIds: string[];
+  onOpenSettings: () => void;
 }
 
 export default function SettingsSidebar({
@@ -33,6 +38,11 @@ export default function SettingsSidebar({
   onShowOnlySelectedChange,
   onSelectAll,
   onDeselectAll,
+  blogs,
+  selectedBlogId,
+  postToOtherBlogs,
+  selectedOtherBlogIds,
+  onOpenSettings,
 }: SettingsSidebarProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -40,11 +50,41 @@ export default function SettingsSidebar({
   const firstPosterId = comments[0]?.name_id;
   // スレ主のコメント数を取得
   const firstPosterCount = firstPosterId ? comments.filter(c => c.name_id === firstPosterId).length : 0;
+  const simultaneousPostBlogs = postToOtherBlogs
+    ? blogs.filter((blog) => blog.id !== selectedBlogId && selectedOtherBlogIds.includes(blog.id))
+    : [];
+  const simultaneousPostNames = simultaneousPostBlogs.map((blog) => blog.name).join('・');
 
   return (
     <div className="w-56 flex-shrink-0">
       <div className="sticky top-20 bg-white rounded-2xl border border-orange-200 p-4 shadow-sm space-y-4">
         <div id="auto-run-sidebar-slot" />
+
+        <div className="border-t border-gray-100 pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-gray-600">同時投稿先</span>
+            <span className={`text-xs font-bold ${
+              simultaneousPostBlogs.length > 0 ? 'text-purple-700' : 'text-gray-400'
+            }`}>
+              {simultaneousPostBlogs.length > 0 ? `${simultaneousPostBlogs.length}サイト` : 'OFF'}
+            </span>
+          </div>
+          <p
+            title={simultaneousPostNames || undefined}
+            className={`mt-1 truncate text-xs ${
+              simultaneousPostBlogs.length > 0 ? 'text-gray-700' : 'text-gray-400'
+            }`}
+          >
+            {simultaneousPostNames || '投稿先は未選択'}
+          </p>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="mt-2 text-xs font-bold text-purple-700 hover:text-purple-900 cursor-pointer"
+          >
+            同時投稿を設定
+          </button>
+        </div>
 
         {/* 選択状況 - 最も重要なので一番上 */}
         <div className="space-y-3">

@@ -30,6 +30,7 @@ interface SettingsModalProps {
   onSelectedBlogIdChange: (id: string | null) => void;
   // サーバー同期
   onSaveSettings?: (updates: Record<string, string | null>) => void;
+  onOtherBlogSettingsChange?: (settings: { postToOtherBlogs: boolean; selectedOtherBlogIds: string[] }) => void;
 }
 
 export default function SettingsModal({
@@ -50,6 +51,7 @@ export default function SettingsModal({
   onBlogsChange,
   onSelectedBlogIdChange,
   onSaveSettings,
+  onOtherBlogSettingsChange,
 }: SettingsModalProps) {
   const isAdmin = useIsAdmin();
   const [claudeApiKey, setClaudeApiKey] = useState('');
@@ -244,10 +246,12 @@ export default function SettingsModal({
   const saveOtherBlogsSettings = (newPostToOtherBlogs: boolean, newSelectedOtherBlogIds: string[]) => {
     setPostToOtherBlogs(newPostToOtherBlogs);
     setSelectedOtherBlogIds(newSelectedOtherBlogIds);
-    persistSettings({ matomeln_other_blogs_settings: JSON.stringify({
+    const settings = {
       postToOtherBlogs: newPostToOtherBlogs,
       selectedOtherBlogIds: newSelectedOtherBlogIds,
-    }) });
+    };
+    persistSettings({ matomeln_other_blogs_settings: JSON.stringify(settings) });
+    onOtherBlogSettingsChange?.(settings);
   };
 
   const testBlogConnection = async (blog: BlogSettings) => {

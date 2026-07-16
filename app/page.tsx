@@ -197,6 +197,16 @@ function isExpectedBulkSkipError(errorMsg: string): boolean {
   return patterns.some(pattern => errorMsg.toLowerCase().includes(pattern.toLowerCase()));
 }
 
+type OtherBlogPostingSettings = {
+  postToOtherBlogs: boolean;
+  selectedOtherBlogIds: string[];
+};
+
+const DEFAULT_OTHER_BLOG_POSTING_SETTINGS: OtherBlogPostingSettings = {
+  postToOtherBlogs: false,
+  selectedOtherBlogIds: [],
+};
+
 export default function Home() {
   const isAdmin = useIsAdmin();
   const [loading, setLoading] = useState(false);
@@ -232,6 +242,7 @@ export default function Home() {
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [blogs, setBlogs] = useState<BlogSettings[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
+  const [otherBlogPostingSettings, setOtherBlogPostingSettings] = useState<OtherBlogPostingSettings>(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
   const [showIdInHtml, setShowIdInHtml] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
   // 一括処理後にモーダルを開くための期待するコメント数
@@ -271,6 +282,24 @@ export default function Home() {
     } else {
       setIsDevMode(false);
     }
+    const savedOtherBlogsSettings = localStorage.getItem('matomeln_other_blogs_settings');
+    if (savedOtherBlogsSettings) {
+      try {
+        const normalizedOtherBlogsSettings = normalizeOtherBlogSelectionSettings(savedOtherBlogsSettings) || savedOtherBlogsSettings;
+        if (normalizedOtherBlogsSettings !== savedOtherBlogsSettings) {
+          localStorage.setItem('matomeln_other_blogs_settings', normalizedOtherBlogsSettings);
+        }
+        const settings = JSON.parse(normalizedOtherBlogsSettings) as Partial<OtherBlogPostingSettings>;
+        setOtherBlogPostingSettings({
+          postToOtherBlogs: settings.postToOtherBlogs === true,
+          selectedOtherBlogIds: Array.isArray(settings.selectedOtherBlogIds) ? settings.selectedOtherBlogIds : [],
+        });
+      } catch {
+        setOtherBlogPostingSettings(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
+      }
+    } else {
+      setOtherBlogPostingSettings(DEFAULT_OTHER_BLOG_POSTING_SETTINGS);
+    }
     // ブログ設定を読み込み
     const savedBlogs = localStorage.getItem('blogSettingsList');
     if (savedBlogs) {
@@ -278,10 +307,6 @@ export default function Home() {
       try {
         blogsList = normalizeBlogSettingsForAuth(JSON.parse(savedBlogs) as BlogSettings[]);
         localStorage.setItem('blogSettingsList', JSON.stringify(blogsList));
-        const otherBlogsSettings = normalizeOtherBlogSelectionSettings(localStorage.getItem('matomeln_other_blogs_settings'));
-        if (otherBlogsSettings) {
-          localStorage.setItem('matomeln_other_blogs_settings', otherBlogsSettings);
-        }
       } catch {
         console.warn('blogSettingsList の読み込みに失敗。デフォルト値を使用します。');
       }
@@ -1565,6 +1590,11 @@ export default function Home() {
         onShowOnlySelectedChange={setShowOnlySelected}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
+        blogs={blogs}
+        selectedBlogId={selectedBlogId}
+        postToOtherBlogs={otherBlogPostingSettings.postToOtherBlogs}
+        selectedOtherBlogIds={otherBlogPostingSettings.selectedOtherBlogIds}
+        onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       {/* 設定モーダル */}
@@ -1587,6 +1617,7 @@ export default function Home() {
           onBlogsChange={handleBlogsChange}
           onSelectedBlogIdChange={handleSelectedBlogIdChange}
           onSaveSettings={saveSettings}
+          onOtherBlogSettingsChange={setOtherBlogPostingSettings}
         />
       )}
     </div>
