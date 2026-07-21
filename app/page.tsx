@@ -1094,7 +1094,23 @@ export default function Home() {
       const blogPostResults: BlogPostResult[] = [];
       let postResponse: Response;
       try {
-        if (blogSettings.blogType === 'girls-matome') {
+        if (blogSettings.blogType === 'kotoria') {
+          postResponse = await fetchWithTimeout('/api/proxy/postKotoria', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              apiUrl: blogSettings.blogId,
+              apiKey: blogSettings.apiKey,
+              title: generatedHTML.title,
+              body: fullBody,
+              sourceUrl: url,
+              tags: talk.tag_names?.join(',') || '',
+              thumbnailUrl: generatedThumbnailUrl || '',
+            }),
+          }, 30000);
+        } else if (blogSettings.blogType === 'girls-matome') {
           // ガールズまとめ速報へ投稿
           postResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
             method: 'POST',
@@ -1171,7 +1187,23 @@ export default function Home() {
                     continue;
                   }
 
-                  if (blog.blogType === 'girls-matome') {
+                  if (blog.blogType === 'kotoria') {
+                    otherResponse = await fetchWithTimeout('/api/proxy/postKotoria', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        apiUrl: blog.blogId,
+                        apiKey: blog.apiKey,
+                        title: generatedHTML.title,
+                        body: fullBody,
+                        sourceUrl: url,
+                        tags: talk.tag_names?.join(',') || '',
+                        thumbnailUrl: generatedThumbnailUrl || '',
+                      }),
+                    }, 30000);
+                  } else if (blog.blogType === 'girls-matome') {
                     // ガールズまとめ速報へ投稿
                     otherResponse = await fetchWithTimeout('/api/proxy/postGirlsMatome', {
                       method: 'POST',
