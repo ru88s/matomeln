@@ -9,6 +9,7 @@ interface PostKotoriaRequest {
   sourceUrl?: string;
   tags?: string;
   thumbnailUrl?: string;
+  status?: 'draft' | 'published';
 }
 
 function generateExcerpt(html: string, maxLength: number = 160): string {
@@ -37,7 +38,7 @@ async function readJsonResponse(response: Response): Promise<{ success?: boolean
 
 export async function POST(request: NextRequest) {
   try {
-    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl } = await request.json() as PostKotoriaRequest;
+    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl, status = 'published' } = await request.json() as PostKotoriaRequest;
 
     if (!apiUrl || !apiKey || !title || !body) {
       return NextResponse.json(
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
         sourceUrl: sourceUrl || '',
         tags: tags || '',
         thumbnailUrl: thumbnailUrl || '',
-        status: 'published',
+        status,
       }),
     });
 

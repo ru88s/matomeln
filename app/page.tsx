@@ -1108,6 +1108,7 @@ export default function Home() {
               sourceUrl: url,
               tags: talk.tag_names?.join(',') || '',
               thumbnailUrl: generatedThumbnailUrl || '',
+              status: 'draft',
             }),
           }, 30000);
         } else if (blogSettings.blogType === 'girls-matome') {
@@ -1201,6 +1202,7 @@ export default function Home() {
                         sourceUrl: url,
                         tags: talk.tag_names?.join(',') || '',
                         thumbnailUrl: generatedThumbnailUrl || '',
+                        status: 'draft',
                       }),
                     }, 30000);
                   } else if (blog.blogType === 'girls-matome') {

@@ -39,7 +39,7 @@ export async function onRequest(context) {
 
   try {
     const requestData = await context.request.json();
-    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl } = requestData;
+    const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl, status = 'published' } = requestData;
 
     if (!apiUrl || !apiKey || !title || !body) {
       return new Response(JSON.stringify({
@@ -70,7 +70,7 @@ export async function onRequest(context) {
         sourceUrl: sourceUrl || '',
         tags: tags || '',
         thumbnailUrl: thumbnailUrl || '',
-        status: 'published',
+        status,
       }),
     });
 
