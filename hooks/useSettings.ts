@@ -51,6 +51,37 @@ function hasSelectedOtherBlogs(value: string | null | undefined): boolean {
   }
 }
 
+function mergeBlogSettingsLists(
+  serverValue: string | null | undefined,
+  localValue: string | null | undefined
+): { value: string | null | undefined; changed: boolean } {
+  if (!localValue) return { value: serverValue, changed: false };
+
+  try {
+    const serverBlogs = serverValue ? JSON.parse(serverValue) as BlogSettings[] : [];
+    const localBlogs = JSON.parse(localValue) as BlogSettings[];
+    if (!Array.isArray(serverBlogs) || !Array.isArray(localBlogs)) {
+      return { value: serverValue, changed: false };
+    }
+
+    const identity = (blog: BlogSettings) => {
+      const blogType = blog.blogType || 'livedoor';
+      const blogId = blog.blogId.trim().replace(/\/+$/, '').toLowerCase();
+      return `${blogType}:${blogId}`;
+    };
+    const mergedByIdentity = new Map(serverBlogs.map((blog) => [identity(blog), blog]));
+    for (const blog of localBlogs) {
+      if (blog?.id && blog.blogId) mergedByIdentity.set(identity(blog), blog);
+    }
+
+    const merged = normalizeBlogSettingsList(JSON.stringify([...mergedByIdentity.values()]));
+    const normalizedServer = normalizeBlogSettingsList(JSON.stringify(serverBlogs));
+    return { value: merged, changed: merged !== normalizedServer };
+  } catch {
+    return { value: serverValue, changed: false };
+  }
+}
+
 /**
  * The local development settings endpoint is memory-backed and resets when the
  * dev server restarts. Do not let that empty default erase a valid browser
@@ -64,6 +95,15 @@ function mergeServerSettingsWithDurableLocal(
   let shouldRestoreServer = false;
   const localOtherBlogs = localSettings.matomeln_other_blogs_settings;
   const serverOtherBlogs = serverSettings.matomeln_other_blogs_settings;
+
+  const mergedBlogs = mergeBlogSettingsLists(
+    serverSettings.blogSettingsList,
+    localSettings.blogSettingsList
+  );
+  if (mergedBlogs.changed && mergedBlogs.value) {
+    merged.blogSettingsList = mergedBlogs.value;
+    shouldRestoreServer = true;
+  }
 
   if (hasSelectedOtherBlogs(localOtherBlogs) && !hasSelectedOtherBlogs(serverOtherBlogs)) {
     merged.matomeln_other_blogs_settings = localOtherBlogs;
