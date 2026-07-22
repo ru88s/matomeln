@@ -23,7 +23,7 @@ function generateExcerpt(html: string, maxLength: number = 160): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length <= maxLength ? text : `${text.substring(0, maxLength)}...`;
+  return text.length <= maxLength ? text : `${text.substring(0, maxLength - 3)}...`;
 }
 
 async function readJsonResponse(response: Response): Promise<{ success?: boolean; data?: { url?: string }; error?: string }> {

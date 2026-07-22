@@ -2,7 +2,7 @@
 function generateExcerpt(body, maxLength = 160) {
   let text = body.replace(/<[^>]*>/g, '');
   text = text.replace(/\s+/g, ' ').trim();
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
 }
 
 async function readJsonResponse(response) {
