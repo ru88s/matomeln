@@ -1,8 +1,24 @@
+function truncateText(text, maxLength) {
+  const characters = Array.from(text);
+  return characters.length <= maxLength
+    ? text
+    : characters.slice(0, Math.max(0, maxLength - 3)).join('') + '...';
+}
+
 // HTML本文から抜粋を生成
-function generateExcerpt(body, maxLength = 160) {
-  let text = body.replace(/<[^>]*>/g, '');
-  text = text.replace(/\s+/g, ' ').trim();
-  return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+function generateExcerpt(body, maxLength = 120) {
+  let text = body
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return truncateText(text, maxLength);
 }
 
 async function readJsonResponse(response) {
@@ -98,7 +114,7 @@ export async function onRequest(context) {
       if (!ngWord || attempt === 5) break;
       payload.title = replaceKotoriaNgWord(payload.title, ngWord);
       payload.bodyHtml = replaceKotoriaNgWord(payload.bodyHtml, ngWord);
-      payload.excerpt = replaceKotoriaNgWord(payload.excerpt, ngWord);
+      payload.excerpt = truncateText(replaceKotoriaNgWord(payload.excerpt, ngWord), 120);
       payload.tags = replaceKotoriaNgWord(payload.tags, ngWord);
     }
 

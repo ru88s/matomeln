@@ -12,8 +12,17 @@ interface PostKotoriaRequest {
   status?: 'draft' | 'published';
 }
 
-function generateExcerpt(html: string, maxLength: number = 160): string {
+function truncateText(text: string, maxLength: number): string {
+  const characters = Array.from(text);
+  return characters.length <= maxLength
+    ? text
+    : `${characters.slice(0, Math.max(0, maxLength - 3)).join('')}...`;
+}
+
+function generateExcerpt(html: string, maxLength: number = 120): string {
   const text = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
@@ -23,7 +32,7 @@ function generateExcerpt(html: string, maxLength: number = 160): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length <= maxLength ? text : `${text.substring(0, maxLength - 3)}...`;
+  return truncateText(text, maxLength);
 }
 
 async function readJsonResponse(response: Response): Promise<{ success?: boolean; data?: { url?: string }; error?: string }> {
@@ -89,7 +98,7 @@ export async function POST(request: NextRequest) {
       if (!ngWord || attempt === 5) break;
       payload.title = replaceKotoriaNgWord(payload.title, ngWord);
       payload.bodyHtml = replaceKotoriaNgWord(payload.bodyHtml, ngWord);
-      payload.excerpt = replaceKotoriaNgWord(payload.excerpt, ngWord);
+      payload.excerpt = truncateText(replaceKotoriaNgWord(payload.excerpt, ngWord), 120);
       payload.tags = replaceKotoriaNgWord(payload.tags, ngWord);
     }
 
