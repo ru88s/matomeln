@@ -36,6 +36,19 @@ async function readJsonResponse(response: Response): Promise<{ success?: boolean
   }
 }
 
+const KOTORIA_WORD_REPLACEMENTS: Record<string, string> = {
+  '儲かる': '収益につながる',
+};
+
+function getKotoriaNgWord(error?: string): string | null {
+  return error?.match(/NGワード[「"]([^」"]+)[」"]/)?.[1] || null;
+}
+
+function replaceKotoriaNgWord(value: string, word: string): string {
+  const replacement = KOTORIA_WORD_REPLACEMENTS[word] || word.charAt(0);
+  return value.split(word).join(replacement);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { apiUrl, apiKey, title, body, sourceUrl, tags, thumbnailUrl, status = 'published' } = await request.json() as PostKotoriaRequest;
@@ -48,24 +61,37 @@ export async function POST(request: NextRequest) {
     }
 
     const endpoint = `${apiUrl.replace(/\/$/, '')}/api/kotoria/posts`;
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        title,
-        bodyHtml: body,
-        excerpt: generateExcerpt(body),
-        sourceUrl: sourceUrl || '',
-        tags: tags || '',
-        thumbnailUrl: thumbnailUrl || '',
-        status,
-      }),
-    });
+    const payload = {
+      title,
+      bodyHtml: body,
+      excerpt: generateExcerpt(body),
+      sourceUrl: sourceUrl || '',
+      tags: tags || '',
+      thumbnailUrl: thumbnailUrl || '',
+      status,
+    };
+    let response!: Response;
+    let data: { success?: boolean; data?: { url?: string }; error?: string } = {};
 
-    const data = await readJsonResponse(response);
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      data = await readJsonResponse(response);
+      if (response.ok) break;
+
+      const ngWord = response.status === 400 ? getKotoriaNgWord(data.error) : null;
+      if (!ngWord || attempt === 5) break;
+      payload.title = replaceKotoriaNgWord(payload.title, ngWord);
+      payload.bodyHtml = replaceKotoriaNgWord(payload.bodyHtml, ngWord);
+      payload.excerpt = replaceKotoriaNgWord(payload.excerpt, ngWord);
+      payload.tags = replaceKotoriaNgWord(payload.tags, ngWord);
+    }
 
     if (response.ok && data.success) {
       return NextResponse.json({
