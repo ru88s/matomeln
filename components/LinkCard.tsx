@@ -90,29 +90,43 @@ export function LinkCard({ url }: { url: string }) {
 
   if (loading) {
     return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors my-2"
-      >
-        <div className="text-sm text-gray-400 animate-pulse">読み込み中...</div>
-      </a>
+      <div className="my-2 flex min-h-28 w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-3.5">
+          <div className="h-3 w-24 animate-pulse rounded bg-gray-100" />
+          <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+        </div>
+        <div className="w-24 shrink-0 animate-pulse bg-gray-100 sm:w-32" />
+      </div>
     );
   }
 
   if (error || !ogp) {
+    let hostname = url;
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      // URLをそのまま表示
+    }
     return (
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block text-blue-500 hover:underline break-all"
+        className="my-2 block w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white px-3.5 py-3 no-underline shadow-sm transition-colors hover:bg-gray-50"
         onClick={(e) => e.stopPropagation()}
       >
-        {url}
+        <span className="block truncate text-sm font-semibold text-gray-900">{hostname}</span>
+        <span className="mt-1 line-clamp-2 block break-all text-xs leading-5 text-gray-500">{url}</span>
       </a>
     );
+  }
+
+  let hostname = url;
+  try {
+    hostname = ogp.siteName || new URL(url).hostname;
+  } catch {
+    hostname = ogp.siteName || url;
   }
 
   return (
@@ -120,38 +134,31 @@ export function LinkCard({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block border border-gray-200 rounded-lg overflow-hidden hover:bg-gray-50 transition-colors my-2 no-underline"
+      aria-label={ogp.title}
+      className="my-2 flex min-h-28 w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white no-underline shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex">
-        {ogp.image && (
-          <div className="flex-shrink-0 w-32 h-32">
-            <img
-              src={ogp.image}
-              alt={ogp.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center p-3.5">
+        <div className="mb-1 truncate text-xs font-semibold text-gray-500">{hostname}</div>
+        <div className="line-clamp-3 text-sm font-bold leading-5 text-gray-900 sm:line-clamp-2">{ogp.title}</div>
+        {ogp.description && (
+          <div className="mt-1.5 line-clamp-1 text-xs leading-5 text-gray-500 sm:line-clamp-2">{ogp.description}</div>
         )}
-        <div className="flex-1 p-3 min-w-0">
-          {ogp.title && (
-            <div className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
-              {ogp.title}
-            </div>
-          )}
-          {ogp.description && (
-            <div className="text-xs text-gray-600 line-clamp-2 mb-2">
-              {ogp.description}
-            </div>
-          )}
-          <div className="text-xs text-gray-400 truncate">
-            {ogp.siteName || (() => { try { return new URL(url).hostname; } catch { return url; } })()}
-          </div>
-        </div>
       </div>
+      {ogp.image && (
+        <div className="w-[32%] max-w-32 shrink-0 bg-gray-100">
+          <img
+            src={ogp.image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full min-h-28 w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.parentElement?.remove();
+            }}
+          />
+        </div>
+      )}
     </a>
   );
 }

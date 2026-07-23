@@ -481,6 +481,28 @@ function generateImgurEmbedHTML(dataId: string): string {
   return `<div class="imgur-embed-wrapper" style="margin:8px 0 10px;"><blockquote class="imgur-embed-pub" lang="en" data-id="${safeDataId}"></blockquote><script async src="//s.imgur.com/min/embed.js" charset="utf-8"></script></div>`;
 }
 
+function generateOgpCardHTML(
+  url: string,
+  title: string,
+  description: string,
+  image: string,
+  siteName: string
+): string {
+  const safeTitle = escapeHtml(title);
+  const safeDescription = escapeHtml(description);
+  const safeImage = image ? escapeHtml(image) : '';
+  const safeSiteName = escapeHtml(siteName);
+  const imageHTML = safeImage
+    ? `<div style="flex:0 0 min(32%,136px);align-self:stretch;min-height:112px;background:#f2f4f7;overflow:hidden;"><img src="${safeImage}" alt="" loading="lazy" decoding="async" style="display:block;width:100%;height:100%;min-height:112px;object-fit:cover;" /></div>`
+    : '';
+
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer" aria-label="${safeTitle}" style="display:flex;width:100%;max-width:680px;min-height:112px;border:1px solid #d9dee7;border-radius:8px;overflow:hidden;margin:6px 0 12px;text-decoration:none;color:#101828;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;"><div style="display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;padding:12px 14px;box-sizing:border-box;"><div style="margin:0 0 5px;color:#667085;font-size:11px;line-height:1.35;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeSiteName}</div><div style="margin:0;color:#101828;font-size:15px;line-height:1.45;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${safeTitle}</div>${safeDescription ? `<div style="margin:6px 0 0;color:#667085;font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${safeDescription}</div>` : ''}</div>${imageHTML}</a>`;
+}
+
+function generateOgpFallbackCardHTML(url: string, hostname: string): string {
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;width:100%;max-width:680px;border:1px solid #d9dee7;border-radius:8px;padding:12px 14px;margin:6px 0 12px;text-decoration:none;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;"><div style="color:#101828;font-size:13px;line-height:1.45;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hostname)}</div><div style="margin-top:4px;color:#667085;font-size:11px;line-height:1.4;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${url}</div></a>`;
+}
+
 // URLをリンクカードに変換する関数（OGP情報付き）
 // skipOgp=trueの場合はOGP取得をスキップしてシンプルなリンクに変換
 async function linkifyUrlsToCards(text: string, skipOgp?: boolean, embedImgur = true): Promise<string> {
@@ -571,15 +593,13 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean, embedImgur = 
       const ogp = ogpResults.get(placeholder);
 
       if (ogp && ogp.title) {
-        const safeImage = ogp.image ? escapeHtml(ogp.image) : '';
         let hostname = '';
         try {
           hostname = ogp.siteName || new URL(originalUrl).hostname;
         } catch {
           hostname = ogp.siteName || originalUrl;
         }
-        const ogpCardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin:8px 0 10px;text-decoration:none;color:inherit;background:#fff;"><div style="display:flex;">${safeImage ? `<div style="flex-shrink:0;width:128px;height:128px;"><img src="${safeImage}" alt="${escapeHtml(ogp.title)}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ''}<div style="flex:1;padding:12px;min-width:0;"><div style="font-weight:500;color:#1a1a1a;font-size:14px;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ogp.title)}</div>${ogp.description ? `<div style="font-size:12px;color:#666;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px;">${escapeHtml(ogp.description)}</div>` : ''}<div style="font-size:12px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hostname)}</div></div></div></a>`;
-        cardHTML = `${linkHTML}<br />\n${ogpCardHTML}`;
+        cardHTML = `${linkHTML}<br />${generateOgpCardHTML(url, ogp.title, ogp.description, ogp.image, hostname)}`;
       } else {
         let hostname = '';
         try {
@@ -587,8 +607,7 @@ async function linkifyUrlsToCards(text: string, skipOgp?: boolean, embedImgur = 
         } catch {
           hostname = originalUrl;
         }
-        const fallbackCardHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin:8px 0 10px;text-decoration:none;background:#f9f9f9;"><div style="font-size:13px;color:#333;margin-bottom:4px;word-break:break-all;">${url}</div><div style="font-size:11px;color:#666;">${escapeHtml(hostname)}</div></a>`;
-        cardHTML = `${linkHTML}<br />\n${fallbackCardHTML}`;
+        cardHTML = `${linkHTML}<br />${generateOgpFallbackCardHTML(url, hostname)}`;
       }
     }
 
