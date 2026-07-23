@@ -152,11 +152,15 @@ function shouldEmbedImgur(blogType?: BlogType): boolean {
 }
 
 function matomeResponseTailHtml(blogType?: BlogType): string {
-  return shouldUseKotoriaCompactHtml(blogType) ? '</div>\n<br />\n<br />' : '<br />\n<br /></div>';
+  return '\n</div>';
 }
 
-function normalizeBodyLineBreaksForKotoria(body: string): string {
-  return body.replace(/\r\n?/g, '\n');
+function normalizeCommentBodyLineBreaks(body: string): string {
+  return body
+    .replace(/\r\n?/g, '\n')
+    .replace(/^\n+|\n+$/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(^|\n)(>>?\d+[^\n]*)\n{2,}/g, '$1$2\n');
 }
 
 // シンプルなHTML
@@ -229,12 +233,10 @@ async function generateSimpleHTML(
 
     // 整形されたHTMLを生成
     if (hasAnchor) {
-      return `<div class="res_div"><div style="${indentStyle}" class="${headerClass}">
-${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
+      return `<div class="res_div"><div style="${indentStyle}" class="${headerClass}">${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
 <div style="${commentStyle}${indentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}${responseTail}`;
     } else {
-      return `<div class="res_div"><div class="${headerClass}">
-${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
+      return `<div class="res_div"><div class="${headerClass}">${comment.res_id}: ${nameDisplay} ${headerInfoHTML}</div>
 <div style="${commentStyle}" class="${bodyClass}">${formattedBody}</div>${imageHTML ? '\n' + imageHTML : ''}${responseTail}`;
     }
   };
@@ -304,7 +306,7 @@ async function generateRichHTML(
 }
 .t_b {
   padding: 10px 0;
-  white-space: pre-wrap;
+  white-space: normal;
   word-wrap: break-word;
   line-height: 1.8;
 }
@@ -362,12 +364,10 @@ async function generateRichHTML(
     const responseTail = matomeResponseTailHtml(blogType);
 
     if (hasAnchor) {
-      return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">
-${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+      return `<div class="res_div"><div class="t_h t_i" style="${indentStyle}">${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
 <div style="${commentStyle}${indentStyle}" class="t_b t_i">${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div>${responseTail}`;
     } else {
-      return `<div class="res_div"><div class="t_h">
-${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
+      return `<div class="res_div"><div class="t_h">${comment.res_id}: <span style="font-weight: ${nameBold ? 'bold' : 'normal'}; color: ${nameColor};">${displayName}</span> ${headerInfoHTML}</div>
 <div style="${commentStyle}" class="t_b">${formattedBody}${imageHTML ? `<div>${imageHTML}</div>` : ''}</div>${responseTail}`;
     }
   };
@@ -626,7 +626,7 @@ function remove5chIconUrls(body: string): string {
 // まとめくす風の本文フォーマット
 async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compactLineBreaks?: boolean, embedImgur = true): Promise<string> {
   // 5chアイコンURLを除去
-  const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
+  const cleanedBody = normalizeCommentBodyLineBreaks(remove5chIconUrls(body));
 
   // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
@@ -639,7 +639,7 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compa
   });
 
   // HTMLエスケープ + 改行変換
-  let formatted = escapeHtml(bodyWithPlaceholders).replace(/\n/g, '<br />\n');
+  let formatted = escapeHtml(bodyWithPlaceholders).replace(/\n/g, '<br />');
 
   // アンカーリンクを作成（>>数字）
   formatted = formatted.replace(/&gt;&gt;(\d+)/g, (match, num) => {
@@ -659,7 +659,7 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compa
 
 async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLineBreaks?: boolean, embedImgur = true): Promise<string> {
   // 5chアイコンURLを除去
-  const cleanedBody = compactLineBreaks ? normalizeBodyLineBreaksForKotoria(remove5chIconUrls(body)) : remove5chIconUrls(body);
+  const cleanedBody = normalizeCommentBodyLineBreaks(remove5chIconUrls(body));
 
   // URLをエスケープ前に抽出してプレースホルダーに置換（&を含むURLの破損を防ぐ）
   const urlRegex = /(https?:\/\/[^\s\u3000<>「」『』（）()[\]{}、。，．]+)/g;
@@ -675,7 +675,7 @@ async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLin
   let formatted: string[] = [];
 
   for (let line of lines) {
-    if (line.startsWith('>')) {
+    if (line.startsWith('>') && !/^>>?\d+/.test(line)) {
       let escapedLine = escapeHtml(line);
       // プレースホルダーを元のエスケープ済みURLに戻す
       for (const [placeholder, url] of urlPlaceholders) {
