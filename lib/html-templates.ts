@@ -152,7 +152,7 @@ function shouldEmbedImgur(blogType?: BlogType): boolean {
 }
 
 function matomeResponseTailHtml(blogType?: BlogType): string {
-  return '\n</div>';
+  return '\n</div>\n<br />';
 }
 
 function normalizeCommentBodyLineBreaks(body: string): string {
