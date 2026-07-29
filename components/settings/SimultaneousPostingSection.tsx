@@ -1,7 +1,14 @@
 'use client';
 
 import { HeroButton, HeroInput } from '@/components/ui/HeroControls';
+import { useEffect, useState } from 'react';
 import { LIFE_BLOG_ROUTING_BADGE, isLifestyleBlog } from '@/lib/blog-routing';
+import {
+  getLifestyleDailyPostCount,
+  hasLifestyleDailyPostLimit,
+  LIFESTYLE_DAILY_POST_LIMIT,
+  LIFESTYLE_POST_QUOTA_CHANGED_EVENT,
+} from '@/lib/lifestyle-post-quota';
 import type { BlogSettings } from '@/lib/types';
 
 type TestResult = { ok: boolean; message: string };
@@ -27,7 +34,18 @@ export default function SimultaneousPostingSection({
   onChange,
   onTest,
 }: SimultaneousPostingSectionProps) {
+  const [, setQuotaVersion] = useState(0);
   const candidates = blogs.filter((blog) => blog.id !== selectedBlogId && !blog.disabled);
+
+  useEffect(() => {
+    const refresh = () => setQuotaVersion((version) => version + 1);
+    window.addEventListener(LIFESTYLE_POST_QUOTA_CHANGED_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(LIFESTYLE_POST_QUOTA_CHANGED_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   return (
     <section className="rounded-lg border border-purple-200 bg-purple-50 p-4">
@@ -68,6 +86,11 @@ export default function SimultaneousPostingSection({
                         {LIFE_BLOG_ROUTING_BADGE}
                       </span>
                     )}
+                    {hasLifestyleDailyPostLimit(blog) && (
+                      <span className="whitespace-nowrap rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-bold text-blue-700">
+                        本日 {getLifestyleDailyPostCount(blog)}/{LIFESTYLE_DAILY_POST_LIMIT}件
+                      </span>
+                    )}
                   </label>
                   <HeroButton
                     type="button"
@@ -90,7 +113,9 @@ export default function SimultaneousPostingSection({
           </div>
         )}
 
-        <p className="text-xs text-purple-600">投稿時に選択したブログにも同じ内容が投稿されます</p>
+        <p className="text-xs text-purple-600">
+          投稿時に選択したブログにも同じ内容が投稿されます。生活系11サイトは各サイト1日50件までです。
+        </p>
       </div>
     </section>
   );

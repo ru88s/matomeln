@@ -30,6 +30,10 @@ import toast from 'react-hot-toast';
 import { keepFirstResponseFirst, sortCommentsByAnchorOrder } from '@/lib/comment-ordering';
 import { readOtherBlogPostingSettings } from '@/lib/settings-store';
 import { inferThumbnailVisualStyle, isPhotographicThumbnailStyle } from '@/lib/thumbnail-visual-style';
+import {
+  getLifestyleDailyPostQuotaSkipReason,
+  recordLifestylePostSuccess,
+} from '@/lib/lifestyle-post-quota';
 
 const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), {
   ssr: false,
@@ -1188,6 +1192,13 @@ export default function Home() {
                     continue;
                   }
 
+                  const quotaSkipReason = getLifestyleDailyPostQuotaSkipReason(blog);
+                  if (quotaSkipReason) {
+                    console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${quotaSkipReason}`);
+                    blogPostResults.push({ name: blog.name, status: 'skipped', reason: quotaSkipReason });
+                    continue;
+                  }
+
                   if (blog.blogType === 'kotoria') {
                     otherResponse = await fetchWithTimeout('/api/proxy/postKotoria', {
                       method: 'POST',
@@ -1242,6 +1253,7 @@ export default function Home() {
                   }
 
                   if (otherResponse.ok) {
+                    recordLifestylePostSuccess(blog);
                     console.log(`✅ ${blog.name}にも投稿完了`);
                     blogPostResults.push({ name: blog.name, status: 'posted' });
                   } else {

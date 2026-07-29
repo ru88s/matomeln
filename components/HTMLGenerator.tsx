@@ -8,6 +8,10 @@ import { markThreadAsSummarized } from '@/lib/bulk-processing';
 import { LIFE_BLOG_ROUTING_BADGE, getOtherBlogPostSkipReason, isLifestyleBlog } from '@/lib/blog-routing';
 import { buildBlogPostResultToast, type BlogPostResult } from '@/lib/posting-results';
 import { useOtherBlogPostingSettings } from '@/hooks/useOtherBlogPostingSettings';
+import {
+  getLifestyleDailyPostQuotaSkipReason,
+  recordLifestylePostSuccess,
+} from '@/lib/lifestyle-post-quota';
 import toast from 'react-hot-toast';
 
 // 注: アンカーベースの並び替えは削除しました。
@@ -230,6 +234,13 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
               continue;
             }
 
+            const quotaSkipReason = getLifestyleDailyPostQuotaSkipReason(blog);
+            if (quotaSkipReason) {
+              console.log(`ℹ️ ${blog.name}への同時投稿をスキップ: ${quotaSkipReason}`);
+              blogPostResults.push({ name: blog.name, status: 'skipped', reason: quotaSkipReason });
+              continue;
+            }
+
             if (blog.blogType === 'kotoria') {
               // Kotoriaへ投稿
               otherResponse = await fetch('/api/proxy/postKotoria', {
@@ -283,6 +294,7 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
             }
 
             if (otherResponse.ok) {
+              recordLifestylePostSuccess(blog);
               blogPostResults.push({ name: blog.name, status: 'posted' });
             } else {
               const errorData = await otherResponse.json().catch(() => null) as { details?: string; error?: string } | null;
