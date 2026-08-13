@@ -61,9 +61,9 @@ export default function SettingsModal({
   const [showClaudeApiKey, setShowClaudeApiKey] = useState(false);
   const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
   const [ollamaEndpoint, setOllamaEndpoint] = useState('http://127.0.0.1:11434');
-  const [ollamaModel, setOllamaModel] = useState('gemma4:e4b');
+  const [ollamaModel, setOllamaModel] = useState('gemma4:12b');
   const [imageModerationEnabled, setImageModerationEnabled] = useState(true);
-  const [imageModerationModel, setImageModerationModel] = useState('gemma3:4b');
+  const [imageModerationModel, setImageModerationModel] = useState('gemma4:12b');
   const [aiInputMode, setAiInputMode] = useState<'standard' | 'token-saving'>('standard');
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
@@ -131,9 +131,9 @@ export default function SettingsModal({
         setAiSummaryProvider(savedAiSummaryProvider);
       }
       setOllamaEndpoint(localStorage.getItem('matomeln_ollama_endpoint') || 'http://127.0.0.1:11434');
-      setOllamaModel(localStorage.getItem('matomeln_ollama_model') || 'gemma4:e4b');
+      setOllamaModel(localStorage.getItem('matomeln_ollama_model') || 'gemma4:12b');
       setImageModerationEnabled(localStorage.getItem('matomeln_image_moderation_enabled') !== 'false');
-      setImageModerationModel(localStorage.getItem('matomeln_image_moderation_model') || 'gemma3:4b');
+      setImageModerationModel(localStorage.getItem('matomeln_image_moderation_model') || 'gemma4:12b');
       setAiInputMode(localStorage.getItem('matomeln_ai_input_mode') === 'token-saving' ? 'token-saving' : 'standard');
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
       if (savedGeminiApiKey) {
@@ -743,8 +743,8 @@ export default function SettingsModal({
                           type="text"
                           value={ollamaModel}
                           onChange={(e) => setOllamaModel(e.target.value)}
-                          onBlur={() => persistSettings({ matomeln_ollama_model: ollamaModel.trim() || 'gemma4:e4b' })}
-                          placeholder="gemma4:e4b"
+                          onBlur={() => persistSettings({ matomeln_ollama_model: ollamaModel.trim() || 'gemma4:12b' })}
+                          placeholder="gemma4:12b"
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         />
                         <label className="flex items-center gap-2 text-xs text-gray-700">
@@ -763,8 +763,8 @@ export default function SettingsModal({
                           type="text"
                           value={imageModerationModel}
                           onChange={(e) => setImageModerationModel(e.target.value)}
-                          onBlur={() => persistSettings({ matomeln_image_moderation_model: imageModerationModel.trim() || 'gemma3:4b' })}
-                          placeholder="gemma3:4b"
+                          onBlur={() => persistSettings({ matomeln_image_moderation_model: imageModerationModel.trim() || 'gemma4:12b' })}
+                          placeholder="gemma4:12b"
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         />
                       </div>

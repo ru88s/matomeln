@@ -34,7 +34,7 @@ export interface LocalOllamaOptions {
 }
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_OLLAMA_MODEL = 'gemma4:e4b';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
 
 const ADULT_LEGAL_CONTEXT_PATTERNS = [
   /風俗営業(?:法|等)?/gi,

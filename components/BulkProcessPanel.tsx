@@ -333,6 +333,10 @@ export default function BulkProcessPanel({
     if (typeof window === 'undefined') return 'gpt-image-1';
     return localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1';
   });
+  const [summaryProvider, setSummaryProvider] = useState<'claude' | 'ollama'>(() => {
+    if (typeof window === 'undefined') return 'claude';
+    return localStorage.getItem('matomeln_ai_summary_provider') === 'ollama' ? 'ollama' : 'claude';
+  });
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [currentAutoRunSource, setCurrentAutoRunSource] = useState<'all' | '5ch' | 'talk' | 'gc' | null>(null);
@@ -408,6 +412,7 @@ export default function BulkProcessPanel({
     const handleStorage = () => {
       setThumbnailProvider(localStorage.getItem('matomeln_thumbnail_provider') || 'gemini');
       setOpenaiImageModel(localStorage.getItem('matomeln_openai_image_model') || 'gpt-image-1');
+      setSummaryProvider(localStorage.getItem('matomeln_ai_summary_provider') === 'ollama' ? 'ollama' : 'claude');
     };
     window.addEventListener('storage', handleStorage);
     // 同一タブでの変更も検知するためintervalで定期チェック
@@ -1282,7 +1287,7 @@ export default function BulkProcessPanel({
         </svg>
         一括AIまとめ
         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
-          まとめ: Claude
+          まとめ: {summaryProvider === 'ollama' ? 'Ollama' : 'Claude'}
         </span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
           thumbnailProvider === 'openai'

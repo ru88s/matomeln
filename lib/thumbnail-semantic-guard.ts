@@ -17,7 +17,7 @@ type AmbiguousSense = 'music_drum' | 'laundry_drum' | null;
 
 const MAX_LLM_REVIEW_MS = 10000;
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_OLLAMA_MODEL = 'gemma4:e4b';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
 
 const DANGEROUSLY_GENERIC_LABELS = new Set([
   '本',

@@ -25,7 +25,7 @@ interface VisionModerationResponse {
 }
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_IMAGE_MODERATION_MODEL = 'gemma3:4b';
+const DEFAULT_IMAGE_MODERATION_MODEL = 'gemma4:12b';
 
 const RISKY_MEDIA_URL_PATTERN = /(?:gorecenter|bestgore|kaotic|documentingreality|po-kaki-to|pokkakit|pokkakito|porn|xxx|xvideos|xhamster|redtube|erome|motherless|jav|avgle|nsfw|nude|naked)/i;
 const URL_PATTERN = /https?:\/\/[^\s<>"'「」『』（）()[\]{}、。，．]+/gi;
@@ -107,6 +107,7 @@ async function classifyImageWithOllama(
       body: JSON.stringify({
         model: options.model,
         stream: false,
+        think: false,
         format: 'json',
         options: {
           temperature: 0,
