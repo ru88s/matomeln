@@ -24,6 +24,7 @@ export interface BulkProcessStatus {
 
 const LOCAL_SUMMARIZED_URLS_KEY = 'matomeln:locally-summarized-urls-v1';
 const LOCAL_SKIPPED_URLS_KEY = 'matomeln:locally-skipped-urls-v1';
+const LOCAL_PROCESSING_URLS_KEY = 'matomeln:locally-processing-urls-v1';
 const PENDING_SUMMARIZED_URLS_KEY = 'matomeln:pending-summarized-urls-v1';
 const THREAD_MEMO_MARK_RETRY_COUNT = 3;
 const THREAD_MEMO_MARK_TIMEOUT_MS = 10000;
@@ -73,7 +74,29 @@ function removeLocalUrl(key: string, url: string): void {
 function isLocallyProcessedUrl(url: string): boolean {
   const normalizedUrl = normalizeThreadMemoUrl(url);
   return readLocalUrlSet(LOCAL_SUMMARIZED_URLS_KEY).has(normalizedUrl)
-    || readLocalUrlSet(LOCAL_SKIPPED_URLS_KEY).has(normalizedUrl);
+    || readLocalUrlSet(LOCAL_SKIPPED_URLS_KEY).has(normalizedUrl)
+    || readLocalUrlSet(LOCAL_PROCESSING_URLS_KEY).has(normalizedUrl);
+}
+
+/**
+ * 処理開始直前にURLを永続予約する。
+ * 別タブやリロード後も、記事投稿中の同じスレを再取得しないための保護。
+ */
+export function claimThreadForProcessing(url: string): boolean {
+  const normalizedUrl = normalizeThreadMemoUrl(url);
+  if (!normalizedUrl || isLocallyProcessedUrl(normalizedUrl)) return false;
+
+  const processingUrls = readLocalUrlSet(LOCAL_PROCESSING_URLS_KEY);
+  if (processingUrls.has(normalizedUrl)) return false;
+  processingUrls.add(normalizedUrl);
+  writeLocalUrlSet(LOCAL_PROCESSING_URLS_KEY, processingUrls);
+
+  // localStorage書き込み後に再読込し、別タブとの競合時は予約失敗として扱う。
+  return readLocalUrlSet(LOCAL_PROCESSING_URLS_KEY).has(normalizedUrl);
+}
+
+export function releaseThreadProcessingClaim(url: string): void {
+  removeLocalUrl(LOCAL_PROCESSING_URLS_KEY, url);
 }
 
 async function postThreadMemoMark(url: string, reason?: string): Promise<boolean> {
@@ -188,6 +211,7 @@ export async function markThreadAsSummarized(url: string): Promise<boolean> {
   const normalizedUrl = normalizeThreadMemoUrl(url);
   // 記事投稿成功直後に先にローカルで固定し、API障害時の再投稿を防ぐ。
   rememberLocalUrl(LOCAL_SUMMARIZED_URLS_KEY, normalizedUrl);
+  releaseThreadProcessingClaim(normalizedUrl);
 
   const markedExternally = await retryThreadMemoMark(normalizedUrl);
   if (markedExternally) {
@@ -207,6 +231,7 @@ export async function markThreadAsSkipped(url: string, reason: string): Promise<
   const normalizedUrl = normalizeThreadMemoUrl(url);
   // スキップ対象も同じURLを再取得しない。
   rememberLocalUrl(LOCAL_SKIPPED_URLS_KEY, normalizedUrl);
+  releaseThreadProcessingClaim(normalizedUrl);
 
   const markedExternally = await retryThreadMemoMark(normalizedUrl, reason);
   if (!markedExternally) {

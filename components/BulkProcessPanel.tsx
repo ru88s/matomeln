@@ -3,7 +3,7 @@
 import { HeroButton, HeroTextArea, HeroSelect, HeroInput } from '@/components/ui/HeroControls';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, fetchTalkUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped } from '@/lib/bulk-processing';
+import { fetchUnsummarizedUrls, fetchGirlsChannelUrls, fetchTalkUrls, BulkProcessStatus, getInitialBulkStatus, markThreadAsSkipped, claimThreadForProcessing, releaseThreadProcessingClaim } from '@/lib/bulk-processing';
 import { logActivity } from '@/lib/activity-log';
 import toast from 'react-hot-toast';
 
@@ -794,6 +794,17 @@ export default function BulkProcessPanel({
         }
 
         const url = urlList[i];
+        if (!claimThreadForProcessing(url)) {
+          processedAutoRunUrlsRef.current.add(normalizeThreadUrl(url));
+          saveProcessedAutoRunUrls(processedAutoRunUrlsRef.current);
+          setStatus(prev => ({
+            ...prev,
+            completedUrls: [...prev.completedUrls, url],
+          }));
+          toast(`(${i + 1}/${urlList.length}) 別処理済みのため除外`, { icon: '⏭️', id: 'bulk-progress' });
+          continue;
+        }
+
         lastAutoRunProgressAtRef.current = Date.now();
         setStatus(prev => ({
           ...prev,
@@ -838,6 +849,9 @@ export default function BulkProcessPanel({
             // スキップ不可のエラー（投稿エラーなど）の場合は即座に中断
             // ただしチェックボックスは外さない（ユーザー設定を尊重）
             if (!isSkippableError(lastError)) {
+              // 既知の投稿エラーは次回チェックで再試行するため予約を解放する。
+              // ページが突然落ちた場合は予約が残り、再取得を防ぐ。
+              releaseThreadProcessingClaim(url);
               failedCount++;
               consecutiveFailures++;
               consecutiveErrorsRef.current++;
