@@ -19,6 +19,24 @@ function normalizeComments(comments: Comment[]): Comment[] {
   }));
 }
 
+/**
+ * 取得元によってはレスの返却順が入れ替わることがあるため、
+ * AIがレス番号で参照できるよう、取得結果は必ずレス番号順にそろえる。
+ */
+function sortCommentsByResponseId(comments: Comment[]): Comment[] {
+  return [...comments].sort((left, right) => {
+    const leftId = Number(left.res_id);
+    const rightId = Number(right.res_id);
+    const leftIsNumber = Number.isFinite(leftId);
+    const rightIsNumber = Number.isFinite(rightId);
+
+    if (leftIsNumber && rightIsNumber) return leftId - rightId;
+    if (leftIsNumber) return -1;
+    if (rightIsNumber) return 1;
+    return 0;
+  });
+}
+
 export async function fetchTalk(talkId: string): Promise<Talk | null> {
   try {
     const response = await fetch(`${API_BASE}/getTalk?id=${talkId}`);
@@ -134,7 +152,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: '5ch',
     };
   }
@@ -147,7 +165,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: 'open2ch',
     };
   }
@@ -160,7 +178,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: '2chsc',
     };
   }
@@ -173,7 +191,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: 'girlschannel',
     };
   }
@@ -185,7 +203,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: 'talkjp',
     };
   }
@@ -198,7 +216,7 @@ export async function fetchThreadData(input: string): Promise<ThreadData> {
     }
     return {
       talk: result.talk,
-      comments: result.comments,
+      comments: sortCommentsByResponseId(result.comments),
       source: 'matomeBlog',
     };
   }
