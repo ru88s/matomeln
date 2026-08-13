@@ -1281,11 +1281,15 @@ export default function Home() {
       // =====================
       try {
         const { markThreadAsSummarized } = await import('@/lib/bulk-processing');
-        await markThreadAsSummarized(url);
-        console.log('✅ スレメモくんに登録完了:', url);
+        const markedExternally = await markThreadAsSummarized(url);
+        if (markedExternally) {
+          console.log('✅ スレメモくんに登録完了:', url);
+        } else {
+          console.warn('⚠️ スレメモくん登録は保留（ローカルでは重複防止済み）:', url);
+        }
       } catch (memoError) {
         console.warn('⚠️ スレメモくん登録失敗:', memoError);
-        // 登録失敗でもエラーにはしない
+        // 投稿済みURLはmarkThreadAsSummarized内でローカル台帳へ登録済み
       }
 
       toast.success(buildBlogPostResultToast(blogPostResults), { id: 'bulk-step', duration: 9000 });

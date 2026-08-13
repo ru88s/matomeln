@@ -314,11 +314,15 @@ export default function HTMLGenerator({ talk, selectedComments, sourceInfo, onCl
       // スレメモくんにまとめ済み登録
       if (sourceInfo?.originalUrl) {
         try {
-          await markThreadAsSummarized(sourceInfo.originalUrl);
-          console.log('スレメモくんに登録完了');
+          const markedExternally = await markThreadAsSummarized(sourceInfo.originalUrl);
+          if (markedExternally) {
+            console.log('スレメモくんに登録完了');
+          } else {
+            console.warn('スレメモくん登録は保留（ローカルでは重複防止済み）');
+          }
         } catch (memoError) {
           console.warn('スレメモくん登録失敗:', memoError);
-          // 登録失敗でもエラーにはしない（ブログ投稿は成功しているため）
+          // 投稿済みURLはmarkThreadAsSummarized内でローカル台帳へ登録済み
         }
       }
 

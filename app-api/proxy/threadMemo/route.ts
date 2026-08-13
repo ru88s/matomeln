@@ -33,17 +33,28 @@ function normalizeThreadMemoUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
 
+function filterUrlsBySource(urls: string[], source: string): string[] {
+  const isTalkUrl = (url: string) => /talk\.jp\/boards\//i.test(url);
+  const isGirlsChannelUrl = (url: string) => /girlschannel\.net\/topics\//i.test(url);
+
+  if (source === 'talk') return urls.filter(isTalkUrl);
+  if (source === '5ch') return urls.filter((url) => !isTalkUrl(url) && !isGirlsChannelUrl(url));
+  return urls;
+}
+
 // 未まとめURL取得
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date') || '';
   const lifeOnly = searchParams.get('lifeOnly') === 'true';
+  const source = searchParams.get('source') || '';
   const limit = searchParams.get('limit') || '1000';
 
   try {
     const params = new URLSearchParams();
     if (date) params.append('date', date);
     if (lifeOnly) params.append('lifeOnly', 'true');
+    if (source === '5ch' || source === 'talk') params.append('source', source);
     params.append('limit', limit);
 
     const response = await fetch(
@@ -66,6 +77,7 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json() as { urls?: string[]; count?: number };
     if (Array.isArray(data.urls)) {
+      data.urls = filterUrlsBySource(data.urls, source);
       const summarized = getSummarizedUrls();
       const skipped = getSkippedUrls();
       data.urls = data.urls.filter((url: string) => {
