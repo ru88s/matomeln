@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import TalkLoader from '@/components/TalkLoader';
 import CommentPicker from '@/components/CommentPicker';
+import HTMLGenerator from '@/components/HTMLGenerator';
 import SettingsSidebar from '@/components/SettingsSidebar';
 import { ThreadLoadingIndicator, AILoadingIndicator } from '@/components/LoadingSpinner';
 import { fetchThreadData } from '@/lib/shikutoku-api';
@@ -40,15 +41,6 @@ const BulkProcessPanel = dynamic(() => import('@/components/BulkProcessPanel'), 
   loading: () => (
     <div className="rounded-xl border border-purple-100 bg-white p-4 text-sm text-gray-500 shadow-sm">
       一括処理パネルを読み込み中...
-    </div>
-  ),
-});
-
-const HTMLGenerator = dynamic(() => import('@/components/HTMLGenerator'), {
-  ssr: false,
-  loading: () => (
-    <div className="rounded-xl border border-orange-100 bg-white p-6 text-sm text-gray-500">
-      タグ発行ツールを読み込み中...
     </div>
   ),
 });
