@@ -135,6 +135,50 @@ export function orderSelectedCommentsByDisplay(
   });
 }
 
+export type CommentMoveDestination =
+  | { type: 'up' }
+  | { type: 'down' }
+  | { type: 'end' }
+  | { type: 'after-id'; commentId: string }
+  | { type: 'after-res-id'; resId: string | number };
+
+export function moveCommentInDisplayOrder<T extends Comment>(
+  displayComments: T[],
+  movedCommentId: string,
+  destination: CommentMoveDestination,
+): T[] | null {
+  const currentIndex = displayComments.findIndex(comment => comment.id === movedCommentId);
+  if (currentIndex === -1) return null;
+
+  if (destination.type === 'up' || destination.type === 'down') {
+    const targetIndex = destination.type === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= displayComments.length) return null;
+
+    const nextDisplayOrder = [...displayComments];
+    [nextDisplayOrder[currentIndex], nextDisplayOrder[targetIndex]] = [
+      nextDisplayOrder[targetIndex],
+      nextDisplayOrder[currentIndex],
+    ];
+    return nextDisplayOrder;
+  }
+
+  const movedComment = displayComments[currentIndex];
+  const nextDisplayOrder = displayComments.filter(comment => comment.id !== movedCommentId);
+
+  if (destination.type === 'end') {
+    nextDisplayOrder.push(movedComment);
+    return nextDisplayOrder;
+  }
+
+  const targetIndex = destination.type === 'after-id'
+    ? nextDisplayOrder.findIndex(comment => comment.id === destination.commentId)
+    : nextDisplayOrder.findIndex(comment => Number(comment.res_id) === Number(destination.resId));
+
+  if (targetIndex === -1) return null;
+  nextDisplayOrder.splice(targetIndex + 1, 0, movedComment);
+  return nextDisplayOrder;
+}
+
 export function sortCommentsByAnchorOrder(comments: CommentWithStyle[]): CommentWithStyle[] {
   if (comments.length === 0) return [];
   const positions = new Map(
