@@ -924,6 +924,39 @@ export default function CommentPicker({
     }
   }, [selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
 
+  const createStyledComment = useCallback((comment: Comment): CommentWithStyle => ({
+    ...hideNameId(comment),
+    body: editedComments[comment.id] || comment.body,
+    color: commentColors[comment.id] || '#000000',
+    fontSize: commentSizes[comment.id] === 14
+      ? 'small'
+      : commentSizes[comment.id] === 22
+        ? 'large'
+        : 'medium',
+  }), [commentColors, commentSizes, editedComments, hideNameId]);
+
+  const ensureCommentSelected = useCallback((comment: Comment) => {
+    const currentIndex = selectedComments.findIndex((selected) => selected.id === comment.id);
+    if (currentIndex !== -1) {
+      return { comments: [...selectedComments], index: currentIndex };
+    }
+
+    const nextComments = [...selectedComments, createStyledComment(comment)];
+    return { comments: nextComments, index: nextComments.length - 1 };
+  }, [createStyledComment, selectedComments]);
+
+  const commitCommentOrder = useCallback((
+    nextSelectedComments: CommentWithStyle[],
+    displayOrder: Comment[] = nextSelectedComments,
+  ) => {
+    const nextPositions: Record<string, number> = {};
+    displayOrder.forEach((displayComment, index) => {
+      nextPositions[displayComment.id] = index;
+    });
+    setCommentPositions(nextPositions);
+    onSelectionChange(nextSelectedComments);
+  }, [onSelectionChange]);
+
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
@@ -1081,115 +1114,47 @@ export default function CommentPicker({
                 onExpandImage={setExpandedImage}
                 isInSortMode={showOnlySelected}
                 onMoveToEnd={() => {
-                  // 未選択の場合は自動選択してから移動
-                  if (!isSelected) {
-                    const newComment: CommentWithStyle = {
-                      ...hideNameId(comment),
-                      color: commentColors[comment.id] || '#000000',
-                      fontSize: commentSizes[comment.id] === 14 ? 'small' : commentSizes[comment.id] === 22 ? 'large' : 'medium',
-                      body: editedComments[comment.id] || comment.body
-                    };
-                    // 新しいコメントを最後に追加
-                    const newSelectedComments = [...selectedComments, newComment];
-
-                    // 位置情報を完全に再計算
-                    const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) {
-                        newPositions[sc.id] = index;
-                      }
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                  } else {
-                    // 既に選択済みの場合は最後に移動
-                    const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                    if (currentIndex > 0) { // 本文以外
-                      const newSelectedComments = [...selectedComments];
-                      const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                      newSelectedComments.push(movedComment);
-
-                      // 位置情報を完全に再計算
-                      const newPositions: Record<string, number> = {};
-                      newSelectedComments.forEach((sc, index) => {
-                        if (index > 0) {
-                          newPositions[sc.id] = index;
-                        }
-                      });
-                      setCommentPositions(newPositions);
-
-                      onSelectionChange(newSelectedComments);
-                    }
+                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
+                  if (currentIndex > 0) { // 本文以外
+                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
+                    nextSelectedComments.push(movedComment);
                   }
+
+                  commitCommentOrder(nextSelectedComments);
 
                   toast.success(`コメントを最後に移動しました`);
                 }}
                 onMoveToTop={() => {
-                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-                  if (currentIndex !== -1 && currentIndex > 1) {
-                    const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
+                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
+                  if (currentIndex > 1) {
+                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
                     // 本文（インデックス0）の次（インデックス1）に挿入
-                    newSelectedComments.splice(1, 0, movedComment);
-
-                    // 位置情報を完全に再計算
-                    const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) { // 本文以外
-                        newPositions[sc.id] = index;
-                      }
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを本文の下に移動しました`);
+                    nextSelectedComments.splice(1, 0, movedComment);
                   }
+                  commitCommentOrder(nextSelectedComments);
+                  toast.success(`コメントを本文の下に移動しました`);
                 }}
                 onMoveUp={() => {
-                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
                   // 本文（インデックス0）とその次（インデックス1）は上に移動できない
                   if (currentIndex > 1) {
-                    const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                    newSelectedComments.splice(currentIndex - 1, 0, movedComment);
-
-                    // 位置情報を完全に再計算
-                    const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) {
-                        newPositions[sc.id] = index;
-                      }
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを1つ上に移動しました`);
+                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
+                    nextSelectedComments.splice(currentIndex - 1, 0, movedComment);
                   }
+                  commitCommentOrder(nextSelectedComments);
+                  toast.success(`コメントを1つ上に移動しました`);
                 }}
                 onMoveDown={() => {
-                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
+                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
                   // 本文（インデックス0）は下に移動できない、最後のコメントも移動不可
-                  if (currentIndex > 0 && currentIndex < selectedComments.length - 1) {
-                    const newSelectedComments = [...selectedComments];
-                    const [movedComment] = newSelectedComments.splice(currentIndex, 1);
-                    newSelectedComments.splice(currentIndex + 1, 0, movedComment);
-
-                    // 位置情報を完全に再計算
-                    const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) {
-                        newPositions[sc.id] = index;
-                      }
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを1つ下に移動しました`);
+                  if (currentIndex > 0 && currentIndex < nextSelectedComments.length - 1) {
+                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
+                    nextSelectedComments.splice(currentIndex + 1, 0, movedComment);
                   }
+                  commitCommentOrder(nextSelectedComments);
+                  toast.success(`コメントを1つ下に移動しました`);
                 }}
                 onMoveToPosition={(targetResId) => {
-                  const currentIndex = selectedComments.findIndex(sc => sc.id === comment.id);
                   // 画面上の並び順から対象コメントを探す
                   const targetDisplayIndex = arrangedComments.findIndex(c => Number(c.res_id) === Number(targetResId));
 
@@ -1198,30 +1163,24 @@ export default function CommentPicker({
                     return;
                   }
 
-                  if (currentIndex !== -1) {
-                    const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
-                    const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => Number(c.res_id) === Number(targetResId));
-                    if (targetIndexInNextDisplay === -1) {
-                      toast.error(`${targetResId}番のコメントが見つかりません`);
-                      return;
-                    }
-                    nextDisplayOrder.splice(targetIndexInNextDisplay + 1, 0, comment);
-
-                    const nextPositions: Record<string, number> = {};
-                    nextDisplayOrder.forEach((displayComment, index) => {
-                      nextPositions[displayComment.id] = index;
-                    });
-                    setCommentPositions(nextPositions);
-
-                    const selectedById = new Map(selectedComments.map(sc => [sc.id, sc]));
-                    const selectedIds = new Set(selectedComments.map(sc => sc.id));
-                    const newSelectedComments = nextDisplayOrder
-                      .filter(displayComment => selectedIds.has(displayComment.id))
-                      .map(displayComment => selectedById.get(displayComment.id) ?? displayComment as CommentWithStyle);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを${targetResId}番の下に移動しました`);
+                  const { comments: nextSelectedComments } = ensureCommentSelected(comment);
+                  const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
+                  const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => Number(c.res_id) === Number(targetResId));
+                  if (targetIndexInNextDisplay === -1) {
+                    toast.error(`${targetResId}番のコメントが見つかりません`);
+                    return;
                   }
+
+                  nextDisplayOrder.splice(targetIndexInNextDisplay + 1, 0, comment);
+
+                  const selectedById = new Map(nextSelectedComments.map(sc => [sc.id, sc]));
+                  const selectedIds = new Set(nextSelectedComments.map(sc => sc.id));
+                  const newSelectedComments = nextDisplayOrder
+                    .filter(displayComment => selectedIds.has(displayComment.id))
+                    .map(displayComment => selectedById.get(displayComment.id) ?? displayComment as CommentWithStyle);
+
+                  commitCommentOrder(newSelectedComments, nextDisplayOrder);
+                  toast.success(`コメントを${targetResId}番の下に移動しました`);
                 }}
               />
             </div>
