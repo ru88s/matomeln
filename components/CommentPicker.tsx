@@ -6,7 +6,13 @@ import { createPortal } from 'react-dom';
 import { Comment, CommentWithStyle } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { LinkCard } from '@/components/LinkCard';
-import { buildDisplayCommentOrder, extractCommentAnchor, orderSelectedCommentsByDisplay } from '@/lib/comment-ordering';
+import {
+  buildDisplayCommentOrder,
+  CommentMoveDestination,
+  extractCommentAnchor,
+  moveCommentInDisplayOrder,
+  orderSelectedCommentsByDisplay,
+} from '@/lib/comment-ordering';
 
 interface CommentPickerProps {
   comments: Comment[];
@@ -716,6 +722,53 @@ export default function CommentPicker({
     return buildDisplayCommentOrder(visibleComments, commentPositions, editedComments);
   }, [visibleComments, commentPositions, editedComments]);
 
+  const moveComment = useCallback((
+    comment: Comment,
+    destination: CommentMoveDestination,
+    successMessage: string,
+  ) => {
+    const firstSelectedId = selectedComments[0]?.id;
+    const currentDisplayIndex = fullDisplayComments.findIndex(item => item.id === comment.id);
+    const firstSelectedDisplayIndex = firstSelectedId
+      ? fullDisplayComments.findIndex(item => item.id === firstSelectedId)
+      : -1;
+
+    if (comment.id === firstSelectedId) return;
+    if (destination.type === 'up' && currentDisplayIndex <= firstSelectedDisplayIndex + 1) return;
+
+    const nextDisplayOrder = moveCommentInDisplayOrder(fullDisplayComments, comment.id, destination);
+    if (!nextDisplayOrder) {
+      if (destination.type === 'after-res-id') {
+        toast.error(`${destination.resId}番のコメントが見つかりません`);
+      }
+      return;
+    }
+
+    setCommentPositions(Object.fromEntries(
+      nextDisplayOrder.map((displayComment, index) => [displayComment.id, index]),
+    ));
+
+    const sizeValue = commentSizes[comment.id];
+    const selectedById = new Map(selectedComments.map(selected => [selected.id, selected]));
+    selectedById.set(comment.id, selectedById.get(comment.id) ?? {
+      ...hideNameId(comment),
+      body: editedComments[comment.id] || comment.body,
+      color: commentColors[comment.id] || '#000000',
+      fontSize: sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium',
+    });
+
+    onSelectionChange(orderSelectedCommentsByDisplay([...selectedById.values()], nextDisplayOrder));
+    toast.success(successMessage);
+  }, [
+    commentColors,
+    commentSizes,
+    editedComments,
+    fullDisplayComments,
+    hideNameId,
+    onSelectionChange,
+    selectedComments,
+  ]);
+
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
     const isSelected = selectedComments.some(sc => sc.id === comment.id);
@@ -1114,73 +1167,29 @@ export default function CommentPicker({
                 onExpandImage={setExpandedImage}
                 isInSortMode={showOnlySelected}
                 onMoveToEnd={() => {
-                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
-                  if (currentIndex > 0) { // 本文以外
-                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
-                    nextSelectedComments.push(movedComment);
-                  }
-
-                  commitCommentOrder(nextSelectedComments);
-
-                  toast.success(`コメントを最後に移動しました`);
+                  moveComment(comment, { type: 'end' }, 'コメントを最後に移動しました');
                 }}
                 onMoveToTop={() => {
-                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
-                  if (currentIndex > 1) {
-                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
-                    // 本文（インデックス0）の次（インデックス1）に挿入
-                    nextSelectedComments.splice(1, 0, movedComment);
-                  }
-                  commitCommentOrder(nextSelectedComments);
-                  toast.success(`コメントを本文の下に移動しました`);
+                  const firstSelectedId = selectedComments[0]?.id;
+                  if (!firstSelectedId) return;
+                  moveComment(
+                    comment,
+                    { type: 'after-id', commentId: firstSelectedId },
+                    'コメントを本文の下に移動しました',
+                  );
                 }}
                 onMoveUp={() => {
-                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
-                  // 本文（インデックス0）とその次（インデックス1）は上に移動できない
-                  if (currentIndex > 1) {
-                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
-                    nextSelectedComments.splice(currentIndex - 1, 0, movedComment);
-                  }
-                  commitCommentOrder(nextSelectedComments);
-                  toast.success(`コメントを1つ上に移動しました`);
+                  moveComment(comment, { type: 'up' }, 'コメントを1つ上に移動しました');
                 }}
                 onMoveDown={() => {
-                  const { comments: nextSelectedComments, index: currentIndex } = ensureCommentSelected(comment);
-                  // 本文（インデックス0）は下に移動できない、最後のコメントも移動不可
-                  if (currentIndex > 0 && currentIndex < nextSelectedComments.length - 1) {
-                    const [movedComment] = nextSelectedComments.splice(currentIndex, 1);
-                    nextSelectedComments.splice(currentIndex + 1, 0, movedComment);
-                  }
-                  commitCommentOrder(nextSelectedComments);
-                  toast.success(`コメントを1つ下に移動しました`);
+                  moveComment(comment, { type: 'down' }, 'コメントを1つ下に移動しました');
                 }}
                 onMoveToPosition={(targetResId) => {
-                  // 画面上の並び順から対象コメントを探す
-                  const targetDisplayIndex = arrangedComments.findIndex(c => Number(c.res_id) === Number(targetResId));
-
-                  if (targetDisplayIndex === -1) {
-                    toast.error(`${targetResId}番のコメントが見つかりません`);
-                    return;
-                  }
-
-                  const { comments: nextSelectedComments } = ensureCommentSelected(comment);
-                  const nextDisplayOrder = arrangedComments.filter(c => c.id !== comment.id);
-                  const targetIndexInNextDisplay = nextDisplayOrder.findIndex(c => Number(c.res_id) === Number(targetResId));
-                  if (targetIndexInNextDisplay === -1) {
-                    toast.error(`${targetResId}番のコメントが見つかりません`);
-                    return;
-                  }
-
-                  nextDisplayOrder.splice(targetIndexInNextDisplay + 1, 0, comment);
-
-                  const selectedById = new Map(nextSelectedComments.map(sc => [sc.id, sc]));
-                  const selectedIds = new Set(nextSelectedComments.map(sc => sc.id));
-                  const newSelectedComments = nextDisplayOrder
-                    .filter(displayComment => selectedIds.has(displayComment.id))
-                    .map(displayComment => selectedById.get(displayComment.id) ?? displayComment as CommentWithStyle);
-
-                  commitCommentOrder(newSelectedComments, nextDisplayOrder);
-                  toast.success(`コメントを${targetResId}番の下に移動しました`);
+                  moveComment(
+                    comment,
+                    { type: 'after-res-id', resId: targetResId },
+                    `コメントを${targetResId}番の下に移動しました`,
+                  );
                 }}
               />
             </div>
