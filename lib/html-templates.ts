@@ -660,6 +660,11 @@ async function formatCommentBodyForMatome(body: string, skipOgp?: boolean, compa
   // HTMLエスケープ + 改行変換
   let formatted = escapeHtml(bodyWithPlaceholders).replace(/\n/g, '<br />');
 
+  // アンカーはリンクにせず、従来の青色表示だけ維持する
+  formatted = formatted.replace(/&gt;&gt;(\d+)/g, (match, num) => {
+    return `<span class="anchor_ref" style="color: #467CE2; font-weight: bold;">&gt;&gt;${num}</span>`;
+  });
+
   // プレースホルダーを元のURLに戻す（エスケープ済みテキスト内のプレースホルダーはそのまま残っている）
   for (const [placeholder, url] of urlPlaceholders) {
     formatted = formatted.replace(placeholder, escapeHtml(url));
@@ -699,6 +704,10 @@ async function formatRichCommentBody(body: string, skipOgp?: boolean, compactLin
       formatted.push(`<div class="quote_line">${escapedLine}</div>`);
     } else {
       let escapedLine = escapeHtml(line);
+      // アンカーはリンクにせず、従来の青色表示だけ維持する
+      escapedLine = escapedLine.replace(/&gt;&gt;(\d+)/g, (match, num) => {
+        return `<span class="anchor_ref" style="color: #467CE2; font-weight: bold;">&gt;&gt;${num}</span>`;
+      });
       // プレースホルダーを元のエスケープ済みURLに戻す
       for (const [placeholder, url] of urlPlaceholders) {
         escapedLine = escapedLine.replace(placeholder, escapeHtml(url));
