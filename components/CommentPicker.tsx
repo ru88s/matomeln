@@ -1101,33 +1101,15 @@ export default function CommentPicker({
                 e.preventDefault();
                 // 本文のコメントにはドロップできない
                 if (draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
-                  const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
-                  const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-
-                  if (draggedIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
-                    const newSelectedComments = [...selectedComments];
-                    const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
-
-                    if (dropIndex !== -1) {
-                      // ドロップ先が選択済みの場合、その位置に挿入
-                      const adjustedDropIndex = dropIndex > draggedIndex ? dropIndex - 1 : dropIndex;
-                      newSelectedComments.splice(adjustedDropIndex, 0, draggedComment);
-                    } else {
-                      // ドロップ先が未選択の場合、最後に追加
-                      newSelectedComments.push(draggedComment);
-                    }
-
-                    // 位置情報を完全に再計算
-                    const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) { // 本文以外
-                        newPositions[sc.id] = index;
-                      }
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを移動しました`);
+                  const draggedComment = fullDisplayComments.find(
+                    displayComment => displayComment.id === draggedCommentId,
+                  );
+                  if (draggedComment) {
+                    moveComment(
+                      draggedComment,
+                      { type: 'before-id', commentId: comment.id },
+                      'コメントを移動しました',
+                    );
                   }
                 }
                 setDraggedCommentId(null);

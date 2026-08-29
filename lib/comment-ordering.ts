@@ -139,6 +139,7 @@ export type CommentMoveDestination =
   | { type: 'up' }
   | { type: 'down' }
   | { type: 'end' }
+  | { type: 'before-id'; commentId: string }
   | { type: 'after-id'; commentId: string }
   | { type: 'after-res-id'; resId: string | number };
 
@@ -170,12 +171,13 @@ export function moveCommentInDisplayOrder<T extends Comment>(
     return nextDisplayOrder;
   }
 
-  const targetIndex = destination.type === 'after-id'
+  const targetIndex = destination.type === 'before-id' || destination.type === 'after-id'
     ? nextDisplayOrder.findIndex(comment => comment.id === destination.commentId)
     : nextDisplayOrder.findIndex(comment => Number(comment.res_id) === Number(destination.resId));
 
   if (targetIndex === -1) return null;
-  nextDisplayOrder.splice(targetIndex + 1, 0, movedComment);
+  const insertionIndex = destination.type === 'before-id' ? targetIndex : targetIndex + 1;
+  nextDisplayOrder.splice(insertionIndex, 0, movedComment);
   return nextDisplayOrder;
 }
 
