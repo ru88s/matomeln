@@ -37,6 +37,33 @@ function orderValue(comment: Comment, positions: Map<string, number>): number {
   return positions.get(comment.id) ?? responseNumber(comment);
 }
 
+function compareByOrder<T extends Comment>(
+  left: T,
+  right: T,
+  positions: Map<string, number>,
+  originalIndex: Map<string, number>,
+): number {
+  const leftOrder = orderValue(left, positions);
+  const rightOrder = orderValue(right, positions);
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+
+  const responseDifference = responseNumber(left) - responseNumber(right);
+  if (responseDifference !== 0) return responseDifference;
+  return (originalIndex.get(left.id) ?? 0) - (originalIndex.get(right.id) ?? 0);
+}
+
+function sortByExplicitOrder<T extends Comment>(
+  comments: T[],
+  positions: Map<string, number>,
+): T[] {
+  const originalIndex = new Map(
+    comments.map((comment, index) => [comment.id, index])
+  );
+  return [...comments].sort((left, right) => (
+    compareByOrder(left, right, positions, originalIndex)
+  ));
+}
+
 /**
  * アンカー先を親として、親 -> 返信 -> 返信への返信の順に並べる。
  * 取得元の配列順には依存せず、同じ階層内はレス番号順を基本にする。
@@ -58,15 +85,9 @@ function arrangeByAnchor<T extends Comment>(
     }
   }
 
-  const compare = (left: T, right: T): number => {
-    const leftOrder = orderValue(left, positions);
-    const rightOrder = orderValue(right, positions);
-    if (leftOrder !== rightOrder) return leftOrder - rightOrder;
-
-    const responseDifference = responseNumber(left) - responseNumber(right);
-    if (responseDifference !== 0) return responseDifference;
-    return (originalIndex.get(left.id) ?? 0) - (originalIndex.get(right.id) ?? 0);
-  };
+  const compare = (left: T, right: T): number => (
+    compareByOrder(left, right, positions, originalIndex)
+  );
 
   const replies = new Map<number, T[]>();
   const childIds = new Set<string>();
@@ -108,11 +129,14 @@ export function buildDisplayCommentOrder(
   edits: Record<string, string>,
 ): Array<Comment & { body: string; sortKey: number }> {
   const positionMap = new Map(Object.entries(positions));
-  const ordered = arrangeByAnchor(
-    comments,
-    (comment) => edits[comment.id] || comment.body,
-    positionMap,
-  );
+  // 手動移動後はアンカーの自動整列で順番を戻さず、ユーザーの指定順を優先する。
+  const ordered = positionMap.size > 0
+    ? sortByExplicitOrder(comments, positionMap)
+    : arrangeByAnchor(
+        comments,
+        (comment) => edits[comment.id] || comment.body,
+        positionMap,
+      );
 
   return ordered.map((comment) => ({
     ...comment,

@@ -722,53 +722,6 @@ export default function CommentPicker({
     return buildDisplayCommentOrder(visibleComments, commentPositions, editedComments);
   }, [visibleComments, commentPositions, editedComments]);
 
-  const moveComment = useCallback((
-    comment: Comment,
-    destination: CommentMoveDestination,
-    successMessage: string,
-  ) => {
-    const firstSelectedId = selectedComments[0]?.id;
-    const currentDisplayIndex = fullDisplayComments.findIndex(item => item.id === comment.id);
-    const firstSelectedDisplayIndex = firstSelectedId
-      ? fullDisplayComments.findIndex(item => item.id === firstSelectedId)
-      : -1;
-
-    if (comment.id === firstSelectedId) return;
-    if (destination.type === 'up' && currentDisplayIndex <= firstSelectedDisplayIndex + 1) return;
-
-    const nextDisplayOrder = moveCommentInDisplayOrder(fullDisplayComments, comment.id, destination);
-    if (!nextDisplayOrder) {
-      if (destination.type === 'after-res-id') {
-        toast.error(`${destination.resId}番のコメントが見つかりません`);
-      }
-      return;
-    }
-
-    setCommentPositions(Object.fromEntries(
-      nextDisplayOrder.map((displayComment, index) => [displayComment.id, index]),
-    ));
-
-    const sizeValue = commentSizes[comment.id];
-    const selectedById = new Map(selectedComments.map(selected => [selected.id, selected]));
-    selectedById.set(comment.id, selectedById.get(comment.id) ?? {
-      ...hideNameId(comment),
-      body: editedComments[comment.id] || comment.body,
-      color: commentColors[comment.id] || '#000000',
-      fontSize: sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium',
-    });
-
-    onSelectionChange(orderSelectedCommentsByDisplay([...selectedById.values()], nextDisplayOrder));
-    toast.success(successMessage);
-  }, [
-    commentColors,
-    commentSizes,
-    editedComments,
-    fullDisplayComments,
-    hideNameId,
-    onSelectionChange,
-    selectedComments,
-  ]);
-
   // toggleComment関数を先に定義（useCallbackでメモ化）
   const toggleComment = useCallback((comment: Comment) => {
     const isSelected = selectedComments.some(sc => sc.id === comment.id);
@@ -956,59 +909,95 @@ export default function CommentPicker({
   const firstPosterId = comments[0]?.name_id;
 
   // コメント配列の整列（メモ化）
-  const arrangedComments = useMemo(() => {
+  const arrangedComments = useMemo<Array<Comment & { body: string; sortKey: number }>>(() => {
     if (showOnlySelected) {
-      const selectedById = new Map(selectedComments.map(comment => [comment.id, comment]));
-      return fullDisplayComments
-        .filter(comment => {
-          const selected = selectedById.get(comment.id);
-          return Boolean(selected) && !(selected?.name_id && excludedNameIds.has(selected.name_id));
-        })
-        .map(comment => {
-          const selected = selectedById.get(comment.id);
+      const displayById = new Map(fullDisplayComments.map(comment => [comment.id, comment]));
+      // 「選択済みのみ」では、全レスのアンカー整列ではなく記事の選択順を表示する。
+      return selectedComments
+        .filter(selected => !(selected.name_id && excludedNameIds.has(selected.name_id)))
+        .map(selected => {
+          const comment = displayById.get(selected.id);
+          if (!comment) return null;
           return hideNameId({
             ...comment,
             ...selected,
-            body: editedComments[comment.id] || selected?.body || comment.body,
+            body: editedComments[selected.id] || selected.body || comment.body,
           });
-        });
+        })
+        .filter((comment): comment is Comment & { body: string; sortKey: number } => comment !== null);
     } else {
       return fullDisplayComments;
     }
   }, [selectedComments, showOnlySelected, editedComments, excludedNameIds, fullDisplayComments, hideNameId]);
 
-  const createStyledComment = useCallback((comment: Comment): CommentWithStyle => ({
-    ...hideNameId(comment),
-    body: editedComments[comment.id] || comment.body,
-    color: commentColors[comment.id] || '#000000',
-    fontSize: commentSizes[comment.id] === 14
-      ? 'small'
-      : commentSizes[comment.id] === 22
-        ? 'large'
-        : 'medium',
-  }), [commentColors, commentSizes, editedComments, hideNameId]);
+  const mergeSelectedOrderIntoFullDisplayOrder = useCallback((
+    fullOrder: Comment[],
+    nextSelectedComments: CommentWithStyle[],
+  ): Comment[] => {
+    const selectedIds = new Set(nextSelectedComments.map(comment => comment.id));
+    let selectedIndex = 0;
+    return fullOrder.map(comment => {
+      if (!selectedIds.has(comment.id)) return comment;
+      return nextSelectedComments[selectedIndex++] || comment;
+    });
+  }, []);
 
-  const ensureCommentSelected = useCallback((comment: Comment) => {
-    const currentIndex = selectedComments.findIndex((selected) => selected.id === comment.id);
-    if (currentIndex !== -1) {
-      return { comments: [...selectedComments], index: currentIndex };
+  const moveComment = useCallback((
+    comment: Comment,
+    destination: CommentMoveDestination,
+    successMessage: string,
+  ) => {
+    const displayOrder = showOnlySelected ? arrangedComments : fullDisplayComments;
+    const firstSelectedId = selectedComments[0]?.id;
+    const currentDisplayIndex = displayOrder.findIndex(item => item.id === comment.id);
+    const firstSelectedDisplayIndex = firstSelectedId
+      ? displayOrder.findIndex(item => item.id === firstSelectedId)
+      : -1;
+
+    if (comment.id === firstSelectedId) return;
+    if (destination.type === 'up' && currentDisplayIndex <= firstSelectedDisplayIndex + 1) return;
+
+    const nextDisplayOrder = moveCommentInDisplayOrder(displayOrder, comment.id, destination);
+    if (!nextDisplayOrder) {
+      if (destination.type === 'after-res-id') {
+        toast.error(`${destination.resId}番のコメントが見つかりません`);
+      }
+      return;
     }
 
-    const nextComments = [...selectedComments, createStyledComment(comment)];
-    return { comments: nextComments, index: nextComments.length - 1 };
-  }, [createStyledComment, selectedComments]);
-
-  const commitCommentOrder = useCallback((
-    nextSelectedComments: CommentWithStyle[],
-    displayOrder: Comment[] = nextSelectedComments,
-  ) => {
-    const nextPositions: Record<string, number> = {};
-    displayOrder.forEach((displayComment, index) => {
-      nextPositions[displayComment.id] = index;
+    const sizeValue = commentSizes[comment.id];
+    const selectedById = new Map(selectedComments.map(selected => [selected.id, selected]));
+    selectedById.set(comment.id, selectedById.get(comment.id) ?? {
+      ...hideNameId(comment),
+      body: editedComments[comment.id] || comment.body,
+      color: commentColors[comment.id] || '#000000',
+      fontSize: sizeValue === 14 ? 'small' : sizeValue === 22 ? 'large' : 'medium',
     });
-    setCommentPositions(nextPositions);
+    const nextSelectedComments = orderSelectedCommentsByDisplay(
+      [...selectedById.values()],
+      nextDisplayOrder,
+    );
+    const nextFullDisplayOrder = showOnlySelected
+      ? mergeSelectedOrderIntoFullDisplayOrder(fullDisplayComments, nextSelectedComments)
+      : nextDisplayOrder;
+
+    setCommentPositions(Object.fromEntries(
+      nextFullDisplayOrder.map((displayComment, index) => [displayComment.id, index]),
+    ));
     onSelectionChange(nextSelectedComments);
-  }, [onSelectionChange]);
+    toast.success(successMessage);
+  }, [
+    arrangedComments,
+    commentColors,
+    commentSizes,
+    editedComments,
+    fullDisplayComments,
+    hideNameId,
+    mergeSelectedOrderIntoFullDisplayOrder,
+    onSelectionChange,
+    selectedComments,
+    showOnlySelected,
+  ]);
 
   return (
     <div className="bg-white rounded-2xl border border-orange-200 p-6 shadow-sm">
@@ -1117,12 +1106,14 @@ export default function CommentPicker({
                       newSelectedComments.push(draggedComment);
                     }
 
-                    // 位置情報を完全に再計算
+                    // 選択順を全レスの手動順へ反映し、次の再描画でアンカー整列に戻らないようにする。
+                    const nextFullDisplayOrder = mergeSelectedOrderIntoFullDisplayOrder(
+                      fullDisplayComments,
+                      newSelectedComments,
+                    );
                     const newPositions: Record<string, number> = {};
-                    newSelectedComments.forEach((sc, index) => {
-                      if (index > 0) { // 本文以外
-                        newPositions[sc.id] = index;
-                      }
+                    nextFullDisplayOrder.forEach((displayComment, index) => {
+                      newPositions[displayComment.id] = index;
                     });
                     setCommentPositions(newPositions);
 

@@ -1343,7 +1343,7 @@ export default function Home() {
       {/* メインコンテンツ */}
       <div className="flex-1 min-w-0 space-y-6">
         <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-center text-xs font-bold text-orange-700 sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-          更新: レス一覧でIDごとの一括除外ができるようになりました
+          更新: レスの移動（上下・本文の下・最後へ）が安定しました
         </div>
 
         <div className="relative">
