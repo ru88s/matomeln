@@ -1090,35 +1090,16 @@ export default function CommentPicker({
                 e.preventDefault();
                 // 本文のコメントにはドロップできない
                 if (draggedCommentId && draggedCommentId !== comment.id && !isFirstSelected) {
-                  const draggedIndex = selectedComments.findIndex(sc => sc.id === draggedCommentId);
-                  const dropIndex = selectedComments.findIndex(sc => sc.id === comment.id);
-
-                  if (draggedIndex !== -1 && draggedIndex !== 0) {  // 本文（インデックス0）を移動しない
-                    const newSelectedComments = [...selectedComments];
-                    const [draggedComment] = newSelectedComments.splice(draggedIndex, 1);
-
-                    if (dropIndex !== -1) {
-                      // ドロップ先が選択済みの場合、その位置に挿入
-                      const adjustedDropIndex = dropIndex > draggedIndex ? dropIndex - 1 : dropIndex;
-                      newSelectedComments.splice(adjustedDropIndex, 0, draggedComment);
-                    } else {
-                      // ドロップ先が未選択の場合、最後に追加
-                      newSelectedComments.push(draggedComment);
-                    }
-
-                    // 選択順を全レスの手動順へ反映し、次の再描画でアンカー整列に戻らないようにする。
-                    const nextFullDisplayOrder = mergeSelectedOrderIntoFullDisplayOrder(
-                      fullDisplayComments,
-                      newSelectedComments,
+                  const displayOrder = showOnlySelected ? arrangedComments : fullDisplayComments;
+                  const draggedComment = displayOrder.find(
+                    displayComment => displayComment.id === draggedCommentId,
+                  );
+                  if (draggedComment) {
+                    moveComment(
+                      draggedComment,
+                      { type: 'before-id', commentId: comment.id },
+                      'コメントを移動しました',
                     );
-                    const newPositions: Record<string, number> = {};
-                    nextFullDisplayOrder.forEach((displayComment, index) => {
-                      newPositions[displayComment.id] = index;
-                    });
-                    setCommentPositions(newPositions);
-
-                    onSelectionChange(newSelectedComments);
-                    toast.success(`コメントを移動しました`);
                   }
                 }
                 setDraggedCommentId(null);
