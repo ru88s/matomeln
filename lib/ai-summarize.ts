@@ -35,6 +35,19 @@ export interface LocalOllamaOptions {
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
+const OLLAMA_KEEP_ALIVE = '35m';
+const OLLAMA_SUMMARY_SCHEMA = {
+  type: 'object',
+  properties: {
+    selected_posts: {
+      type: 'array',
+      items: { type: 'integer', minimum: 1 },
+      uniqueItems: true,
+    },
+  },
+  required: ['selected_posts'],
+  additionalProperties: false,
+} as const;
 
 const ADULT_LEGAL_CONTEXT_PATTERNS = [
   /風俗営業(?:法|等)?/gi,
@@ -1471,11 +1484,12 @@ export async function callLocalOllamaAPI(
         model,
         stream: false,
         think: false,
-        format: 'json',
+        keep_alive: OLLAMA_KEEP_ALIVE,
+        format: OLLAMA_SUMMARY_SCHEMA,
         options: {
           temperature: 0,
           num_ctx: 16384,
-          num_predict: 4000,
+          num_predict: 512,
         },
         messages: [
           {
@@ -1514,8 +1528,14 @@ export async function callLocalOllamaAPI(
     throw new Error(errorMessage);
   }
 
-  const data = await response.json() as { message?: { content?: string }; response?: string };
+  const data = await response.json() as { message?: { content?: string }; response?: string; done_reason?: string; total_duration?: number; eval_count?: number };
+  if (data.done_reason === 'length') throw new Error('ローカルAIの出力が上限に達しました。レス数を減らして再実行してください。');
   const content = data.message?.content || data.response || '';
+  const selected = JSON.parse(content) as { selected_posts?: unknown };
+  if (!Array.isArray(selected.selected_posts) || selected.selected_posts.length === 0 || selected.selected_posts.some(value => !Number.isInteger(value) || value < 1 || value > comments.length)) {
+    throw new Error('ローカルAIが有効なレス番号を返しませんでした。再実行してください。');
+  }
+  console.log('Ollama分析時間:', Math.round((data.total_duration || 0) / 1e6), 'ms / 出力:', data.eval_count || 0, 'tokens');
   return parseAISummarizeContent(content, comments);
 }
 

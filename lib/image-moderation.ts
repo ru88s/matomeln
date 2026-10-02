@@ -9,6 +9,7 @@ export interface ImageModerationOptions {
 export interface ImageModerationResult {
   keptComments: CommentWithStyle[];
   removedComments: CommentWithStyle[];
+  reviewComments: CommentWithStyle[];
   checkedImageCount: number;
   unavailable: boolean;
 }
@@ -19,7 +20,7 @@ export interface RiskyMediaUrlFilterResult {
 }
 
 interface VisionModerationResponse {
-  unsafe?: boolean;
+  status: 'safe' | 'unsafe' | 'review';
   categories?: string[];
   reason?: string;
 }
@@ -72,14 +73,18 @@ export function filterRiskyMediaUrlComments(
 }
 
 async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(`/api/proxy/fetchImage?url=${encodeURIComponent(imageUrl)}`);
+    const response = await fetch(`/api/proxy/fetchImage?url=${encodeURIComponent(imageUrl)}`, { signal: controller.signal });
     if (!response.ok) return null;
     const data = await response.json() as { data?: string };
     return data.data || null;
   } catch (error) {
     console.warn('画像の取得に失敗:', imageUrl, error);
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -108,18 +113,30 @@ async function classifyImageWithOllama(
         model: options.model,
         stream: false,
         think: false,
-        format: 'json',
+        keep_alive: '35m',
+        format: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['safe', 'unsafe', 'review'] },
+            categories: { type: 'array', items: { type: 'string', enum: ['gore', 'sexual'] } },
+            reason: { type: 'string' },
+          },
+          required: ['status', 'categories', 'reason'],
+          additionalProperties: false,
+        },
         options: {
           temperature: 0,
-          num_predict: 300,
+          num_predict: 80,
+          num_ctx: 16384,
         },
         messages: [
           {
             role: 'user',
             content: [
               'Classify this image for a Japanese blog comment selection tool.',
-              'Return {"unsafe":true,"categories":["gore"|"sexual"],"reason":"short"} if it contains graphic gore, severe injury, exposed genitals, explicit nudity, pornographic sexual content, or a sexual act.',
-              'Return {"unsafe":false,"categories":[],"reason":"safe"} for normal photos, memes, food, animals, screenshots, clothed people, swimsuits without explicit nudity, or non-graphic content.',
+              'Return {"status":"unsafe","categories":["gore" or "sexual"],"reason":"short"} for graphic gore, severe injury, exposed genitals, explicit nudity, pornographic sexual content, or a sexual act.',
+              'Return {"status":"safe","categories":[],"reason":"safe"} for normal photos, memes, food, animals, screenshots, clothed people, swimsuits without explicit nudity, or non-graphic content.',
+              'If uncertain or the image cannot be understood, return {"status":"review","categories":[],"reason":"uncertain"}.',
               'JSON only.',
             ].join(' '),
             images: [imageBase64],
@@ -140,8 +157,13 @@ async function classifyImageWithOllama(
     if (!json) return null;
 
     const parsed = JSON.parse(json) as VisionModerationResponse;
+    if (!['safe', 'unsafe', 'review'].includes(parsed.status) || !Array.isArray(parsed.categories) || typeof parsed.reason !== 'string') return null;
+    if (parsed.categories.some(category => category !== 'gore' && category !== 'sexual')) return null;
+    if ((parsed.status === 'safe' && parsed.categories.length > 0) || (parsed.status === 'unsafe' && parsed.categories.length === 0)) {
+      return { status: 'review', categories: [], reason: 'inconsistent classification' };
+    }
     return {
-      unsafe: parsed.unsafe === true,
+      status: parsed.status,
       categories: Array.isArray(parsed.categories) ? parsed.categories : [],
       reason: typeof parsed.reason === 'string' ? parsed.reason : '',
     };
@@ -161,6 +183,7 @@ export async function filterUnsafeImageComments(
     return {
       keptComments: comments,
       removedComments: [],
+      reviewComments: [],
       checkedImageCount: 0,
       unavailable: false,
     };
@@ -168,8 +191,10 @@ export async function filterUnsafeImageComments(
 
   const keptComments: CommentWithStyle[] = [];
   const removedComments: CommentWithStyle[] = [];
+  const reviewComments: CommentWithStyle[] = [];
   let checkedImageCount = 0;
   let unavailable = false;
+  const imageResults = new Map<string, VisionModerationResponse | null>();
 
   for (const comment of comments) {
     const imageUrls = (comment.images || []).filter((image): image is string =>
@@ -182,18 +207,22 @@ export async function filterUnsafeImageComments(
     }
 
     let shouldRemove = false;
-    for (const imageUrl of imageUrls.slice(0, 3)) {
-      const imageBase64 = await fetchImageAsBase64(imageUrl);
-      if (!imageBase64) continue;
-
-      checkedImageCount++;
-      const moderation = await classifyImageWithOllama(imageBase64, options);
+    let needsReview = false;
+    for (const imageUrl of imageUrls) {
+      if (!imageResults.has(imageUrl)) {
+        const imageBase64 = await fetchImageAsBase64(imageUrl);
+        if (imageBase64) checkedImageCount++;
+        imageResults.set(imageUrl, imageBase64 ? await classifyImageWithOllama(imageBase64, options) : null);
+      }
+      const moderation = imageResults.get(imageUrl);
       if (!moderation) {
         unavailable = true;
+        needsReview = true;
         continue;
       }
 
-      if (moderation.unsafe) {
+      if (moderation.status === 'review') needsReview = true;
+      if (moderation.status === 'unsafe') {
         console.log(`🚫 画像NGレスを除外: ${comment.res_id} (${moderation.categories?.join(', ') || 'unsafe'})`);
         shouldRemove = true;
         break;
@@ -202,6 +231,8 @@ export async function filterUnsafeImageComments(
 
     if (shouldRemove) {
       removedComments.push(comment);
+    } else if (needsReview) {
+      reviewComments.push(comment);
     } else {
       keptComments.push(comment);
     }
@@ -210,6 +241,7 @@ export async function filterUnsafeImageComments(
   return {
     keptComments,
     removedComments,
+    reviewComments,
     checkedImageCount,
     unavailable,
   };

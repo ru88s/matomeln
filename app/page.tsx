@@ -511,6 +511,9 @@ export default function Home() {
         toast.loading(`画像付きレスをチェック中（${imageModerationOptions.model}）...`, { id: toastId });
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
+        if (moderationResult.reviewComments.length > 0) {
+          toast.error(`画像を判定できなかった${moderationResult.reviewComments.length}件のレスを選択から外しました。投稿前に確認してください。`, { duration: 10000 });
+        }
       }
 
       // 状態を更新
@@ -758,6 +761,9 @@ export default function Home() {
         toast.loading(`画像付きレスをチェック中（${imageModerationOptions.model}）...`, { id: 'bulk-step' });
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
+        if (moderationResult.reviewComments.length > 0) {
+          throw new Error(`画像の要確認レスが${moderationResult.reviewComments.length}件あるため自動投稿を停止しました`);
+        }
       }
 
       setCommentColors(newCommentColors);

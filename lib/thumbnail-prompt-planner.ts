@@ -24,7 +24,26 @@ export interface ThumbnailPromptPlan {
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
-const PROMPT_PLAN_TIMEOUT_MS = 12000;
+const OLLAMA_KEEP_ALIVE = '35m';
+const PROMPT_PLAN_TIMEOUT_MS = 60000;
+const THUMBNAIL_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    visualStyle: { type: 'string', enum: ['anime_key_visual', 'editorial_photo', 'product_photo', 'mascot'] },
+    category: { type: 'string' },
+    scene: { type: 'string' },
+    mainObjects: { type: 'array', items: { type: 'string' } },
+    emotion: { type: 'string' },
+    characterAction: { type: 'string' },
+    colorMood: { type: 'string' },
+    avoid: { type: 'array', items: { type: 'string' } },
+    reuseTag: { type: 'string' },
+    confidence: { type: 'number', minimum: 0, maximum: 1 },
+    reason: { type: 'string' },
+  },
+  required: ['visualStyle', 'category', 'scene', 'mainObjects', 'emotion', 'characterAction', 'colorMood', 'avoid', 'reuseTag', 'confidence', 'reason'],
+  additionalProperties: false,
+} as const;
 
 const REQUIRED_AVOID_TERMS = [
   'visible text',
@@ -266,11 +285,12 @@ export async function createThumbnailPromptPlan(
         model: config.model,
         stream: false,
         think: false,
-        format: 'json',
+        keep_alive: OLLAMA_KEEP_ALIVE,
+        format: THUMBNAIL_PLAN_SCHEMA,
         options: {
           temperature: 0.2,
-          num_ctx: 4096,
-          num_predict: 600,
+          num_ctx: 16384,
+          num_predict: 300,
         },
         messages: [
           {

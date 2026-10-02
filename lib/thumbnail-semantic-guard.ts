@@ -15,9 +15,19 @@ export interface ThumbnailSemanticAssessment {
 
 type AmbiguousSense = 'music_drum' | 'laundry_drum' | null;
 
-const MAX_LLM_REVIEW_MS = 10000;
+const MAX_LLM_REVIEW_MS = 30000;
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
+const OLLAMA_KEEP_ALIVE = '35m';
+const SEMANTIC_FIT_SCHEMA = {
+  type: 'object',
+  properties: {
+    match: { type: 'boolean' },
+    reason: { type: 'string' },
+  },
+  required: ['match', 'reason'],
+  additionalProperties: false,
+} as const;
 
 const DANGEROUSLY_GENERIC_LABELS = new Set([
   '本',
@@ -256,10 +266,11 @@ JSONだけ返却:
         model: config.model,
         stream: false,
         think: false,
-        format: 'json',
+        keep_alive: OLLAMA_KEEP_ALIVE,
+        format: SEMANTIC_FIT_SCHEMA,
         options: {
           temperature: 0,
-          num_ctx: 2048,
+          num_ctx: 16384,
           num_predict: 120,
         },
         messages: [
