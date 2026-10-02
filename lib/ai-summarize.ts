@@ -34,7 +34,7 @@ export interface LocalOllamaOptions {
 }
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:12b-mlx';
 const OLLAMA_KEEP_ALIVE = '35m';
 const OLLAMA_SUMMARY_SCHEMA = {
   type: 'object',

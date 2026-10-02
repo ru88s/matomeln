@@ -23,7 +23,7 @@ export interface ThumbnailPromptPlan {
 }
 
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_OLLAMA_MODEL = 'gemma4:12b';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:12b-mlx';
 const OLLAMA_KEEP_ALIVE = '35m';
 const PROMPT_PLAN_TIMEOUT_MS = 60000;
 const THUMBNAIL_PLAN_SCHEMA = {
