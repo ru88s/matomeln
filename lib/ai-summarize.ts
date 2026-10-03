@@ -36,6 +36,8 @@ export interface LocalOllamaOptions {
 const DEFAULT_OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'gemma4:12b-mlx';
 const OLLAMA_KEEP_ALIVE = '35m';
+let ollamaRecoveryUntil = 0;
+const OLLAMA_RECOVERY_COOLDOWN_MS = 120000;
 const OLLAMA_SUMMARY_SCHEMA = {
   type: 'object',
   properties: {
@@ -1466,16 +1468,22 @@ export async function callLocalOllamaAPI(
   options: LocalOllamaOptions = {},
   recoveryAttempt = 0
 ): Promise<AISummarizeResponse> {
+  if (comments.length === 0) return { selected_posts: [] };
+  if (Date.now() < ollamaRecoveryUntil) {
+    console.warn('Ollama回復待ちのため、ルールベース選定で続行します');
+    return buildFallbackAISummarizeResponse(comments);
+  }
   const prompt = buildLocalOllamaSummarizePrompt(title, comments);
   const endpoint = (options.endpoint || DEFAULT_OLLAMA_ENDPOINT).replace(/\/$/, '');
   const model = options.model || DEFAULT_OLLAMA_MODEL;
   console.log(`📊 Ollamaプロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件, モデル: ${model}`);
 
-  // ローカルモデルは初回ロードが重いので少し長めに待つ
+  // 連続処理を長時間ブロックしない。本文の読み取りも同じ期限内に収める。
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 180000);
+  const timeoutId = setTimeout(() => controller.abort(), recoveryAttempt === 0 ? 90000 : 45000);
 
   let response: Response;
+  let data: { message?: { content?: string }; response?: string; done_reason?: string; total_duration?: number; eval_count?: number };
   try {
     response = await fetch(`${endpoint}/api/chat`, {
       method: 'POST',
@@ -1514,8 +1522,15 @@ export async function callLocalOllamaAPI(
       }),
       signal: controller.signal,
     });
+    if (!response.ok) {
+      console.warn(`Ollama HTTP ${response.status}: ルールベース選定で続行します`);
+      ollamaRecoveryUntil = Date.now() + OLLAMA_RECOVERY_COOLDOWN_MS;
+      return buildFallbackAISummarizeResponse(comments);
+    }
+    data = await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
+    ollamaRecoveryUntil = Date.now() + OLLAMA_RECOVERY_COOLDOWN_MS;
     if (error instanceof Error && error.name === 'AbortError') {
       console.warn('ローカルAI分析がタイムアウトしたため、ルールベース選定で続行します');
       return buildFallbackAISummarizeResponse(comments);
@@ -1524,23 +1539,12 @@ export async function callLocalOllamaAPI(
       console.warn('Ollamaに接続できないため、ルールベース選定で続行します');
       return buildFallbackAISummarizeResponse(comments);
     }
-    throw error instanceof Error ? error : new Error('ローカルAI呼び出しに失敗しました');
+    console.warn('Ollama応答の取得に失敗したため、ルールベース選定で続行します');
+    return buildFallbackAISummarizeResponse(comments);
   } finally {
     clearTimeout(timeoutId);
   }
 
-  if (!response.ok) {
-    let errorMessage = 'Ollama API呼び出しに失敗しました';
-    try {
-      const errorData = await response.json() as { error?: string };
-      if (errorData.error) errorMessage = errorData.error;
-    } catch {
-      // JSON以外のエラーは既定メッセージを使う
-    }
-    throw new Error(errorMessage);
-  }
-
-  const data = await response.json() as { message?: { content?: string }; response?: string; done_reason?: string; total_duration?: number; eval_count?: number };
   const content = data.message?.content || data.response || '';
   try {
     const selected = JSON.parse(content) as { selected_posts?: unknown };
@@ -1553,6 +1557,7 @@ export async function callLocalOllamaAPI(
       return callLocalOllamaAPI(title, comments, options, 1);
     }
     console.warn('ローカルAIの再試行でも選定できなかったため、ルールベース選定で続行します');
+    ollamaRecoveryUntil = Date.now() + OLLAMA_RECOVERY_COOLDOWN_MS;
     return buildFallbackAISummarizeResponse(comments);
   }
   console.log('Ollama分析時間:', Math.round((data.total_duration || 0) / 1e6), 'ms / 出力:', data.eval_count || 0, 'tokens');

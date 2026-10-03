@@ -101,7 +101,7 @@ async function classifyImageWithOllama(
 ): Promise<VisionModerationResponse | null> {
   const endpoint = options.endpoint.replace(/\/$/, '');
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 90000);
+  const timeoutId = window.setTimeout(() => controller.abort(), 30000);
 
   try {
     const response = await fetch(`${endpoint}/api/chat`, {
