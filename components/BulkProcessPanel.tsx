@@ -113,6 +113,7 @@ function sanitizeErrorForState(error: string): string {
 
 function isExpectedSkippableErrorMessage(errorMsg: string): boolean {
   const skippablePatterns = [
+    'フィルタリング後に投稿できるレスがありません',
     'AIの応答を解析できませんでした',
     'AI processing failed',
     'Failed to parse AI response',
@@ -840,7 +841,7 @@ export default function BulkProcessPanel({
             logMethod(`Stringified error: ${lastError}`);
 
             // スキップ可能なエラーの場合はリトライ
-            if (isSkippableError(lastError) && attempt < maxRetries) {
+            if (isSkippableError(lastError) && !lastError.includes('フィルタリング後に投稿できるレスがありません') && attempt < maxRetries) {
               toast(`[${sourceLabel}] (${i + 1}/${urlList.length}) エラー発生、リトライします...`, { icon: '🔄', id: 'bulk-progress' });
               await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機してからリトライ
               continue;

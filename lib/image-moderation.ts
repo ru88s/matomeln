@@ -218,10 +218,14 @@ export async function filterUnsafeImageComments(
       if (!moderation) {
         unavailable = true;
         needsReview = true;
+        console.warn(`画像レス ${comment.res_id}: 画像取得または判定に失敗したため除外`);
         continue;
       }
 
-      if (moderation.status === 'review') needsReview = true;
+      if (moderation.status === 'review') {
+        needsReview = true;
+        console.warn(`画像レス ${comment.res_id}: 要確認のため除外 (${moderation.reason || 'uncertain'})`);
+      }
       if (moderation.status === 'unsafe') {
         console.log(`🚫 画像NGレスを除外: ${comment.res_id} (${moderation.categories?.join(', ') || 'unsafe'})`);
         shouldRemove = true;

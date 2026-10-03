@@ -762,8 +762,13 @@ export default function Home() {
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
         if (moderationResult.reviewComments.length > 0) {
-          throw new Error(`画像の要確認レスが${moderationResult.reviewComments.length}件あるため自動投稿を停止しました`);
+          console.warn('画像の要確認レスを除外して自動投稿を続行:', moderationResult.reviewComments.map(comment => comment.res_id));
+          toast(`画像を判定できなかった${moderationResult.reviewComments.length}件のレスを除外し、残りで投稿を続けます`, { icon: '⚠️', duration: 6000 });
         }
+      }
+
+      if (newSelectedComments.length === 0) {
+        throw new Error('フィルタリング後に投稿できるレスがありません');
       }
 
       setCommentColors(newCommentColors);
