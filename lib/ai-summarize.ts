@@ -731,7 +731,7 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
     .filter(({ comment, originalPostNumber }) => (
       originalPostNumber === 1 || !isSummarySpamCommentText(comment.body)
     ));
-  if (totalPosts <= 450) {
+  if (totalPosts <= 180) {
     return candidateEntries;
   }
 
@@ -765,7 +765,7 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
     return { comment, originalPostNumber: postNumber, score };
   });
 
-  const maxCandidates = totalPosts > 800 ? 360 : 400;
+  const maxCandidates = 180;
   const selected = new Map<number, { comment: Comment; originalPostNumber: number }>();
 
   for (const item of scored.slice(0, 80)) {
@@ -790,7 +790,7 @@ function buildLocalOllamaSummarizePrompt(title: string, comments: Comment[]): st
   const totalPosts = comments.length;
   const candidateEntries = buildLocalOllamaCandidateEntries(comments);
   const targetCount = getSummaryTargetCount(Math.min(totalPosts, candidateEntries.length));
-  const maxBodyLength = candidateEntries.length > 300 ? 70 : totalPosts > 100 ? 120 : 220;
+  const maxBodyLength = totalPosts > 100 ? 80 : 220;
   const sanitizedTitle = sanitizeText(title);
 
   const postsText = candidateEntries
@@ -1517,10 +1517,12 @@ export async function callLocalOllamaAPI(
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('ローカルAI分析がタイムアウトしました（180秒）。Ollamaが起動しているか確認してください。');
+      console.warn('ローカルAI分析がタイムアウトしたため、ルールベース選定で続行します');
+      return buildFallbackAISummarizeResponse(comments);
     }
     if (error instanceof TypeError) {
-      throw new Error('Ollamaに接続できません。MacでOllamaを起動してから再実行してください。');
+      console.warn('Ollamaに接続できないため、ルールベース選定で続行します');
+      return buildFallbackAISummarizeResponse(comments);
     }
     throw error instanceof Error ? error : new Error('ローカルAI呼び出しに失敗しました');
   } finally {

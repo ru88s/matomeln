@@ -20,4 +20,10 @@ const comments = Array.from({ length: 120 }, (_, i) => ({ id: String(i), res_id:
     assert.deepEqual(budgets, mode === 'valid-at-limit' ? [768] : [768, 1536]);
     console.log(mode + ': passed');
   }
+  for (const error of [new DOMException('timeout', 'AbortError'), new TypeError('Failed to fetch')]) {
+    global.fetch = async () => { throw error; };
+    const result = await callLocalOllamaAPI('家事の体験談', comments);
+    assert.ok(result.selected_posts.length > 0);
+    console.log(error.name + ' recovery: passed');
+  }
 })().catch(error => { console.error(error); process.exitCode = 1; });
