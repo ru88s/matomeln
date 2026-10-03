@@ -43,6 +43,7 @@ const OLLAMA_SUMMARY_SCHEMA = {
       type: 'array',
       items: { type: 'integer', minimum: 1 },
       uniqueItems: true,
+      maxItems: 90,
     },
   },
   required: ['selected_posts'],
@@ -1462,7 +1463,8 @@ export async function callAISummarize(
 export async function callLocalOllamaAPI(
   title: string,
   comments: Comment[],
-  options: LocalOllamaOptions = {}
+  options: LocalOllamaOptions = {},
+  recoveryAttempt = 0
 ): Promise<AISummarizeResponse> {
   const prompt = buildLocalOllamaSummarizePrompt(title, comments);
   const endpoint = (options.endpoint || DEFAULT_OLLAMA_ENDPOINT).replace(/\/$/, '');
@@ -1485,11 +1487,19 @@ export async function callLocalOllamaAPI(
         stream: false,
         think: false,
         keep_alive: OLLAMA_KEEP_ALIVE,
-        format: OLLAMA_SUMMARY_SCHEMA,
+        format: {
+          ...OLLAMA_SUMMARY_SCHEMA,
+          properties: {
+            selected_posts: {
+              ...OLLAMA_SUMMARY_SCHEMA.properties.selected_posts,
+              items: { type: 'integer', minimum: 1, maximum: Math.max(1, comments.length) },
+            },
+          },
+        },
         options: {
           temperature: 0,
           num_ctx: 16384,
-          num_predict: 512,
+          num_predict: recoveryAttempt === 0 ? 768 : 1536,
         },
         messages: [
           {
@@ -1529,11 +1539,19 @@ export async function callLocalOllamaAPI(
   }
 
   const data = await response.json() as { message?: { content?: string }; response?: string; done_reason?: string; total_duration?: number; eval_count?: number };
-  if (data.done_reason === 'length') throw new Error('ローカルAIの出力が上限に達しました。レス数を減らして再実行してください。');
   const content = data.message?.content || data.response || '';
-  const selected = JSON.parse(content) as { selected_posts?: unknown };
-  if (!Array.isArray(selected.selected_posts) || selected.selected_posts.length === 0 || selected.selected_posts.some(value => !Number.isInteger(value) || value < 1 || value > comments.length)) {
-    throw new Error('ローカルAIが有効なレス番号を返しませんでした。再実行してください。');
+  try {
+    const selected = JSON.parse(content) as { selected_posts?: unknown };
+    if (!Array.isArray(selected.selected_posts) || selected.selected_posts.length === 0 || selected.selected_posts.length > 90 || selected.selected_posts.some(value => !Number.isInteger(value) || value < 1 || value > comments.length)) {
+      throw new Error('Invalid selection');
+    }
+  } catch {
+    if (recoveryAttempt === 0) {
+      console.warn('ローカルAIの出力不足・不正JSONを自動再試行します');
+      return callLocalOllamaAPI(title, comments, options, 1);
+    }
+    console.warn('ローカルAIの再試行でも選定できなかったため、ルールベース選定で続行します');
+    return buildFallbackAISummarizeResponse(comments);
   }
   console.log('Ollama分析時間:', Math.round((data.total_duration || 0) / 1e6), 'ms / 出力:', data.eval_count || 0, 'tokens');
   return parseAISummarizeContent(content, comments);
