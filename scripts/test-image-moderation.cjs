@@ -9,7 +9,7 @@ new Function('exports', 'require', 'module', source)(loaded.exports, require, lo
 global.window = { setTimeout, clearTimeout };
 const options = { enabled: true, endpoint: 'http://test', model: 'test' };
 global.localStorage = { getItem: () => 'true' };
-assert.equal(loaded.exports.getImageModerationOptions().enabled, false, 'paused even with previously enabled settings');
+assert.equal(loaded.exports.getImageModerationOptions().enabled, true);
 const comment = { id: 'a', res_id: '1', body: 'test', images: ['a', 'b', 'c', 'd'] };
 
 (async () => {
@@ -32,7 +32,7 @@ const comment = { id: 'a', res_id: '1', body: 'test', images: ['a', 'b', 'c', 'd
       return Response.json({ message: { content: JSON.stringify(decision) } });
     };
     const result = await loaded.exports.filterUnsafeImageComments([comment], options);
-    assert.equal(result.keptComments.length, status === 'safe' ? 1 : 0, status);
+    assert.equal(result.keptComments.length, status === 'unsafe' ? 0 : 1, status);
     assert.equal(result.removedComments.length, status === 'unsafe' ? 1 : 0, status);
     assert.equal(result.reviewComments.length, !['safe', 'unsafe'].includes(status) ? 1 : 0, status);
     if (status === 'safe') {
@@ -49,7 +49,7 @@ const comment = { id: 'a', res_id: '1', body: 'test', images: ['a', 'b', 'c', 'd
     : Response.json({ message: { content: JSON.stringify({ status: 'review', categories: [], reason: 'uncertain' }) } });
   const textOnly = { ...comment, id: 'text-only', images: [] };
   const mixed = await loaded.exports.filterUnsafeImageComments([comment, textOnly], options);
-  assert.deepEqual(mixed.keptComments, [textOnly], 'unreviewed images excluded, safe text retained for posting');
+  assert.deepEqual(mixed.keptComments, [comment, textOnly], 'uncertain images retained for uninterrupted posting');
   assert.equal(mixed.reviewComments.length, 1);
   const page = fs.readFileSync('app/page.tsx', 'utf8');
   assert.ok(!page.includes('件あるため自動投稿を停止しました'), 'review must not abort bulk posting');

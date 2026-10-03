@@ -34,15 +34,14 @@ const URL_PATTERN = /https?:\/\/[^\s<>"'「」『』（）()[\]{}、。，．]+/
 export function getImageModerationOptions(): ImageModerationOptions {
   if (typeof window === 'undefined') {
     return {
-      enabled: false,
+      enabled: true,
       endpoint: DEFAULT_OLLAMA_ENDPOINT,
       model: DEFAULT_IMAGE_MODERATION_MODEL,
     };
   }
 
   return {
-    // 自動まとめの継続を優先し、既存の有効設定に関係なく一時停止する。
-    enabled: false,
+    enabled: localStorage.getItem('matomeln_image_moderation_enabled') !== 'false',
     endpoint: localStorage.getItem('matomeln_ollama_endpoint') || DEFAULT_OLLAMA_ENDPOINT,
     model: localStorage.getItem('matomeln_image_moderation_model') || DEFAULT_IMAGE_MODERATION_MODEL,
   };
@@ -137,7 +136,7 @@ async function classifyImageWithOllama(
               'Classify this image for a Japanese blog comment selection tool.',
               'Return {"status":"unsafe","categories":["gore" or "sexual"],"reason":"short"} for graphic gore, severe injury, exposed genitals, explicit nudity, pornographic sexual content, or a sexual act.',
               'Return {"status":"safe","categories":[],"reason":"safe"} for normal photos, memes, food, animals, screenshots, clothed people, swimsuits without explicit nudity, or non-graphic content.',
-              'If uncertain or the image cannot be understood, return {"status":"review","categories":[],"reason":"uncertain"}.',
+              'Only mark unsafe when the explicit sexual content or graphic gore is clearly visible. If uncertain or the image cannot be understood, return {"status":"review","categories":[],"reason":"uncertain"}.',
               'JSON only.',
             ].join(' '),
             images: [imageBase64],
@@ -219,13 +218,13 @@ export async function filterUnsafeImageComments(
       if (!moderation) {
         unavailable = true;
         needsReview = true;
-        console.warn(`画像レス ${comment.res_id}: 画像取得または判定に失敗したため除外`);
+        console.warn(`画像レス ${comment.res_id}: 画像取得または判定に失敗（レスを保持して続行）`);
         continue;
       }
 
       if (moderation.status === 'review') {
         needsReview = true;
-        console.warn(`画像レス ${comment.res_id}: 要確認のため除外 (${moderation.reason || 'uncertain'})`);
+        console.warn(`画像レス ${comment.res_id}: 判定が曖昧（レスを保持して続行） (${moderation.reason || 'uncertain'})`);
       }
       if (moderation.status === 'unsafe') {
         console.log(`🚫 画像NGレスを除外: ${comment.res_id} (${moderation.categories?.join(', ') || 'unsafe'})`);
@@ -238,6 +237,7 @@ export async function filterUnsafeImageComments(
       removedComments.push(comment);
     } else if (needsReview) {
       reviewComments.push(comment);
+      keptComments.push(comment);
     } else {
       keptComments.push(comment);
     }

@@ -512,7 +512,7 @@ export default function Home() {
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
         if (moderationResult.reviewComments.length > 0) {
-          toast.error(`画像を判定できなかった${moderationResult.reviewComments.length}件のレスを選択から外しました。投稿前に確認してください。`, { duration: 10000 });
+          console.warn(`画像を判定できなかった${moderationResult.reviewComments.length}件のレスは保持して続行します`);
         }
       }
 
@@ -762,8 +762,7 @@ export default function Home() {
         const moderationResult = await filterUnsafeImageComments(newSelectedComments, imageModerationOptions);
         newSelectedComments = moderationResult.keptComments;
         if (moderationResult.reviewComments.length > 0) {
-          console.warn('画像の要確認レスを除外して自動投稿を続行:', moderationResult.reviewComments.map(comment => comment.res_id));
-          toast(`画像を判定できなかった${moderationResult.reviewComments.length}件のレスを除外し、残りで投稿を続けます`, { icon: '⚠️', duration: 6000 });
+          console.warn('判定不能の画像レスを保持して自動投稿を続行:', moderationResult.reviewComments.map(comment => comment.res_id));
         }
       }
 
