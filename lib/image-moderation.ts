@@ -34,14 +34,15 @@ const URL_PATTERN = /https?:\/\/[^\s<>"'「」『』（）()[\]{}、。，．]+/
 export function getImageModerationOptions(): ImageModerationOptions {
   if (typeof window === 'undefined') {
     return {
-      enabled: true,
+      enabled: false,
       endpoint: DEFAULT_OLLAMA_ENDPOINT,
       model: DEFAULT_IMAGE_MODERATION_MODEL,
     };
   }
 
   return {
-    enabled: localStorage.getItem('matomeln_image_moderation_enabled') !== 'false',
+    // 自動まとめの継続を優先し、既存の有効設定に関係なく一時停止する。
+    enabled: false,
     endpoint: localStorage.getItem('matomeln_ollama_endpoint') || DEFAULT_OLLAMA_ENDPOINT,
     model: localStorage.getItem('matomeln_image_moderation_model') || DEFAULT_IMAGE_MODERATION_MODEL,
   };

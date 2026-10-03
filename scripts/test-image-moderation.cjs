@@ -8,6 +8,8 @@ const loaded = { exports: {} };
 new Function('exports', 'require', 'module', source)(loaded.exports, require, loaded);
 global.window = { setTimeout, clearTimeout };
 const options = { enabled: true, endpoint: 'http://test', model: 'test' };
+global.localStorage = { getItem: () => 'true' };
+assert.equal(loaded.exports.getImageModerationOptions().enabled, false, 'paused even with previously enabled settings');
 const comment = { id: 'a', res_id: '1', body: 'test', images: ['a', 'b', 'c', 'd'] };
 
 (async () => {

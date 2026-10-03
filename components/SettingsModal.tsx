@@ -62,7 +62,7 @@ export default function SettingsModal({
   const [aiSummaryProvider, setAiSummaryProvider] = useState<'claude' | 'ollama'>('claude');
   const [ollamaEndpoint, setOllamaEndpoint] = useState('http://127.0.0.1:11434');
   const [ollamaModel, setOllamaModel] = useState('gemma4:12b-mlx');
-  const [imageModerationEnabled, setImageModerationEnabled] = useState(true);
+  const [imageModerationEnabled, setImageModerationEnabled] = useState(false);
   const [imageModerationModel, setImageModerationModel] = useState('gemma4:12b-mlx');
   const [aiInputMode, setAiInputMode] = useState<'standard' | 'token-saving'>('standard');
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -132,7 +132,7 @@ export default function SettingsModal({
       }
       setOllamaEndpoint(localStorage.getItem('matomeln_ollama_endpoint') || 'http://127.0.0.1:11434');
       setOllamaModel(localStorage.getItem('matomeln_ollama_model') || 'gemma4:12b-mlx');
-      setImageModerationEnabled(localStorage.getItem('matomeln_image_moderation_enabled') !== 'false');
+      setImageModerationEnabled(false);
       setImageModerationModel(localStorage.getItem('matomeln_image_moderation_model') || 'gemma4:12b-mlx');
       setAiInputMode(localStorage.getItem('matomeln_ai_input_mode') === 'token-saving' ? 'token-saving' : 'standard');
       const savedGeminiApiKey = localStorage.getItem('matomeln_gemini_api_key');
@@ -751,13 +751,14 @@ export default function SettingsModal({
                           <HeroInput
                             type="checkbox"
                             checked={imageModerationEnabled}
+                            disabled
                             onChange={(e) => {
                               setImageModerationEnabled(e.target.checked);
                               persistSettings({ matomeln_image_moderation_enabled: e.target.checked ? 'true' : 'false' });
                             }}
                             className="w-4 h-4"
                           />
-                          画像付きレスのグロ・エロ判定を有効にする
+                          画像判定は一時停止中（画像レスを保持して処理を続行）
                         </label>
                         <HeroInput
                           type="text"
