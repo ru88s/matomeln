@@ -1050,12 +1050,14 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
     // Deno Deploy APIを使用
     // 正規化されたURLを使用
     const denoUrl = toDeno5chUrl(normalizedUrl);
-    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(denoUrl)}`);
+    const response = await fetch(`${DENO_5CH_API}/get5chDat?url=${encodeURIComponent(denoUrl)}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
 
     if (!response.ok) {
       // Deno Deployが失敗した場合、Cloudflare Functions経由でフォールバック
       console.log('[fetch5chThread] Deno Deploy HTTP error, trying Cloudflare fallback...');
-      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+      throw new Error(`Deno HTTP ${response.status}`);
     }
 
     const data = await response.json() as { error?: string; content?: string };
@@ -1064,7 +1066,7 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
     if (data.error) {
       console.log('[fetch5chThread] Deno Deploy returned error:', data.error);
       console.log('[fetch5chThread] Trying Cloudflare fallback...');
-      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+      throw new Error(data.error);
     }
 
     // 文字化けチェック（置換文字や異常な文字パターンを検出）
@@ -1081,38 +1083,40 @@ export async function fetch5chThread(url: string): Promise<{ talk: Talk; comment
     // 文字化けチェック（共通関数を使用）
     if (isMojibake(content)) {
       console.log('[fetch5chThread] 文字化けを検出、2ch.scにフォールバック...');
-      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+      throw new Error('取得データに文字化けがあります');
     }
 
-    return parseDatFile(content, threadInfo);
+    const parsed = parseDatFile(content, threadInfo);
+    if (!parsed.comments.length) throw new Error('取得データにレスがありません');
+    return parsed;
   } catch (error) {
     // ネットワークエラーなどの場合も2ch.scにフォールバック
-    console.log('5ch.net error, trying 2ch.sc fallback:', error);
-    try {
-      return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
-    } catch (fallbackError) {
-      console.error('2ch.sc fallback also failed:', fallbackError);
-      // エラーを適切なError形式で再スロー
-      if (error instanceof Error) {
-        throw error;
-      }
-      let errorMsg = '5chスレッドの取得に失敗しました';
-      if (error && typeof error === 'object') {
-        const obj = error as Record<string, unknown>;
-        if (typeof obj.message === 'string') errorMsg = obj.message;
-        else if (typeof obj.error === 'string') errorMsg = obj.error;
-      } else if (typeof error === 'string') {
-        errorMsg = error;
-      }
-      throw new Error(errorMsg);
+    console.warn('[fetch5chThread] 代替経路で再取得:', error instanceof Error ? error.message : String(error));
+  }
+
+  // 代替経路の失敗を主経路のcatchに戻さず、最後に確認した原因を伝える。
+  try {
+    return await fetch5chFrom2chsc(normalizedUrl, threadInfo);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('5chの取得サービスに接続できませんでした。通信状況やブラウザ拡張機能を確認してください。');
     }
+    if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)) {
+      throw new Error('5chスレッドの取得がタイムアウトしました。時間をおいて再度お試しください。');
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error('5chの取得サービスから正常な応答が返りませんでした。時間をおいて再度お試しください。');
+    }
+    throw error;
   }
 }
 
 // 5ch URLを使って2ch.scからDATを取得（フォールバック用）
 async function fetch5chFrom2chsc(url: string, threadInfo: FiveChThreadInfo): Promise<{ talk: Talk; comments: Comment[] }> {
   console.log('[fetch5chFrom2chsc] 2ch.scフォールバック開始:', url);
-  const response = await fetch(`/api/proxy/get5chFallback?url=${encodeURIComponent(url)}`);
+  const response = await fetch(`/api/proxy/get5chFallback?url=${encodeURIComponent(url)}`, {
+    signal: AbortSignal.timeout(90_000),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({})) as { error?: string };
