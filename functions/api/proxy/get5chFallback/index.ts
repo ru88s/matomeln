@@ -75,6 +75,7 @@ function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; is
   return [
     // 1. 5ch.io 直接アクセス（Cloudflare Workers経由）
     { url: datUrl, source: '5ch.io' },
+    { url: htmlUrl, source: '5ch.io-html', isHtml: true },
     // 2. tomcat.2ch.sc（5chミラー）
     { url: `https://tomcat.2ch.sc/${board}/dat/${threadKey}.dat`, source: '2ch.sc' },
     // 3. サーバー名.2ch.sc
@@ -88,7 +89,6 @@ function generateAllDatUrls(info: ThreadInfo): { url: string; source: string; is
     // 7. CORSプロキシ経由でDAT取得（corsproxy）
     { url: `https://corsproxy.io/?${encodeURIComponent(datUrl)}`, source: 'corsproxy-dat' },
     // 8. 5ch.io HTML版（直接）
-    { url: htmlUrl, source: '5ch.io-html', isHtml: true },
     // 9. CORSプロキシ経由でHTML取得（allorigins）
     { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(htmlUrl)}`, source: 'allorigins-html', isHtml: true },
     // 10. CORSプロキシ経由でHTML取得（corsproxy）
@@ -265,14 +265,7 @@ async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promi
           'Accept': '*/*',
         };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
-    let response: Response;
-    try {
-      response = await fetch(datUrl, { headers, signal: controller.signal });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const response = await fetch(datUrl, { headers, signal: AbortSignal.timeout(7000) });
 
     console.log(`[get5chFallback] ${datUrl} -> ${response.status}`);
 
@@ -329,25 +322,25 @@ async function fetchAndDecodeDat(datUrl: string, isHtml: boolean = false): Promi
       console.log(`[get5chFallback] Converted to DAT: ${content.split('\n').length} lines`);
       if (!content || content.split('\n').length === 0) {
         console.log(`[get5chFallback] HTML parsing failed`);
-        return { content: '', status: 404 };
+        return { content: '', status: 502 };
       }
     } else {
       // DATフォーマットかどうか確認（<>区切りがあるか）
       if (!content.includes('<>')) {
         console.log(`[get5chFallback] Not DAT format: ${datUrl}`);
-        return { content: '', status: 404 };
+        return { content: '', status: 502 };
       }
 
       if (hasMojibake(content)) {
         console.log(`[get5chFallback] Mojibake DAT, skipping: ${datUrl}`);
-        return { content: '', status: 404 };
+        return { content: '', status: 502 };
       }
     }
 
     return { content, status: 200 };
   } catch (error) {
     console.error(`[get5chFallback] Error fetching ${datUrl}:`, error);
-    return null;
+    return { content: '', status: 502 };
   }
 }
 
@@ -408,12 +401,14 @@ export async function onRequest(context: any) {
 
   // すべてのURLパターンで失敗
   console.error(`[get5chFallback] All URLs failed for ${url}`, errors);
+  const retryable = errors.some(({ status }) => status !== 404 && status !== 410);
   return new Response(
     JSON.stringify({
-      error: 'DATファイルが見つかりませんでした。スレッドが存在しないか、アクセスが制限されている可能性があります。',
+      error: retryable ? '取得先への接続またはデータの解析に失敗しました。時間をおいて再試行してください。' : 'DATファイルが見つかりませんでした。',
+      retryable,
       triedUrls,
       errors,
     }),
-    { status: 404, headers: corsHeaders }
+    { status: retryable ? 502 : 404, headers: corsHeaders }
   );
 }

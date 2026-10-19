@@ -228,6 +228,12 @@ export async function markThreadAsSummarized(url: string): Promise<boolean> {
  * スキップ済みとして登録
  */
 export async function markThreadAsSkipped(url: string, reason: string): Promise<boolean> {
+  // A failed download does not establish that a thread was deleted or summarized.
+  // Reject before recording locally so callers also leave it out of completed URLs.
+  if (reason.includes('取得先への接続またはデータの解析に失敗')) {
+    releaseThreadProcessingClaim(normalizeThreadMemoUrl(url));
+    throw new Error('一時的な取得失敗のため、スキップ済みに登録せず次回再試行します');
+  }
   const normalizedUrl = normalizeThreadMemoUrl(url);
   // スキップ対象も同じURLを再取得しない。
   rememberLocalUrl(LOCAL_SKIPPED_URLS_KEY, normalizedUrl);

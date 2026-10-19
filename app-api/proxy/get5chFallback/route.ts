@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import Encoding from 'encoding-japanese';
+import { fetchThreadBytes } from '@/lib/thread-fetch';
 
 // 5ch URLから情報を抽出して2ch.scのDATを取得するフォールバックAPI
 
@@ -192,27 +193,26 @@ function parse5chHtmlToDat(html: string): string {
 
 async function fetch5chHtmlFallback(threadInfo: ThreadInfo): Promise<{ content: string; htmlUrl: string; encoding: string; count: number } | null> {
   const htmlUrl = `https://${threadInfo.server}.5ch.io/test/read.cgi/${threadInfo.board}/${threadInfo.threadKey}/`;
-  const response = await fetch(htmlUrl, {
-    headers: {
+  const response = await fetchThreadBytes(htmlUrl, {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
       'Accept-Encoding': 'gzip',
-    },
   });
 
-  if (!response.ok) {
+  if (response.status !== 200) {
     logger.log(`5ch HTML fallback returned ${response.status}: ${htmlUrl}`);
-    return null;
+    if (response.status === 404 || response.status === 410) return null;
+    throw new Error(`HTML取得失敗 (HTTP ${response.status})`);
   }
 
-  const buffer = await response.arrayBuffer();
+  const buffer = response.buffer;
   const decoded = decodeDatContent(new Uint8Array(buffer));
   const content = parse5chHtmlToDat(decoded.content);
   const count = content ? content.split('\n').filter(Boolean).length : 0;
   logger.log(`5ch HTML fallback parsed ${count} comments (${decoded.encoding}, score: ${decoded.score.toFixed(1)}): ${htmlUrl}`);
 
-  if (count === 0) return null;
+  if (count === 0) throw new Error('HTMLからレスを取得できませんでした');
   return { content, htmlUrl, encoding: decoded.encoding, count };
 }
 
@@ -244,23 +244,21 @@ export async function GET(request: NextRequest) {
     try {
       logger.log(`Trying 2ch.sc fallback: ${datUrl}`);
 
-      const response = await fetch(datUrl, {
-        headers: {
+      const response = await fetchThreadBytes(datUrl, {
           'User-Agent': 'Monazilla/1.00',
           'Accept-Encoding': 'gzip',
-        },
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         // バイナリデータとして取得
-        const buffer = await response.arrayBuffer();
+        const buffer = response.buffer;
         const uint8Array = new Uint8Array(buffer);
 
         const decoded = decodeDatContent(uint8Array);
 
         if (!isUsableDatContent(decoded.content)) {
           logger.log(`Skipping unusable 2ch.sc DAT: ${datUrl} (${decoded.encoding}, score: ${decoded.score.toFixed(1)})`);
-          lastStatus = 404;
+          lastError = new Error('取得データを解析できませんでした');
           continue;
         }
 
@@ -275,6 +273,9 @@ export async function GET(request: NextRequest) {
         });
       } else {
         lastStatus = response.status;
+        if (response.status !== 404 && response.status !== 410) {
+          lastError = new Error(`DAT取得失敗 (HTTP ${response.status})`);
+        }
         logger.log(`2ch.sc returned ${response.status} for ${datUrl}`);
       }
     } catch (error) {
@@ -284,6 +285,7 @@ export async function GET(request: NextRequest) {
   }
 
   const htmlFallback = await fetch5chHtmlFallback(threadInfo).catch((error) => {
+    lastError = error instanceof Error ? error : new Error('HTML取得失敗');
     logger.error('Error fetching 5ch HTML fallback:', error);
     return null;
   });
@@ -301,10 +303,11 @@ export async function GET(request: NextRequest) {
   // すべてのURLパターンで失敗
   return NextResponse.json(
     {
-      error: 'DATファイルが見つかりませんでした。スレッドが存在しないか、アクセスが制限されている可能性があります。',
+      error: lastError ? '取得先への接続またはデータの解析に失敗しました。スレッドの削除は確認できていません。時間をおいて再試行してください。' : 'DATファイルが見つかりませんでした。',
+      retryable: Boolean(lastError),
       details: lastError?.message,
       triedUrls: datUrls,
     },
-    { status: lastStatus }
+    { status: lastError ? 502 : lastStatus }
   );
 }
