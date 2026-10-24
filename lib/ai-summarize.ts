@@ -1,4 +1,11 @@
 import { Comment } from './types';
+import {
+  QUALITY_V1_EXTRA_RULES,
+  QUALITY_V1_FEW_SHOT,
+  QUALITY_V1_TITLE_RULES,
+  prescoreCandidateEntries,
+  type SummarizeVariantOptions,
+} from './ab-quality';
 
 // カラーパレット（CLAUDE.mdと同じ）
 export const COLOR_PALETTE = [
@@ -24,6 +31,8 @@ export interface AISummarizeResponse {
     };
     reason: string;
   }[];
+  // quality-v1 treatment のみ: 同じ呼び出しで生成したタイトル案（control では undefined）
+  title_candidates?: string[];
 }
 
 export type AISummarizeProvider = 'claude' | 'ollama';
@@ -788,7 +797,8 @@ function buildLocalOllamaCandidateEntries(comments: Comment[]): { comment: Comme
   return [...selected.values()].sort((a, b) => a.originalPostNumber - b.originalPostNumber);
 }
 
-function buildLocalOllamaSummarizePrompt(title: string, comments: Comment[]): string {
+function buildLocalOllamaSummarizePrompt(title: string, comments: Comment[], variant: SummarizeVariantOptions = {}): string {
+  if (variant.qualityV1) return buildLocalOllamaQualityV1Prompt(title, comments);
   const totalPosts = comments.length;
   const candidateEntries = buildLocalOllamaCandidateEntries(comments);
   const targetCount = getSummaryTargetCount(Math.min(totalPosts, candidateEntries.length));
@@ -828,6 +838,57 @@ ${postsText}
 
 【出力形式】
 {"selected_posts":[2,5,9,12]}
+
+JSONだけを返してください。説明文、理由、Markdownは禁止です。`);
+}
+
+// quality-v1 treatment 用プロンプト（事前スコア＋few-shot＋タイトル3案）
+export function buildLocalOllamaQualityV1Prompt(title: string, comments: Comment[]): string {
+  const totalPosts = comments.length;
+  const prescored = prescoreCandidateEntries(title, comments, buildLocalOllamaCandidateEntries(comments));
+  const candidateEntries = prescored.entries;
+  if (prescored.droppedLongOffTopic.length || prescored.collapsedDuplicates.length) {
+    console.log(`🧪 quality-v1 事前処理: 長文オフトピ除外 ${prescored.droppedLongOffTopic.length}件 / 類似ツッコミ集約 ${prescored.collapsedDuplicates.length}件`);
+  }
+  const targetCount = getSummaryTargetCount(Math.min(totalPosts, candidateEntries.length));
+  const maxBodyLength = totalPosts > 100 ? 80 : 220;
+  const sanitizedTitle = sanitizeText(title);
+
+  const postsText = candidateEntries
+    .map(({ comment, originalPostNumber, bodyLimit }) => {
+      const ownerMark = comment.is_talk_owner ? '[主]' : '';
+      const sanitized = sanitizeText(comment.body).replace(/\s+/g, ' ').trim();
+      const limit = Math.min(maxBodyLength, bodyLimit ?? maxBodyLength);
+      const body = sanitized.length > limit ? sanitized.slice(0, limit) + '…' : sanitized;
+      return `${originalPostNumber}${ownerMark}: ${body}`;
+    })
+    .join('\n');
+
+  return sanitizeText(`掲示板まとめ記事に使うレス番号と、記事タイトル案を作ってください。
+
+タイトル: ${sanitizedTitle}
+レス数: ${totalPosts}件
+候補レス数: ${candidateEntries.length}件（番号は元スレのレス番号）
+
+${QUALITY_V1_FEW_SHOT}
+【レス一覧】
+${postsText}
+
+【選択ルール】
+- ${targetCount}個前後のレス番号を選ぶ（面白いレスが足りなければ少なくてよい）
+- レス1は必ず選ぶ（スレの前提として重要）
+- 短すぎるレス、重複、単なる相槌は避ける
+- 流れが分かるレス、面白いレス、質問への返答、スレ主[主]のレスを優先
+- レス1、最初の反応、共感、反論、ツッコミ、体験談、意外な視点、短い笑いどころ、オチをできるだけ揃える
+${QUALITY_V1_EXTRA_RULES}
+- 差別的、ヘイト的、属性への攻撃を含むレスは選ばない
+- 意味不明な政治・民族・メディア名・団体名・暴言の羅列、韓国語/英語混じりのヘイトスパム、単語の詰め込みは選ばない
+- アンカー付きレスを選ぶ場合、必要なら参照先も選ぶ
+
+${QUALITY_V1_TITLE_RULES}
+
+【出力形式】
+{"selected_posts":[1,5,9,12],"title_candidates":["案1","案2","案3"]}
 
 JSONだけを返してください。説明文、理由、Markdownは禁止です。`);
 }
@@ -1452,11 +1513,12 @@ export function getLocalOllamaOptions(): Required<LocalOllamaOptions> {
 export async function callAISummarize(
   apiKey: string,
   title: string,
-  comments: Comment[]
+  comments: Comment[],
+  variant: SummarizeVariantOptions = {}
 ): Promise<AISummarizeResponse> {
   const provider = getAISummarizeProvider();
   if (provider === 'ollama') {
-    return callLocalOllamaAPI(title, comments, getLocalOllamaOptions());
+    return callLocalOllamaAPI(title, comments, getLocalOllamaOptions(), 0, variant);
   }
   return callClaudeAPI(apiKey, title, comments);
 }
@@ -1466,14 +1528,15 @@ export async function callLocalOllamaAPI(
   title: string,
   comments: Comment[],
   options: LocalOllamaOptions = {},
-  recoveryAttempt = 0
+  recoveryAttempt = 0,
+  variant: SummarizeVariantOptions = {}
 ): Promise<AISummarizeResponse> {
   if (comments.length === 0) return { selected_posts: [] };
   if (Date.now() < ollamaRecoveryUntil) {
     console.warn('Ollama回復待ちのため、ルールベース選定で続行します');
     return buildFallbackAISummarizeResponse(comments);
   }
-  const prompt = buildLocalOllamaSummarizePrompt(title, comments);
+  const prompt = buildLocalOllamaSummarizePrompt(title, comments, variant);
   const endpoint = (options.endpoint || DEFAULT_OLLAMA_ENDPOINT).replace(/\/$/, '');
   const model = options.model || DEFAULT_OLLAMA_MODEL;
   console.log(`📊 Ollamaプロンプト文字数: ${prompt.length}文字, レス数: ${comments.length}件, モデル: ${model}`);
@@ -1502,17 +1565,21 @@ export async function callLocalOllamaAPI(
               ...OLLAMA_SUMMARY_SCHEMA.properties.selected_posts,
               items: { type: 'integer', minimum: 1, maximum: Math.max(1, comments.length) },
             },
+            ...(variant.qualityV1 ? { title_candidates: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 } } : {}),
           },
+          ...(variant.qualityV1 ? { required: ['selected_posts', 'title_candidates'] } : {}),
         },
         options: {
           temperature: 0,
           num_ctx: 16384,
-          num_predict: recoveryAttempt === 0 ? 768 : 1536,
+          num_predict: (recoveryAttempt === 0 ? 768 : 1536) + (variant.qualityV1 ? 256 : 0),
         },
         messages: [
           {
             role: 'system',
-            content: 'Return valid minified JSON only. The root object must be {"selected_posts":[numbers]}. No markdown. No explanation.',
+            content: variant.qualityV1
+              ? 'Return valid minified JSON only. The root object must be {"selected_posts":[numbers],"title_candidates":[3 Japanese strings]}. No markdown. No explanation.'
+              : 'Return valid minified JSON only. The root object must be {"selected_posts":[numbers]}. No markdown. No explanation.',
           },
           {
             role: 'user',
@@ -1554,14 +1621,25 @@ export async function callLocalOllamaAPI(
   } catch {
     if (recoveryAttempt === 0) {
       console.warn('ローカルAIの出力不足・不正JSONを自動再試行します');
-      return callLocalOllamaAPI(title, comments, options, 1);
+      return callLocalOllamaAPI(title, comments, options, 1, variant);
     }
     console.warn('ローカルAIの再試行でも選定できなかったため、ルールベース選定で続行します');
     ollamaRecoveryUntil = Date.now() + OLLAMA_RECOVERY_COOLDOWN_MS;
     return buildFallbackAISummarizeResponse(comments);
   }
   console.log('Ollama分析時間:', Math.round((data.total_duration || 0) / 1e6), 'ms / 出力:', data.eval_count || 0, 'tokens');
-  return parseAISummarizeContent(content, comments);
+  const parsedResponse = parseAISummarizeContent(content, comments);
+  if (variant.qualityV1) {
+    try {
+      const raw = JSON.parse(content) as { title_candidates?: unknown };
+      if (Array.isArray(raw.title_candidates)) {
+        parsedResponse.title_candidates = raw.title_candidates.filter((v): v is string => typeof v === 'string').slice(0, 3);
+      }
+    } catch {
+      // タイトル案が取れなくても選定結果はそのまま使う
+    }
+  }
+  return parsedResponse;
 }
 
 // Claude APIを呼び出し

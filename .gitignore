@@ -42,3 +42,6 @@ next-env.d.ts
 
 # development api symlink
 /app/api
+
+# A/B test variant logs (local)
+/data/ab-test/
