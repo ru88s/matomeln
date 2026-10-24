@@ -682,13 +682,32 @@ export default function Home() {
         throw new Error(`低品質スパムのためスキップ: ${threadSkipReason}`);
       }
 
+      // A/Bテスト quality-v1: treatment サイトのみ改善処理（control/他サイトは従来どおり）
+      const abQuality = await import('@/lib/ab-quality');
+      const abVariant = abQuality.getQualityV1Variant(blogSettings.blogId);
+      const useQualityV1 = abVariant === 'treatment' && aiProvider === 'ollama';
+      if (useQualityV1) {
+        const imageSkipReason = abQuality.getImageThreadSkipReason(talk.title, loadedComments);
+        if (imageSkipReason) {
+          console.log(`🧪 quality-v1: ${talk.title} をスキップ (${imageSkipReason})`);
+          throw new Error(`quality-v1のためスキップ: ${imageSkipReason}`);
+        }
+      }
+
       // =====================
       // 2. AIまとめを実行
       // =====================
       setGeneratingAI(true);
       toast.loading(aiProvider === 'ollama' ? 'ローカルAIがレスを分析中...' : 'AIがレスを分析中...', { id: 'bulk-step' });
 
-      const aiResponse = await callAISummarize(claudeApiKey, talk.title, loadedComments);
+      const aiResponse = await callAISummarize(claudeApiKey, talk.title, loadedComments, useQualityV1 ? { qualityV1: true } : {});
+      const qualityV1TitlePick = useQualityV1
+        ? abQuality.pickQualityV1Title(aiResponse.title_candidates, talk.title)
+        : null;
+      if (qualityV1TitlePick) {
+        console.log('🧪 quality-v1 タイトル:', qualityV1TitlePick.title, '(元:', talk.title, ') 候補:', aiResponse.title_candidates, '不採用:', qualityV1TitlePick.rejected);
+      }
+      const articleTalk = qualityV1TitlePick ? { ...talk, title: qualityV1TitlePick.title } : talk;
 
       const colorMap: Record<string, string> = {
         red: '#ef4444',
@@ -1036,7 +1055,7 @@ export default function Home() {
       // HTML生成（記事要点・編集部まとめを含む）
       const { generateMatomeHTML } = await import('@/lib/html-templates');
       const generatedHTML = await generateMatomeHTML(
-        talk,
+        articleTalk,
         sortedComments,
         {
           includeImages: true,
@@ -1164,6 +1183,21 @@ export default function Home() {
         throw new Error(`${blogSettings.name}への投稿に失敗しました: ${errorMsg}`);
       }
       blogPostResults.push({ name: blogSettings.name, status: 'posted' });
+      if (abVariant !== 'none' || abQuality.QUALITY_V1_TREATMENT_BLOG_IDS.includes(blogSettings.blogId)) {
+        const postedJson = await postResponse.clone().json().catch(() => null) as { url?: string } | null;
+        const articleUrl = postedJson?.url || null;
+        void abQuality.logAbVariant({
+          site: blogSettings.blogId,
+          variant: useQualityV1 ? 'treatment' : abVariant === 'treatment' ? 'none' : abVariant,
+          title: generatedHTML.title,
+          original_title: talk.title,
+          title_source: qualityV1TitlePick?.source || 'thread-title',
+          article_url: articleUrl,
+          article_id: abQuality.extractLivedoorArticleId(articleUrl),
+          thread_url: url,
+          note: abVariant === 'treatment' && !useQualityV1 ? `treatment-disabled(provider=${aiProvider})` : undefined,
+        });
+      }
 
       // =====================
       // 4.5. 他のブログにも同時投稿（設定がある場合）
@@ -1255,6 +1289,19 @@ export default function Home() {
                   }
 
                   if (otherResponse.ok) {
+                    if (useQualityV1 || abVariant !== 'none' || abQuality.getQualityV1Variant(blog.blogId) !== 'none') {
+                      const otherJson = await otherResponse.clone().json().catch(() => null) as { url?: string } | null;
+                      void abQuality.logAbVariant({
+                        site: blog.blogId,
+                        variant: useQualityV1 ? 'treatment' : abQuality.getQualityV1Variant(blog.blogId) === 'control' ? 'control' : 'none',
+                        title: generatedHTML.title,
+                        original_title: talk.title,
+                        article_url: otherJson?.url || null,
+                        article_id: abQuality.extractLivedoorArticleId(otherJson?.url),
+                        thread_url: url,
+                        note: `crosspost-from:${blogSettings.blogId}`,
+                      });
+                    }
                     recordLifestylePostSuccess(blog);
                     console.log(`✅ ${blog.name}にも投稿完了`);
                     blogPostResults.push({ name: blog.name, status: 'posted' });
