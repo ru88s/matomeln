@@ -4,6 +4,8 @@ import {
   QUALITY_V1_FEW_SHOT,
   QUALITY_V1_TITLE_RULES,
   prescoreCandidateEntries,
+  capQualityV1Selection,
+  type SelectionCapInfo,
   type SummarizeVariantOptions,
 } from './ab-quality';
 
@@ -33,6 +35,8 @@ export interface AISummarizeResponse {
   }[];
   // quality-v1 treatment のみ: 同じ呼び出しで生成したタイトル案（control では undefined）
   title_candidates?: string[];
+  // quality-v1 treatment のみ: 選択レス数上限（目標の約1.2倍）の適用結果
+  quality_v1_cap?: SelectionCapInfo;
 }
 
 export type AISummarizeProvider = 'claude' | 'ollama';
@@ -1637,6 +1641,15 @@ export async function callLocalOllamaAPI(
       }
     } catch {
       // タイトル案が取れなくても選定結果はそのまま使う
+    }
+    // 選択レス数の上限: プロンプトと同じ目標数の約1.2倍まで（スコア上位を残す）
+    const candidateCount = prescoreCandidateEntries(title, comments, buildLocalOllamaCandidateEntries(comments)).entries.length;
+    const target = getSummaryTargetCount(Math.min(comments.length, candidateCount));
+    const capped = capQualityV1Selection(parsedResponse.selected_posts, comments, target);
+    parsedResponse.selected_posts = capped.posts;
+    parsedResponse.quality_v1_cap = capped.info;
+    if (capped.info.dropped.length) {
+      console.log(`🧪 quality-v1 選択上限: ${capped.info.before}→${capped.info.after}件（目標${capped.info.target}, 上限${capped.info.cap}） 除外:`, capped.info.dropped.join(','));
     }
   }
   return parsedResponse;

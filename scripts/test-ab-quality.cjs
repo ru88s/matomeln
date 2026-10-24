@@ -50,6 +50,23 @@ assert.equal(r.entries.find(e => e.originalPostNumber === 6).bodyLimit, 120);
 assert.ok(r.entries.some(e => e.originalPostNumber === 1));
 console.log('prescore: passed');
 
+// (e) selection cap ~1.2x target, keep best-scored, keep order
+{
+  const th = Array.from({ length: 40 }, (_, i) => mk(i === 0 ? 'スレ立て本文です' : `普通の長さのレス番号${i}です`, i === 7 ? { is_talk_owner: true } : {}));
+  th[20].body = '>>30 それな'; th[21].body = '>>30 わかる'; th[22].body = '>>30 草';
+  const posts = Array.from({ length: 30 }, (_, i) => ({ post_number: 40 - i })).concat([{ post_number: 1 }, { post_number: 8 }]);
+  const { posts: kept, info } = ab.capQualityV1Selection(posts, th, 10);
+  assert.equal(info.cap, 12); assert.equal(info.before, 32); assert.equal(info.after, 12); assert.equal(kept.length, 12);
+  assert.ok(kept.some(p => p.post_number === 1) && kept.some(p => p.post_number === 8), 'レス1と[主]は残す');
+  assert.ok(kept.some(p => p.post_number === 30), '被アンカーが多いレスは残す');
+  const idx = kept.map(p => posts.indexOf(p)); assert.deepEqual(idx, [...idx].sort((a, b) => a - b), 'AIの順序を維持');
+  assert.equal(info.dropped.length, 20);
+  const small = ab.capQualityV1Selection(posts.slice(0, 11), th, 10);
+  assert.equal(small.posts.length, 11); assert.equal(small.info.dropped.length, 0);
+  assert.match(ab.formatSelectionCapNote(info), /32->12/);
+  console.log('selection cap: passed');
+}
+
 // ollama request: control unchanged, treatment adds title_candidates
 (async () => {
   const thread = Array.from({ length: 30 }, (_, i) => mk(`これは十分な長さのレスです番号${i}の体験談を書きます`));
@@ -71,5 +88,20 @@ console.log('prescore: passed');
   assert.match(seen[1].messages[1].content, /良いまとめの例/);
   assert.match(seen[1].messages[1].content, /title_candidates/);
   assert.ok(t.selected_posts.length > 0);
+  assert.equal(c.quality_v1_cap, undefined, 'control は上限処理を通らない');
+  assert.ok(t.quality_v1_cap && t.quality_v1_cap.cap >= t.quality_v1_cap.target);
+  // treatment: AIが大量選択したら約1.2倍に切る / control は切らない
+  const big = Array.from({ length: 30 }, (_, i) => i + 1);
+  global.fetch = async (_, req) => {
+    const body = JSON.parse(req.body);
+    return Response.json({ message: { content: JSON.stringify(body.format.properties.title_candidates ? { selected_posts: big, title_candidates: ['a', 'b', 'c'] } : { selected_posts: big }) } });
+  };
+  const thread60 = Array.from({ length: 60 }, (_, i) => mk(`これは十分な長さのレスです番号${i}の体験談を書きます`));
+  const tc = await callLocalOllamaAPI('体験談スレ', thread60, {}, 0, { qualityV1: true });
+  assert.ok(tc.selected_posts.length <= tc.quality_v1_cap.cap, `treatment capped ${tc.selected_posts.length}/${tc.quality_v1_cap.cap}`);
+  assert.equal(tc.quality_v1_cap.before, 30);
+  const cc = await callLocalOllamaAPI('体験談スレ', thread60);
+  assert.equal(cc.quality_v1_cap, undefined);
+  assert.ok(cc.selected_posts.length > tc.selected_posts.length, `control not capped ${cc.selected_posts.length}`);
   console.log('ollama variant isolation: passed');
 })().catch(e => { console.error(e); process.exitCode = 1; });

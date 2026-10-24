@@ -1195,7 +1195,13 @@ export default function Home() {
           article_url: articleUrl,
           article_id: abQuality.extractLivedoorArticleId(articleUrl),
           thread_url: url,
-          note: abVariant === 'treatment' && !useQualityV1 ? `treatment-disabled(provider=${aiProvider})` : undefined,
+          note: abVariant === 'treatment' && !useQualityV1 ? `treatment-disabled(provider=${aiProvider})` : abQuality.formatSelectionCapNote(aiResponse.quality_v1_cap),
+          ...(aiResponse.quality_v1_cap ? {
+            selection_target: aiResponse.quality_v1_cap.target,
+            selection_cap: aiResponse.quality_v1_cap.cap,
+            selection_before: aiResponse.quality_v1_cap.before,
+            selection_after: aiResponse.quality_v1_cap.after,
+          } : {}),
         });
       }
 

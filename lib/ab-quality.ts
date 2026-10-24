@@ -134,6 +134,81 @@ export function prescoreCandidateEntries(title: string, comments: Comment[], ent
   return { entries: out, droppedLongOffTopic, collapsedDuplicates };
 }
 
+// ---------- (e) 選択レス数の上限（目標の約1.2倍、スコア上位を残す） ----------
+export const QUALITY_V1_SELECTION_CAP_RATIO = 1.2;
+
+export interface SelectionCapInfo {
+  target: number;
+  cap: number;
+  before: number;
+  after: number;
+  dropped: number[];
+}
+
+function toHalfWidthNumber(s: string): number {
+  return Number(s.replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0)));
+}
+
+function anchorsOf(body: string): number[] {
+  const out: number[] = [];
+  const re = /(?:>>|＞＞)([0-9０-９]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body || '')) !== null) out.push(toHalfWidthNumber(m[1]));
+  return out;
+}
+
+/**
+ * AIが選んだレスが目標数の約1.2倍を超えたら、スコア上位だけを残す（並び順はAIの出力順のまま）。
+ * スコア: レス1/[主]は必ず残す。AIの出力順（前ほど高）・被アンカー数・選択済みレスからの参照・本文の長さ。
+ */
+export function capQualityV1Selection<T extends { post_number: number }>(
+  posts: T[],
+  comments: Pick<Comment, 'body' | 'is_talk_owner'>[],
+  targetCount: number,
+  ratio = QUALITY_V1_SELECTION_CAP_RATIO,
+): { posts: T[]; info: SelectionCapInfo } {
+  const target = Math.max(1, Math.round(targetCount));
+  const cap = Math.max(target, Math.ceil(target * ratio));
+  const before = posts.length;
+  if (before <= cap) return { posts, info: { target, cap, before, after: before, dropped: [] } };
+
+  const replyCount = new Map<number, number>();
+  for (const c of comments) for (const n of anchorsOf(c.body || '')) replyCount.set(n, (replyCount.get(n) || 0) + 1);
+  const selectedSet = new Set(posts.map((p) => p.post_number));
+  const referencedBySelected = new Map<number, number>();
+  for (const p of posts) {
+    for (const n of anchorsOf(comments[p.post_number - 1]?.body || '')) {
+      if (n !== p.post_number && selectedSet.has(n)) referencedBySelected.set(n, (referencedBySelected.get(n) || 0) + 1);
+    }
+  }
+  const scored = posts.map((p, rank) => {
+    const c = comments[p.post_number - 1];
+    const len = (c?.body || '').replace(/\s+/g, '').length;
+    const protectedPost = p.post_number === 1 || Boolean(c?.is_talk_owner);
+    let score = protectedPost ? Number.POSITIVE_INFINITY : 0;
+    if (!protectedPost) {
+      score += 2 * (1 - rank / before);
+      score += Math.min(replyCount.get(p.post_number) || 0, 5) * 0.6;
+      score += Math.min(referencedBySelected.get(p.post_number) || 0, 3) * 0.8;
+      score += len < 6 ? -1 : len <= 160 ? 0.5 : len > 300 ? -0.5 : 0;
+    }
+    return { p, rank, score };
+  });
+  const keep = new Set(
+    [...scored].sort((a, b) => (b.score - a.score) || (a.rank - b.rank)).slice(0, cap).map((x) => x.rank),
+  );
+  const kept = scored.filter((x) => keep.has(x.rank)).map((x) => x.p);
+  const dropped = scored.filter((x) => !keep.has(x.rank)).map((x) => x.p.post_number);
+  return { posts: kept, info: { target, cap, before, after: kept.length, dropped } };
+}
+
+export function formatSelectionCapNote(info: SelectionCapInfo | undefined): string | undefined {
+  if (!info) return undefined;
+  return info.before > info.after
+    ? `selection-cap: ${info.before}->${info.after} (target=${info.target}, cap=${info.cap})`
+    : `selection-cap: none ${info.before}<=${info.cap} (target=${info.target})`;
+}
+
 // ---------- (c) few-shot ----------
 export const QUALITY_V1_FEW_SHOT = `【良いまとめの例】
 例1 スレタイ「【野球】巨人、ドラフト1位指名を発表」
@@ -218,6 +293,10 @@ export interface AbVariantLogEntry {
   article_id?: string | null;
   thread_url?: string;
   note?: string;
+  selection_target?: number;
+  selection_cap?: number;
+  selection_before?: number;
+  selection_after?: number;
 }
 
 export function extractLivedoorArticleId(url: string | null | undefined): string | null {
